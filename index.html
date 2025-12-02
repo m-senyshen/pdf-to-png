@@ -2,191 +2,188 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>PDF to PNG</title>
+    <title>PDF → PNG Converter</title>
+
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 700px;
-            margin: 40px auto;
-            padding: 20px;
+            margin: 0;
+            padding: 0;
+            background: #f7f9fc;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 50px auto;
+            text-align: center;
         }
 
         h1 {
-            text-align: center;
+            font-size: 36px;
+            margin-bottom: 10px;
         }
 
-        #uploadBox {
-            border: 2px dashed #999;
-            border-radius: 15px;
-            padding: 40px;
-            text-align: center;
+        .upload-box {
+            border: 3px dashed #0077ff;
+            background: #f0f7ff;
+            padding: 50px;
+            border-radius: 10px;
+            cursor: pointer;
             transition: 0.2s;
-            cursor: pointer;
-            background: #fafafa;
         }
 
-        #uploadBox.dragover {
-            border-color: #1a73e8;
-            background: #eaf2fe;
+        .upload-box:hover {
+            background: #e5f1ff;
         }
 
-        #fileInput {
-            display: none;
-        }
-
-        .button {
-            display: inline-block;
-            background: #1a73e8;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 10px;
+        #selectBtn {
+            margin-top: 15px;
+            padding: 12px 22px;
+            border: none;
+            background: #0077ff;
+            color: #fff;
+            border-radius: 6px;
             font-size: 16px;
+            cursor: pointer;
         }
 
-        .button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        #selectBtn:hover {
+            background: #005fcc;
         }
 
         /* Spinner */
         #spinner {
             display: none;
-            margin-top: 20px;
-            text-align: center;
+            margin-top: 25px;
+            font-size: 18px;
+            color: #0077ff;
         }
 
-        .loader {
-            border: 6px solid #eee;
-            border-top: 6px solid #1a73e8;
-            border-radius: 50%;
-            width: 45px;
-            height: 45px;
-            animation: spin 0.9s linear infinite;
-            margin: auto;
+        /* Thumbnails */
+        #pageList {
+            margin-top: 40px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .thumb {
+            border: 2px solid #ddd;
+            padding: 6px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #fff;
         }
 
+        .thumb:hover {
+            border-color: #0077ff;
+            box-shadow: 0 0 8px rgba(0, 119, 255, 0.2);
+        }
+
+        /* Download */
         #downloadLink {
-            margin-top: 20px;
             display: none;
-            text-align: center;
+            margin-top: 25px;
+            padding: 12px 22px;
+            background: #28a745;
+            color: #fff;
+            border-radius: 6px;
+            text-decoration: none;
+        }
+
+        #downloadLink:hover {
+            background: #1e7e34;
         }
     </style>
-</head>
 
-<body>
-    <h1>PDF → PNG Converter</h1>
+    <!-- Load PDF.js as ES modules -->
+    <script type="module">
+        import * as pdfjsLib from "./libs/pdf.mjs";
 
-    <!-- DRAG & DROP AREA -->
-    <div id="uploadBox">
-        <p><strong>Drag & drop your PDF here</strong></p>
-        <div class="button" id="selectButton">Select Your File</div>
-        <input type="file" id="fileInput" accept="application/pdf">
-    </div>
+        // Worker file path
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.mjs";
 
-    <!-- SPINNER -->
-    <div id="spinner">
-        <div class="loader"></div>
-        <p>Processing your file...</p>
-    </div>
-
-    <!-- DOWNLOAD LINK -->
-    <div id="downloadLink">
-        <a id="pngOutput" class="button" download="page.png">Download PNG</a>
-    </div>
-
-    <!-- PDF.js -->
-    <script src="libs/pdf.min.js"></script>
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "libs/pdf.worker.min.js";
-
+        // DOM elements
         const uploadBox = document.getElementById("uploadBox");
         const fileInput = document.getElementById("fileInput");
-        const selectButton = document.getElementById("selectButton");
-
         const spinner = document.getElementById("spinner");
+        const pageList = document.getElementById("pageList");
         const downloadLink = document.getElementById("downloadLink");
-        const pngOutput = document.getElementById("pngOutput");
 
-        /* -------------------------
-           OPEN FILE DIALOG
-        --------------------------*/
-        selectButton.onclick = () => fileInput.click();
+        // Loading helpers
+        function startLoading(msg = "Processing…") {
+            spinner.textContent = msg;
+            spinner.style.display = "block";
+            downloadLink.style.display = "none";
+        }
 
-        /* -------------------------
-           DRAG & DROP HIGHLIGHT
-        --------------------------*/
+        function stopLoading() {
+            spinner.style.display = "none";
+        }
+
+        // Handle file select button
+        document.getElementById("selectBtn").addEventListener("click", () => {
+            fileInput.click();
+        });
+
+        // Handle drag & drop
         uploadBox.addEventListener("dragover", (e) => {
             e.preventDefault();
-            uploadBox.classList.add("dragover");
+            uploadBox.style.background = "#e1eeff";
         });
 
         uploadBox.addEventListener("dragleave", () => {
-            uploadBox.classList.remove("dragover");
+            uploadBox.style.background = "#f0f7ff";
         });
 
         uploadBox.addEventListener("drop", (e) => {
             e.preventDefault();
-            uploadBox.classList.remove("dragover");
-            handleFile(e.dataTransfer.files[0]);
+            uploadBox.style.background = "#f0f7ff";
+            const file = e.dataTransfer.files[0];
+            if (file) processPDF(file);
         });
 
-        /* -------------------------
-           FILE INPUT
-        --------------------------*/
-        fileInput.addEventListener("change", (e) => {
-            handleFile(e.target.files[0]);
+        // Handle file input
+        fileInput.addEventListener("change", () => {
+            const file = fileInput.files[0];
+            if (file) processPDF(file);
         });
 
-        /* -------------------------
-           MAIN HANDLER
-        --------------------------*/
-        function handleFile(file) {
-            if (!file) return;
-            if (!file.name.toLowerCase().endsWith(".pdf")) {
-                alert("Please upload a PDF file.");
-                return;
-            }
+        // Convert given page to PNG
+        async function renderPage(pdf, pageNum) {
+            startLoading("Rendering page…");
 
-            startLoading();
-            processPDF(file);
+            const page = await pdf.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 2 });
+
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            await page.render({ canvasContext: ctx, viewport }).promise;
+
+            const pngURL = canvas.toDataURL("image/png");
+
+            downloadLink.href = pngURL;
+            downloadLink.download = `page-${pageNum}.png`;
+            downloadLink.style.display = "inline-block";
+
+            stopLoading();
         }
 
-        /* -------------------------
-           SHOW SPINNER + DISABLE UI
-        --------------------------*/
-        function startLoading() {
-            spinner.style.display = "block";
-            downloadLink.style.display = "none";
-            selectButton.disabled = true;
-            uploadBox.style.pointerEvents = "none";
-        }
+        // Render thumbnails for all pages
+        async function renderThumbnails(pdf) {
+            pageList.innerHTML = "";
 
-        /* -------------------------
-           HIDE SPINNER
-        --------------------------*/
-        function finishLoading() {
-            spinner.style.display = "none";
-            selectButton.disabled = false;
-            uploadBox.style.pointerEvents = "auto";
-        }
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 0.25 });
 
-        /* -------------------------
-           PDF → PNG CONVERSION
-        --------------------------*/
-        async function processPDF(file) {
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                const page = await pdf.getPage(1);
-
-                const viewport = page.getViewport({ scale: 2 });
                 const canvas = document.createElement("canvas");
                 const ctx = canvas.getContext("2d");
 
@@ -195,18 +192,52 @@
 
                 await page.render({ canvasContext: ctx, viewport }).promise;
 
-                // Convert to PNG
-                const pngURL = canvas.toDataURL("image/png");
-                pngOutput.href = pngURL;
+                const thumb = document.createElement("div");
+                thumb.className = "thumb";
+                thumb.appendChild(canvas);
+                thumb.onclick = () => renderPage(pdf, i);
 
-                downloadLink.style.display = "block";
+                pageList.appendChild(thumb);
+            }
+        }
+
+        // Main PDF handler
+        async function processPDF(file) {
+            startLoading("Loading PDF…");
+
+            try {
+                const data = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data }).promise;
+
+                await renderThumbnails(pdf);
+                stopLoading();
             } catch (err) {
-                alert("Error processing PDF.");
+                stopLoading();
+                alert("Error reading PDF.");
                 console.error(err);
             }
-
-            finishLoading();
         }
     </script>
+
+</head>
+<body>
+
+<div class="container">
+    <h1>PDF → PNG Converter</h1>
+
+    <div id="uploadBox" class="upload-box">
+        <p>Drag & drop a PDF here</p>
+
+        <button id="selectBtn">Select Your File</button>
+        <input id="fileInput" type="file" accept="application/pdf" style="display:none" />
+    </div>
+
+    <div id="spinner">Processing…</div>
+
+    <div id="pageList"></div>
+
+    <a id="downloadLink">Download PNG</a>
+</div>
+
 </body>
 </html>
