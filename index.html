@@ -44,7 +44,7 @@
         }
 
         .upload-box:hover {
-            background: #f0f7ff;
+            background: #e0f7ff;
             border-color: #005fcc;
         }
 
@@ -79,12 +79,16 @@
         a.download-link:hover {
             text-decoration: underline;
         }
+
+        p.processing-msg {
+            color: #0077ff;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
-  <!-- HERO SECTION -->
-  <section class="hero">
+<section class="hero">
     <h1>PDF to PNG</h1>
     <p>Upload any PDF file and get a PNG image — instantly.</p>
 
@@ -93,41 +97,38 @@
         <button id="select-pdf">Select Your File</button>
         <input type="file" id="pdf-upload" accept="application/pdf" style="display:none" />
     </div>
-  </section>
+</section>
 
-  <script type="module">
+<script type="module">
+document.addEventListener('DOMContentLoaded', () => {
     import * as pdfjsLib from './libs/pdf.mjs';
 
-    // Set worker path
     pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdf.worker.mjs';
 
     const selectBtn = document.getElementById('select-pdf');
     const fileInput = document.getElementById('pdf-upload');
     const uploadBox = document.getElementById('upload-box');
 
+    // Button click triggers hidden file input
     selectBtn.addEventListener('click', () => fileInput.click());
 
-    // Drag & drop support
+    // Drag & drop
     uploadBox.addEventListener('dragover', e => {
         e.preventDefault();
-        uploadBox.style.background = '#e0f0ff';
+        uploadBox.style.background = '#e0f7ff';
     });
-
     uploadBox.addEventListener('dragleave', e => {
         e.preventDefault();
         uploadBox.style.background = '#f9fbff';
     });
-
     uploadBox.addEventListener('drop', e => {
         e.preventDefault();
         uploadBox.style.background = '#f9fbff';
-        if(e.dataTransfer.files.length > 0) {
-            handleFile(e.dataTransfer.files[0]);
-        }
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
     });
 
     fileInput.addEventListener('change', e => {
-        if(e.target.files.length > 0) handleFile(e.target.files[0]);
+        if (e.target.files.length > 0) handleFile(e.target.files[0]);
     });
 
     async function handleFile(file) {
@@ -158,24 +159,23 @@
 
             await page.render({canvasContext: context, viewport: viewport}).promise;
 
-            // Convert to PNG
             const pngDataUrl = canvas.toDataURL('image/png');
 
             processingMsg.remove();
 
-            // Create download link
             const link = document.createElement('a');
             link.href = pngDataUrl;
             link.download = file.name.replace('.pdf', '.png');
             link.textContent = 'Download PNG';
             link.className = 'download-link';
             uploadBox.appendChild(link);
-
         } catch(err) {
             processingMsg.textContent = 'Error processing PDF. Please try another file.';
             console.error(err);
         }
     }
-  </script>
+});
+</script>
+
 </body>
 </html>
