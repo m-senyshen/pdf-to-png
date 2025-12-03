@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Map Extract - PDF to PNG</title>
+    <title>Map Extract</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -101,122 +101,125 @@
             margin-bottom: 10px;
         }
     </style>
+    <!-- CDN PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.min.js"></script>
 </head>
 <body>
 
   <!-- HERO SECTION -->
   <section class="hero">
     <h1>Map Extract</h1>
-    <p>Upload any map PDF and get a clean PNG — ready for GIS, analysis, or digitization.</p>
+    <p>Upload any map PDF and get a clean PNG version — ready for GIS or analysis.</p>
 
     <div class="upload-box" id="upload-box">
-        <p>Drag & drop your PDF here</p>
-        <button id="select-pdf">Select Your File</button>
-        <input type="file" id="pdf-upload" accept="application/pdf" style="display:none">
+        <p>Drag & drop PDF here</p>
+        <button id="select-file-btn">Select Your File</button>
+        <input type="file" id="file-input" accept="application/pdf" style="display:none">
     </div>
+
   </section>
 
   <!-- HOW IT WORKS -->
   <section class="how-it-works">
     <h2>How It Works</h2>
+
     <div class="steps">
       <div class="step">
         <h3>1. Upload Your Map</h3>
         <p>Drag and drop or upload any map PDF.</p>
       </div>
+
       <div class="step">
         <h3>2. We Extract the Data</h3>
-        <p>The PDF is converted to a high-resolution PNG automatically.</p>
+        <p>Our processing converts the PDF to a PNG image instantly.</p>
       </div>
+
       <div class="step">
         <h3>3. Download Clean Data</h3>
-        <p>Get your PNG file ready for GIS or analysis.</p>
+        <p>Get your extracted PNG image ready to use.</p>
       </div>
     </div>
   </section>
 
-  <!-- PDF.js CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.min.js"></script>
-
-  <!-- Custom PDF to PNG Script -->
   <script>
-    const selectBtn = document.getElementById('select-pdf');
-    const fileInput = document.getElementById('pdf-upload');
+    if (!window.pdfjsLib) {
+      alert("PDF library failed to load. Make sure you are online and the CDN is accessible.");
+    }
+
+    const selectBtn = document.getElementById('select-file-btn');
+    const fileInput = document.getElementById('file-input');
     const uploadBox = document.getElementById('upload-box');
 
+    // Open file selector
     selectBtn.addEventListener('click', () => fileInput.click());
 
-    // Drag & Drop support
+    // Drag & drop
     uploadBox.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadBox.style.background = '#e0f0ff';
+      e.preventDefault();
+      uploadBox.style.backgroundColor = "#e0f0ff";
     });
-
     uploadBox.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        uploadBox.style.background = '#f9fbff';
+      e.preventDefault();
+      uploadBox.style.backgroundColor = "#f9fbff";
     });
-
     uploadBox.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadBox.style.background = '#f9fbff';
-        const file = e.dataTransfer.files[0];
-        handleFile(file);
+      e.preventDefault();
+      uploadBox.style.backgroundColor = "#f9fbff";
+      if (e.dataTransfer.files.length) {
+        handleFile(e.dataTransfer.files[0]);
+      }
     });
 
+    // File selection
     fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        handleFile(file);
+      if (e.target.files.length) {
+        handleFile(e.target.files[0]);
+      }
     });
 
     async function handleFile(file) {
-        if (!file) return;
-        if (!window.pdfjsLib) {
-            alert('PDF library failed to load.');
-            return;
-        }
+      if (!window.pdfjsLib) {
+        alert("PDF library not loaded!");
+        return;
+      }
 
-        // Clear previous links/messages
-        const oldMsg = uploadBox.querySelector('p.processing');
-        if (oldMsg) oldMsg.remove();
-        const oldLink = uploadBox.querySelector('a');
-        if (oldLink) oldLink.remove();
+      // Remove previous links
+      const oldLink = uploadBox.querySelector('a');
+      if (oldLink) oldLink.remove();
 
-        // Show processing message
-        const processingMsg = document.createElement('p');
-        processingMsg.textContent = 'Processing PDF...';
-        processingMsg.classList.add('processing');
-        uploadBox.appendChild(processingMsg);
+      const msg = document.createElement('p');
+      msg.textContent = "Processing PDF...";
+      uploadBox.appendChild(msg);
 
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-            const page = await pdf.getPage(1);
-            const viewport = page.getViewport({scale: 2});
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            await page.render({canvasContext: context, viewport: viewport}).promise;
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({scale: 2});
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const context = canvas.getContext('2d');
 
-            const pngDataUrl = canvas.toDataURL('image/png');
+        await page.render({canvasContext: context, viewport: viewport}).promise;
 
-            // Remove processing message
-            processingMsg.remove();
+        // Convert to PNG
+        const pngData = canvas.toDataURL("image/png");
 
-            const link = document.createElement('a');
-            link.href = pngDataUrl;
-            link.download = file.name.replace('.pdf', '.png');
-            link.textContent = 'Download PNG';
-            link.style.display = 'block';
-            link.style.marginTop = '20px';
-            uploadBox.appendChild(link);
-        } catch (err) {
-            processingMsg.textContent = 'Error processing PDF. Make sure the file is valid.';
-            console.error(err);
-        }
+        msg.remove();
+
+        const link = document.createElement('a');
+        link.href = pngData;
+        link.download = file.name.replace(".pdf", ".png");
+        link.textContent = "Download PNG";
+        link.style.display = "block";
+        link.style.marginTop = "20px";
+        uploadBox.appendChild(link);
+      } catch (err) {
+        console.error(err);
+        msg.textContent = "Error processing PDF. Try a different file.";
+      }
     }
   </script>
-
 </body>
 </html>
