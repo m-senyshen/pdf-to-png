@@ -28,18 +28,12 @@ p.processing-msg { color:#0077ff; font-weight:bold; }
   </div>
 </section>
 
-<!-- PDF.js library must load first -->
+<!-- Load PDF.js first -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.min.js"></script>
 
-<!-- Custom script that uses pdfjsLib -->
+<!-- Custom script: run after PDF.js is loaded -->
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // ensure pdfjsLib is defined
-    if(typeof pdfjsLib === 'undefined'){
-        console.error("pdfjsLib is not loaded!");
-        return;
-    }
-
+window.onload = function() {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.worker.min.js';
 
     const selectBtn = document.getElementById('select-pdf');
@@ -63,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleFile(file){
         if(!file) return;
 
-        // Remove old links/messages
         const oldLink = uploadBox.querySelector('a.download-link');
         if(oldLink) oldLink.remove();
         const oldMsg = uploadBox.querySelector('p.processing-msg');
@@ -99,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(err);
         }
     }
-});
+};
 </script>
 
 </body>
