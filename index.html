@@ -13,7 +13,7 @@
 
     .hero {
       background: #f0f7ff;
-      padding: 80px 20px;
+      padding: 60px 20px;
       text-align: center;
     }
 
@@ -32,8 +32,8 @@
     .upload-box {
       border: 2px dashed #0077ff;
       border-radius: 12px;
-      padding: 50px;
-      max-width: 400px;
+      padding: 40px;
+      max-width: 500px;
       margin: 20px auto;
       text-align: center;
       background: #f9fbff;
@@ -82,9 +82,29 @@
       color: #0077ff;
     }
 
+    .page-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .page {
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+      background: #fafafa;
+    }
+
+    .page canvas {
+      max-width: 150px;
+      margin-bottom: 10px;
+    }
+
     .download-link {
       display: block;
-      margin-top: 20px;
       font-weight: bold;
       color: #0077ff;
       text-decoration: none;
@@ -97,107 +117,120 @@
 </head>
 <body>
 
-  <section class="hero">
-    <h1>PDF to PNG</h1>
-    <p>Upload any PDF and get a clean PNG image of the first page.</p>
+<section class="hero">
+  <h1>PDF to PNG</h1>
+  <p>Upload any PDF and get PNG previews for all pages.</p>
 
-    <div class="upload-box" id="upload-box">
-      <p>Drag & drop PDF here or click the button</p>
-      <button id="select-file-btn">Select Your File</button>
-      <input type="file" id="pdf-file-input" accept="application/pdf" style="display:none">
-      <!-- Spinner will appear here -->
-    </div>
-  </section>
+  <div class="upload-box" id="upload-box">
+    <p>Drag & drop PDF here or click the button</p>
+    <button id="select-file-btn">Select Your File</button>
+    <input type="file" id="pdf-file-input" accept="application/pdf" style="display:none">
+    <!-- Spinner and processing message appear here -->
+  </div>
 
-  <!-- PDF.js Scripts -->
-  <script src="./libs/pdf.js"></script>
-  <script>
-    if (!window.pdfjsLib) {
-      alert("PDF library failed to load. Make sure ./libs/pdf.js exists.");
-    } else {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdf.worker.js';
+  <div class="page-container" id="page-container"></div>
+</section>
 
-      const uploadBox = document.getElementById('upload-box');
-      const selectBtn = document.getElementById('select-file-btn');
-      const fileInput = document.getElementById('pdf-file-input');
+<script src="./libs/pdf.js"></script>
+<script>
+  if (!window.pdfjsLib) {
+    alert("PDF library failed to load. Make sure ./libs/pdf.js exists.");
+  } else {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdf.worker.js';
 
-      selectBtn.addEventListener('click', () => fileInput.click());
-      fileInput.addEventListener('change', handleFile);
+    const uploadBox = document.getElementById('upload-box');
+    const selectBtn = document.getElementById('select-file-btn');
+    const fileInput = document.getElementById('pdf-file-input');
+    const pageContainer = document.getElementById('page-container');
 
-      uploadBox.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadBox.style.background = '#e0f0ff';
-      });
+    selectBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', handleFile);
 
-      uploadBox.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        uploadBox.style.background = '#f9fbff';
-      });
+    uploadBox.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadBox.style.background = '#e0f0ff';
+    });
 
-      uploadBox.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadBox.style.background = '#f9fbff';
-        const file = e.dataTransfer.files[0];
-        handleFile({ target: { files: [file] } });
-      });
+    uploadBox.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      uploadBox.style.background = '#f9fbff';
+    });
 
-      async function handleFile(e) {
-        const file = e.target.files[0];
-        if (!file) return;
+    uploadBox.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadBox.style.background = '#f9fbff';
+      const file = e.dataTransfer.files[0];
+      handleFile({ target: { files: [file] } });
+    });
 
-        // Remove old messages, links, or spinner
-        const oldProcessing = uploadBox.querySelector('.processing');
-        if (oldProcessing) oldProcessing.remove();
-        const oldLink = uploadBox.querySelector('.download-link');
-        if (oldLink) oldLink.remove();
-        const oldSpinner = uploadBox.querySelector('.spinner');
-        if (oldSpinner) oldSpinner.remove();
+    async function handleFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
 
-        // Show spinner
-        const spinner = document.createElement('div');
-        spinner.className = 'spinner';
-        uploadBox.appendChild(spinner);
+      // Clear previous pages
+      pageContainer.innerHTML = '';
+      const oldSpinner = uploadBox.querySelector('.spinner');
+      if (oldSpinner) oldSpinner.remove();
+      const oldProcessing = uploadBox.querySelector('.processing');
+      if (oldProcessing) oldProcessing.remove();
 
-        // Show processing message
-        const processingMsg = document.createElement('p');
-        processingMsg.textContent = 'Processing PDF...';
-        processingMsg.className = 'processing';
-        uploadBox.appendChild(processingMsg);
+      // Show spinner
+      const spinner = document.createElement('div');
+      spinner.className = 'spinner';
+      uploadBox.appendChild(spinner);
 
-        try {
-          const arrayBuffer = await file.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-          const page = await pdf.getPage(1);
+      // Show processing message
+      const processingMsg = document.createElement('p');
+      processingMsg.textContent = 'Processing PDF...';
+      processingMsg.className = 'processing';
+      uploadBox.appendChild(processingMsg);
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
           const viewport = page.getViewport({ scale: 2 });
-
           const canvas = document.createElement('canvas');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
           const context = canvas.getContext('2d');
-
           await page.render({ canvasContext: context, viewport: viewport }).promise;
 
           const pngDataUrl = canvas.toDataURL('image/png');
 
-          // Remove spinner and processing message
-          spinner.remove();
-          processingMsg.remove();
+          // Create page container
+          const pageDiv = document.createElement('div');
+          pageDiv.className = 'page';
 
-          const link = document.createElement('a');
-          link.href = pngDataUrl;
-          link.download = file.name.replace('.pdf', '.png');
-          link.textContent = 'Download PNG';
-          link.className = 'download-link';
-          uploadBox.appendChild(link);
+          const pageLabel = document.createElement('p');
+          pageLabel.textContent = `Page ${pageNum}`;
 
-        } catch (err) {
-          spinner.remove();
-          processingMsg.textContent = 'Error processing PDF. Please try another file.';
-          console.error(err);
+          const downloadLink = document.createElement('a');
+          downloadLink.href = pngDataUrl;
+          downloadLink.download = file.name.replace('.pdf', `_page${pageNum}.png`);
+          downloadLink.textContent = 'Download PNG';
+          downloadLink.className = 'download-link';
+
+          pageDiv.appendChild(canvas);
+          pageDiv.appendChild(pageLabel);
+          pageDiv.appendChild(downloadLink);
+
+          pageContainer.appendChild(pageDiv);
         }
+
+        spinner.remove();
+        processingMsg.remove();
+
+      } catch (err) {
+        spinner.remove();
+        processingMsg.textContent = 'Error processing PDF. Please try another file.';
+        console.error(err);
       }
     }
-  </script>
+  }
+</script>
 
 </body>
 </html>
