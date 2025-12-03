@@ -18,7 +18,7 @@
 <body>
 <section class="hero">
     <h1>PDF to PNG</h1>
-    <p>Upload any PDF file and get a PNG image — instantly.</p>
+    <p>Upload any PDF file and get a PNG image instantly.</p>
     <div class="upload-box" id="upload-box">
         <p>Drag & drop your PDF here</p>
         <button id="select-pdf">Select Your File</button>
@@ -29,10 +29,11 @@
 <!-- Load PDF.js from official CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.min.js"></script>
 <script>
-    // Set the workerSrc to the CDN path
+    // Ensure the worker is set after PDF.js loads
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.worker.min.js';
 </script>
 
+<!-- Main JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const selectBtn = document.getElementById('select-pdf');
@@ -56,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleFile(file){
         if(!file) return;
 
+        // Remove previous links/messages
         let oldLink = uploadBox.querySelector('a.download-link');
         if(oldLink) oldLink.remove();
         let oldMsg = uploadBox.querySelector('p.processing-msg');
