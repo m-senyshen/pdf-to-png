@@ -43,7 +43,7 @@
     }
 
     .upload-box:hover {
-      background: #e0f7ff;
+      background: #e0f0ff;
       border-color: #005fcc;
     }
 
@@ -82,12 +82,18 @@
       color: #0077ff;
     }
 
+    .page-container-wrapper {
+      max-height: 400px; /* Scrollable area */
+      overflow-x: auto;
+      overflow-y: hidden;
+      margin-top: 20px;
+      padding-bottom: 10px;
+    }
+
     .page-container {
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
       gap: 20px;
-      margin-top: 20px;
+      padding: 10px;
     }
 
     .page {
@@ -96,11 +102,13 @@
       border-radius: 8px;
       text-align: center;
       background: #fafafa;
+      flex: 0 0 auto; /* Prevent shrinking */
     }
 
     .page canvas {
       max-width: 150px;
       margin-bottom: 10px;
+      height: auto;
     }
 
     .download-link {
@@ -112,6 +120,12 @@
 
     .download-link:hover {
       text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      .page canvas {
+        max-width: 100px;
+      }
     }
   </style>
 </head>
@@ -125,10 +139,11 @@
     <p>Drag & drop PDF here or click the button</p>
     <button id="select-file-btn">Select Your File</button>
     <input type="file" id="pdf-file-input" accept="application/pdf" style="display:none">
-    <!-- Spinner and processing message appear here -->
   </div>
 
-  <div class="page-container" id="page-container"></div>
+  <div class="page-container-wrapper">
+    <div class="page-container" id="page-container"></div>
+  </div>
 </section>
 
 <script src="./libs/pdf.js"></script>
@@ -179,7 +194,6 @@
       spinner.className = 'spinner';
       uploadBox.appendChild(spinner);
 
-      // Show processing message
       const processingMsg = document.createElement('p');
       processingMsg.textContent = 'Processing PDF...';
       processingMsg.className = 'processing';
@@ -200,7 +214,6 @@
 
           const pngDataUrl = canvas.toDataURL('image/png');
 
-          // Create page container
           const pageDiv = document.createElement('div');
           pageDiv.className = 'page';
 
