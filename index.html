@@ -1,99 +1,222 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>PDF to PNG</title>
-<style>
-body { font-family: Arial,sans-serif; margin:0; padding:0; }
-.hero { background:#f0f7ff; padding:80px 20px; text-align:center; }
-.upload-box { border:2px dashed #0077ff; border-radius:12px; padding:50px; max-width:400px; margin:0 auto; text-align:center; cursor:pointer; background:#f9fbff; transition:background 0.2s; }
-.upload-box:hover { background:#e0f7ff; }
-.upload-box button { padding:12px 24px; font-size:16px; border:none; border-radius:6px; background:#0077ff; color:#fff; cursor:pointer; }
-.upload-box button:hover { background:#005fcc; }
-a.download-link { display:block; margin-top:20px; color:#0077ff; font-weight:bold; text-decoration:none; }
-a.download-link:hover { text-decoration:underline; }
-p.processing-msg { color:#0077ff; font-weight:bold; }
-</style>
+    <meta charset="UTF-8" />
+    <title>Map Extract - PDF to PNG</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        /* HERO SECTION */
+        .hero {
+            background: #f0f7ff;
+            padding: 80px 20px;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .hero p {
+            font-size: 20px;
+            max-width: 600px;
+            margin: 0 auto 30px;
+            line-height: 1.5;
+        }
+
+        .upload-box {
+            border: 2px dashed #0077ff;
+            border-radius: 12px;
+            padding: 50px;
+            max-width: 400px;
+            margin: 0 auto;
+            text-align: center;
+            background: #f9fbff;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .upload-box:hover {
+            background: #f0f7ff;
+            border-color: #005fcc;
+        }
+
+        .upload-box p {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            color: #0077ff;
+        }
+
+        .upload-box button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: none;
+            background: #0077ff;
+            color: white;
+            cursor: pointer;
+        }
+
+        .upload-box button:hover {
+            background: #005fcc;
+        }
+
+        /* HOW IT WORKS SECTION */
+        .how-it-works {
+            padding: 60px 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .how-it-works h2 {
+            font-size: 36px;
+            margin-bottom: 50px;
+            text-align: center;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            justify-items: center;
+        }
+
+        .step {
+            background: #fafafa;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #eee;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .step h3 {
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
 
-<section class="hero">
-  <h1>PDF to PNG</h1>
-  <p>Upload a PDF to get a PNG.</p>
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <h1>Map Extract</h1>
+    <p>Upload any map PDF and get a clean PNG — ready for GIS, analysis, or digitization.</p>
 
-  <div class="upload-box" id="upload-box">
-      <p>Drag & drop PDF here</p>
-      <button id="select-pdf">Select Your File</button>
-      <input type="file" id="pdf-upload" accept="application/pdf" style="display:none">
-  </div>
-</section>
+    <div class="upload-box" id="upload-box">
+        <p>Drag & drop your PDF here</p>
+        <button id="select-pdf">Select Your File</button>
+        <input type="file" id="pdf-upload" accept="application/pdf" style="display:none">
+    </div>
+  </section>
 
-<!-- Load PDF.js first -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.min.js"></script>
+  <!-- HOW IT WORKS -->
+  <section class="how-it-works">
+    <h2>How It Works</h2>
+    <div class="steps">
+      <div class="step">
+        <h3>1. Upload Your Map</h3>
+        <p>Drag and drop or upload any map PDF.</p>
+      </div>
+      <div class="step">
+        <h3>2. We Extract the Data</h3>
+        <p>The PDF is converted to a high-resolution PNG automatically.</p>
+      </div>
+      <div class="step">
+        <h3>3. Download Clean Data</h3>
+        <p>Get your PNG file ready for GIS or analysis.</p>
+      </div>
+    </div>
+  </section>
 
-<!-- Custom script: run after PDF.js is loaded -->
-<script>
-window.onload = function() {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.worker.min.js';
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.min.js"></script>
 
+  <!-- Custom PDF to PNG Script -->
+  <script>
     const selectBtn = document.getElementById('select-pdf');
     const fileInput = document.getElementById('pdf-upload');
     const uploadBox = document.getElementById('upload-box');
 
     selectBtn.addEventListener('click', () => fileInput.click());
 
-    uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.style.background='#e0f7ff'; });
-    uploadBox.addEventListener('dragleave', e => { e.preventDefault(); uploadBox.style.background='#f9fbff'; });
-    uploadBox.addEventListener('drop', e => { 
-        e.preventDefault(); 
-        uploadBox.style.background='#f9fbff'; 
-        if(e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    // Drag & Drop support
+    uploadBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadBox.style.background = '#e0f0ff';
     });
 
-    fileInput.addEventListener('change', e => {
-        if(e.target.files.length > 0) handleFile(e.target.files[0]);
+    uploadBox.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        uploadBox.style.background = '#f9fbff';
     });
 
-    async function handleFile(file){
-        if(!file) return;
+    uploadBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadBox.style.background = '#f9fbff';
+        const file = e.dataTransfer.files[0];
+        handleFile(file);
+    });
 
-        const oldLink = uploadBox.querySelector('a.download-link');
-        if(oldLink) oldLink.remove();
-        const oldMsg = uploadBox.querySelector('p.processing-msg');
-        if(oldMsg) oldMsg.remove();
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        handleFile(file);
+    });
 
+    async function handleFile(file) {
+        if (!file) return;
+        if (!window.pdfjsLib) {
+            alert('PDF library failed to load.');
+            return;
+        }
+
+        // Clear previous links/messages
+        const oldMsg = uploadBox.querySelector('p.processing');
+        if (oldMsg) oldMsg.remove();
+        const oldLink = uploadBox.querySelector('a');
+        if (oldLink) oldLink.remove();
+
+        // Show processing message
         const processingMsg = document.createElement('p');
-        processingMsg.className = 'processing-msg';
         processingMsg.textContent = 'Processing PDF...';
+        processingMsg.classList.add('processing');
         uploadBox.appendChild(processingMsg);
 
-        try{
+        try {
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
             const page = await pdf.getPage(1);
-            const viewport = page.getViewport({scale:2});
+            const viewport = page.getViewport({scale: 2});
             const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
             canvas.width = viewport.width;
             canvas.height = viewport.height;
-            const context = canvas.getContext('2d');
-            await page.render({canvasContext: context, viewport}).promise;
+            await page.render({canvasContext: context, viewport: viewport}).promise;
 
             const pngDataUrl = canvas.toDataURL('image/png');
+
+            // Remove processing message
             processingMsg.remove();
 
             const link = document.createElement('a');
             link.href = pngDataUrl;
-            link.download = file.name.replace('.pdf','.png');
+            link.download = file.name.replace('.pdf', '.png');
             link.textContent = 'Download PNG';
-            link.className = 'download-link';
+            link.style.display = 'block';
+            link.style.marginTop = '20px';
             uploadBox.appendChild(link);
-        } catch(err){
-            processingMsg.textContent = 'Error processing PDF.';
+        } catch (err) {
+            processingMsg.textContent = 'Error processing PDF. Make sure the file is valid.';
             console.error(err);
         }
     }
-};
-</script>
+  </script>
 
 </body>
 </html>
