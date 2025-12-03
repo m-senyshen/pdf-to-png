@@ -39,10 +39,11 @@
       background: #f9fbff;
       cursor: pointer;
       transition: background 0.2s, border-color 0.2s;
+      position: relative;
     }
 
     .upload-box:hover {
-      background: #f0f7ff;
+      background: #e0f7ff;
       border-color: #005fcc;
     }
 
@@ -58,6 +59,21 @@
 
     .upload-box button:hover {
       background: #005fcc;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #0077ff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto 0;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     .processing {
@@ -89,6 +105,7 @@
       <p>Drag & drop PDF here or click the button</p>
       <button id="select-file-btn">Select Your File</button>
       <input type="file" id="pdf-file-input" accept="application/pdf" style="display:none">
+      <!-- Spinner will appear here -->
     </div>
   </section>
 
@@ -128,11 +145,18 @@
         const file = e.target.files[0];
         if (!file) return;
 
-        // Remove old messages or links
+        // Remove old messages, links, or spinner
         const oldProcessing = uploadBox.querySelector('.processing');
         if (oldProcessing) oldProcessing.remove();
         const oldLink = uploadBox.querySelector('.download-link');
         if (oldLink) oldLink.remove();
+        const oldSpinner = uploadBox.querySelector('.spinner');
+        if (oldSpinner) oldSpinner.remove();
+
+        // Show spinner
+        const spinner = document.createElement('div');
+        spinner.className = 'spinner';
+        uploadBox.appendChild(spinner);
 
         // Show processing message
         const processingMsg = document.createElement('p');
@@ -155,7 +179,8 @@
 
           const pngDataUrl = canvas.toDataURL('image/png');
 
-          // Remove processing message
+          // Remove spinner and processing message
+          spinner.remove();
           processingMsg.remove();
 
           const link = document.createElement('a');
@@ -166,6 +191,7 @@
           uploadBox.appendChild(link);
 
         } catch (err) {
+          spinner.remove();
           processingMsg.textContent = 'Error processing PDF. Please try another file.';
           console.error(err);
         }
