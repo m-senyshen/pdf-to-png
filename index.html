@@ -4,97 +4,101 @@
 <meta charset="UTF-8">
 <title>PDF to PNG</title>
 <style>
-  body { font-family: Arial, sans-serif; margin:0; padding:0; color:#333; }
-  .hero { background:#f0f7ff; padding:80px 20px; text-align:center; }
-  .upload-box { border:2px dashed #0077ff; border-radius:12px; padding:50px; max-width:400px; margin:0 auto; text-align:center; cursor:pointer; background:#f9fbff; transition:background 0.2s; }
-  .upload-box:hover { background:#e0f7ff; }
-  .upload-box button { padding:12px 24px; font-size:16px; border:none; border-radius:6px; background:#0077ff; color:#fff; cursor:pointer; }
-  .upload-box button:hover { background:#005fcc; }
-  a.download-link { display:block; margin-top:20px; color:#0077ff; font-weight:bold; text-decoration:none; }
-  a.download-link:hover { text-decoration:underline; }
-  p.processing-msg { color:#0077ff; font-weight:bold; }
+body { font-family: Arial,sans-serif; margin:0; padding:0; }
+.hero { background:#f0f7ff; padding:80px 20px; text-align:center; }
+.upload-box { border:2px dashed #0077ff; border-radius:12px; padding:50px; max-width:400px; margin:0 auto; text-align:center; cursor:pointer; background:#f9fbff; transition:background 0.2s; }
+.upload-box:hover { background:#e0f7ff; }
+.upload-box button { padding:12px 24px; font-size:16px; border:none; border-radius:6px; background:#0077ff; color:#fff; cursor:pointer; }
+.upload-box button:hover { background:#005fcc; }
+a.download-link { display:block; margin-top:20px; color:#0077ff; font-weight:bold; text-decoration:none; }
+a.download-link:hover { text-decoration:underline; }
+p.processing-msg { color:#0077ff; font-weight:bold; }
 </style>
 </head>
 <body>
 
 <section class="hero">
   <h1>PDF to PNG</h1>
-  <p>Upload any PDF file and get a PNG image instantly.</p>
+  <p>Upload a PDF to get a PNG.</p>
+
   <div class="upload-box" id="upload-box">
-      <p>Drag & drop your PDF here</p>
+      <p>Drag & drop PDF here</p>
       <button id="select-pdf">Select Your File</button>
       <input type="file" id="pdf-upload" accept="application/pdf" style="display:none">
   </div>
 </section>
 
-<!-- Load PDF.js library first -->
+<!-- PDF.js library must load first -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.min.js"></script>
-<script>
-  // Set the worker after the library loads
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.worker.min.js';
-</script>
 
-<!-- Custom script -->
+<!-- Custom script that uses pdfjsLib -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const selectBtn = document.getElementById('select-pdf');
-  const fileInput = document.getElementById('pdf-upload');
-  const uploadBox = document.getElementById('upload-box');
-
-  selectBtn.addEventListener('click', () => fileInput.click());
-
-  uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.style.background='#e0f7ff'; });
-  uploadBox.addEventListener('dragleave', e => { e.preventDefault(); uploadBox.style.background='#f9fbff'; });
-  uploadBox.addEventListener('drop', e => { 
-    e.preventDefault(); 
-    uploadBox.style.background='#f9fbff'; 
-    if(e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
-  });
-
-  fileInput.addEventListener('change', e => {
-    if(e.target.files.length > 0) handleFile(e.target.files[0]);
-  });
-
-  async function handleFile(file){
-    if(!file) return;
-
-    // Remove previous links/messages
-    let oldLink = uploadBox.querySelector('a.download-link');
-    if(oldLink) oldLink.remove();
-    let oldMsg = uploadBox.querySelector('p.processing-msg');
-    if(oldMsg) oldMsg.remove();
-
-    const processingMsg = document.createElement('p');
-    processingMsg.className = 'processing-msg';
-    processingMsg.textContent = 'Processing PDF...';
-    uploadBox.appendChild(processingMsg);
-
-    try{
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-
-      const page = await pdf.getPage(1);
-      const viewport = page.getViewport({scale:2});
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const context = canvas.getContext('2d');
-      await page.render({canvasContext:context, viewport}).promise;
-
-      const pngDataUrl = canvas.toDataURL('image/png');
-      processingMsg.remove();
-
-      const link = document.createElement('a');
-      link.href = pngDataUrl;
-      link.download = file.name.replace('.pdf','.png');
-      link.textContent = 'Download PNG';
-      link.className = 'download-link';
-      uploadBox.appendChild(link);
-    } catch(err){
-      processingMsg.textContent = 'Error processing PDF. Try another file.';
-      console.error(err);
+    // ensure pdfjsLib is defined
+    if(typeof pdfjsLib === 'undefined'){
+        console.error("pdfjsLib is not loaded!");
+        return;
     }
-  }
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.worker.min.js';
+
+    const selectBtn = document.getElementById('select-pdf');
+    const fileInput = document.getElementById('pdf-upload');
+    const uploadBox = document.getElementById('upload-box');
+
+    selectBtn.addEventListener('click', () => fileInput.click());
+
+    uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.style.background='#e0f7ff'; });
+    uploadBox.addEventListener('dragleave', e => { e.preventDefault(); uploadBox.style.background='#f9fbff'; });
+    uploadBox.addEventListener('drop', e => { 
+        e.preventDefault(); 
+        uploadBox.style.background='#f9fbff'; 
+        if(e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', e => {
+        if(e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    async function handleFile(file){
+        if(!file) return;
+
+        // Remove old links/messages
+        const oldLink = uploadBox.querySelector('a.download-link');
+        if(oldLink) oldLink.remove();
+        const oldMsg = uploadBox.querySelector('p.processing-msg');
+        if(oldMsg) oldMsg.remove();
+
+        const processingMsg = document.createElement('p');
+        processingMsg.className = 'processing-msg';
+        processingMsg.textContent = 'Processing PDF...';
+        uploadBox.appendChild(processingMsg);
+
+        try{
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            const page = await pdf.getPage(1);
+            const viewport = page.getViewport({scale:2});
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const context = canvas.getContext('2d');
+            await page.render({canvasContext: context, viewport}).promise;
+
+            const pngDataUrl = canvas.toDataURL('image/png');
+            processingMsg.remove();
+
+            const link = document.createElement('a');
+            link.href = pngDataUrl;
+            link.download = file.name.replace('.pdf','.png');
+            link.textContent = 'Download PNG';
+            link.className = 'download-link';
+            uploadBox.appendChild(link);
+        } catch(err){
+            processingMsg.textContent = 'Error processing PDF.';
+            console.error(err);
+        }
+    }
 });
 </script>
 
