@@ -26,9 +26,12 @@
     </div>
 </section>
 
-<!-- PDF.js CDN scripts MUST come BEFORE your custom script -->
+<!-- Load PDF.js from official CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.worker.min.js"></script>
+<script>
+    // Set the workerSrc to the CDN path
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.worker.min.js';
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -64,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadBox.appendChild(processingMsg);
 
         try{
-            // Use pdfjsLib from CDN
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
 
