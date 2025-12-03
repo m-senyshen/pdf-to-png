@@ -6,7 +6,7 @@
     <style>
         body { font-family: Arial, sans-serif; margin:0; padding:0; color:#333; }
         .hero { background:#f0f7ff; padding:80px 20px; text-align:center; }
-        .upload-box { border:2px dashed #0077ff; border-radius:12px; padding:50px; max-width:400px; margin:0 auto; text-align:center; cursor:pointer; }
+        .upload-box { border:2px dashed #0077ff; border-radius:12px; padding:50px; max-width:400px; margin:0 auto; text-align:center; cursor:pointer; background:#f9fbff; transition:background 0.2s; }
         .upload-box:hover { background:#e0f7ff; }
         .upload-box button { padding:12px 24px; font-size:16px; border:none; border-radius:6px; background:#0077ff; color:#fff; cursor:pointer; }
         .upload-box button:hover { background:#005fcc; }
@@ -26,7 +26,7 @@
     </div>
 </section>
 
-<!-- PDF.js from CDN -->
+<!-- PDF.js CDN scripts MUST come BEFORE your custom script -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.worker.min.js"></script>
 
@@ -64,8 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadBox.appendChild(processingMsg);
 
         try{
+            // Use pdfjsLib from CDN
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+
             const page = await pdf.getPage(1);
             const viewport = page.getViewport({scale:2});
             const canvas = document.createElement('canvas');
