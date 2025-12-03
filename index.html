@@ -101,7 +101,7 @@
             margin-bottom: 10px;
         }
     </style>
-    <!-- CDN PDF.js -->
+    <!-- Load PDF.js from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.15.141/pdf.min.js"></script>
 </head>
 <body>
@@ -142,84 +142,83 @@
   </section>
 
   <script>
-    if (!window.pdfjsLib) {
-      alert("PDF library failed to load. Make sure you are online and the CDN is accessible.");
-    }
-
-    const selectBtn = document.getElementById('select-file-btn');
-    const fileInput = document.getElementById('file-input');
-    const uploadBox = document.getElementById('upload-box');
-
-    // Open file selector
-    selectBtn.addEventListener('click', () => fileInput.click());
-
-    // Drag & drop
-    uploadBox.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadBox.style.backgroundColor = "#e0f0ff";
-    });
-    uploadBox.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      uploadBox.style.backgroundColor = "#f9fbff";
-    });
-    uploadBox.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadBox.style.backgroundColor = "#f9fbff";
-      if (e.dataTransfer.files.length) {
-        handleFile(e.dataTransfer.files[0]);
-      }
-    });
-
-    // File selection
-    fileInput.addEventListener('change', (e) => {
-      if (e.target.files.length) {
-        handleFile(e.target.files[0]);
-      }
-    });
-
-    async function handleFile(file) {
+    // Wait for the DOM and PDF.js to be fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
       if (!window.pdfjsLib) {
-        alert("PDF library not loaded!");
+        console.error("PDF.js failed to load. Check network or CDN.");
         return;
       }
 
-      // Remove previous links
-      const oldLink = uploadBox.querySelector('a');
-      if (oldLink) oldLink.remove();
+      const selectBtn = document.getElementById('select-file-btn');
+      const fileInput = document.getElementById('file-input');
+      const uploadBox = document.getElementById('upload-box');
 
-      const msg = document.createElement('p');
-      msg.textContent = "Processing PDF...";
-      uploadBox.appendChild(msg);
+      // Button opens file selector
+      selectBtn.addEventListener('click', () => fileInput.click());
 
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({scale: 2});
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const context = canvas.getContext('2d');
+      // Drag & drop functionality
+      uploadBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadBox.style.backgroundColor = "#e0f0ff";
+      });
+      uploadBox.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        uploadBox.style.backgroundColor = "#f9fbff";
+      });
+      uploadBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadBox.style.backgroundColor = "#f9fbff";
+        if (e.dataTransfer.files.length) {
+          handleFile(e.dataTransfer.files[0]);
+        }
+      });
 
-        await page.render({canvasContext: context, viewport: viewport}).promise;
+      // File selection
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+          handleFile(e.target.files[0]);
+        }
+      });
 
-        // Convert to PNG
-        const pngData = canvas.toDataURL("image/png");
+      async function handleFile(file) {
+        // Remove previous download link
+        const oldLink = uploadBox.querySelector('a');
+        if (oldLink) oldLink.remove();
 
-        msg.remove();
+        const msg = document.createElement('p');
+        msg.textContent = "Processing PDF...";
+        uploadBox.appendChild(msg);
 
-        const link = document.createElement('a');
-        link.href = pngData;
-        link.download = file.name.replace(".pdf", ".png");
-        link.textContent = "Download PNG";
-        link.style.display = "block";
-        link.style.marginTop = "20px";
-        uploadBox.appendChild(link);
-      } catch (err) {
-        console.error(err);
-        msg.textContent = "Error processing PDF. Try a different file.";
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+          const page = await pdf.getPage(1);
+          const viewport = page.getViewport({scale: 2});
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const context = canvas.getContext('2d');
+
+          await page.render({canvasContext: context, viewport: viewport}).promise;
+
+          // Convert canvas to PNG
+          const pngData = canvas.toDataURL("image/png");
+
+          msg.remove();
+
+          const link = document.createElement('a');
+          link.href = pngData;
+          link.download = file.name.replace(".pdf", ".png");
+          link.textContent = "Download PNG";
+          link.style.display = "block";
+          link.style.marginTop = "20px";
+          uploadBox.appendChild(link);
+        } catch (err) {
+          console.error(err);
+          msg.textContent = "Error processing PDF. Try a different file.";
+        }
       }
-    }
+    });
   </script>
 </body>
 </html>
