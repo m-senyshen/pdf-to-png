@@ -1,117 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <title>Map Extract</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin:0; padding:0; color:#333; }
-        .hero { background:#f0f7ff; padding:40px 20px; text-align:center; }
-        .hero h1 { font-size:48px; margin-bottom:20px; }
-        .hero p { font-size:20px; max-width:600px; margin:0 auto 30px; line-height:1.5; }
-        .upload-box { border:2px dashed #0077ff; border-radius:12px; padding:50px; max-width:400px; margin:20px auto; text-align:center; background:#f9fbff; cursor:pointer; }
-        .upload-box:hover { background:#f0f7ff; border-color:#005fcc; }
-        .upload-box p { margin:0 0 15px 0; font-size:18px; color:#0077ff; }
-        .upload-box button { padding:10px 20px; font-size:16px; border-radius:6px; border:none; background:#0077ff; color:white; cursor:pointer; }
-        .upload-box button:hover { background:#005fcc; }
-        canvas { display:block; margin:20px auto; border:1px solid #ccc; cursor: crosshair; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Map Extract</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+      text-align: center;
+    }
+
+    #pdfCanvas {
+      border: 1px solid #ccc;
+      margin-top: 20px;
+      max-width: 100%;
+    }
+
+    #spinner {
+      display: none;
+      margin-top: 20px;
+    }
+  </style>
 </head>
+
 <body>
+  <h2>Map Extract - Water Segmentation (Rectangle Selection)</h2>
 
-<section class="hero">
-    <h1>Map Extract</h1>
-    <p>Upload a map PDF and segment areas of interest.</p>
+  <input type="file" id="fileInput" accept="application/pdf" />
+  <br />
 
-    <div class="upload-box" id="upload-box">
-        <p>Drag & drop PDF here</p>
-        <button id="select-pdf">Select Your File</button>
-        <input type="file" id="pdf-upload" accept="application/pdf" style="display:none" />
-    </div>
+  <img id="spinner" src="assets/spinner.gif" width="60" />
 
-    <canvas id="map-canvas"></canvas>
-</section>
+  <canvas id="pdfCanvas"></canvas>
 
-<!-- PDF.js local libs -->
-<script src="./libs/pdf.js"></script>
-<script src="./libs/pdf.worker.js"></script>
+  <!-- PDF.js -->
+  <script src="./libs/pdf.js"></script>
 
-<!-- SAM script -->
-<script src="./libs/sam.js"></script>
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const canvas = document.getElementById("pdfCanvas");
+    const ctx = canvas.getContext("2d");
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const fileInput = document.getElementById('pdf-upload');
-    const selectBtn = document.getElementById('select-pdf');
-    const canvas = document.getElementById('map-canvas');
-    const ctx = canvas.getContext('2d');
+    let pdfImageData = null; // stores rendered PDF snapshot
+    let pdfLoaded = false;
 
-    selectBtn.addEventListener('click', () => fileInput.click());
+    let isDrawing = false;
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let currentY = 0;
 
-    let pdfViewport;
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-    fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+      const arrayBuffer = await file.arrayBuffer();
 
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-        const page = await pdf.getPage(1);
-        pdfViewport = page.getViewport({scale: 2});
-        canvas.width = pdfViewport.width;
-        canvas.height = pdfViewport.height;
+      // Load PDF
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(1);
 
-        await page.render({canvasContext: ctx, viewport: pdfViewport}).promise;
+      // Set scale so PDF fits width
+      const viewport = page.getViewport({ scale: 1.5 });
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      const renderContext = {
+        canvasContext: ctx,
+        viewport: viewport
+      };
+
+      await page.render(renderContext).promise;
+
+      // Store snapshot of the PDF in memory
+      pdfImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      pdfLoaded = true;
     });
 
-    // DRAGGABLE RECTANGLE
-    let rect = null;
-    let isDragging = false;
-    let startX = 0, startY = 0;
+    // Draw rectangle helper
+    function redrawCanvas() {
+      if (!pdfLoaded || !pdfImageData) return;
 
-    canvas.addEventListener('mousedown', (e) => {
-        const rectCanvas = canvas.getBoundingClientRect();
-        startX = e.clientX - rectCanvas.left;
-        startY = e.clientY - rectCanvas.top;
-        rect = { x: startX, y: startY, width: 0, height: 0 };
-        isDragging = true;
+      ctx.putImageData(pdfImageData, 0, 0);
+
+      if (isDrawing) {
+        const rectW = currentX - startX;
+        const rectH = currentY - startY;
+
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, rectW, rectH);
+      }
+    }
+
+    // MOUSE EVENTS
+    canvas.addEventListener("mousedown", (e) => {
+      if (!pdfLoaded) return;
+
+      const rect = canvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+
+      isDrawing = true;
     });
 
-    canvas.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        const rectCanvas = canvas.getBoundingClientRect();
-        const currentX = e.clientX - rectCanvas.left;
-        const currentY = e.clientY - rectCanvas.top;
-        rect.width = currentX - startX;
-        rect.height = currentY - startY;
+    canvas.addEventListener("mousemove", (e) => {
+      if (!isDrawing || !pdfLoaded) return;
 
-        // Redraw PDF page
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        pdfjsLib.getDocument({data:fileInput.files[0].arrayBuffer()}).promise.then(pdf => {
-            pdf.getPage(1).then(page => {
-                const viewport = pdfViewport;
-                page.render({canvasContext: ctx, viewport: viewport}).promise.then(() => {
-                    // Draw rectangle
-                    if(rect){
-                        ctx.strokeStyle = 'red';
-                        ctx.lineWidth = 2;
-                        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-                        ctx.fillStyle = 'rgba(255,0,0,0.2)';
-                        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-                    }
-                });
-            });
-        });
+      const rect = canvas.getBoundingClientRect();
+      currentX = e.clientX - rect.left;
+      currentY = e.clientY - rect.top;
+
+      redrawCanvas();
     });
 
-    canvas.addEventListener('mouseup', async () => {
-        if (!isDragging) return;
-        isDragging = false;
-        if(rect && window.samSegment){
-            const mask = await window.samSegment(canvas, rect);
-            console.log('Segmentation mask:', mask);
-        }
+    canvas.addEventListener("mouseup", () => {
+      isDrawing = false;
+      redrawCanvas();
     });
-});
-</script>
+
+  </script>
 </body>
 </html>
