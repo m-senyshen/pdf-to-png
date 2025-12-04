@@ -8,12 +8,26 @@
         .hero { background:#f0f7ff; padding:40px 20px; text-align:center; }
         .hero h1 { font-size:48px; margin-bottom:20px; }
         .hero p { font-size:20px; max-width:600px; margin:0 auto 30px; line-height:1.5; }
-        .upload-box { border:2px dashed #0077ff; border-radius:12px; padding:50px; max-width:400px; margin:20px auto; text-align:center; background:#f9fbff; cursor:pointer; }
+        .upload-box {
+            border:2px dashed #0077ff; border-radius:12px;
+            padding:50px; max-width:400px; margin:20px auto;
+            text-align:center; background:#f9fbff; cursor:pointer;
+        }
         .upload-box:hover { background:#f0f7ff; border-color:#005fcc; }
         .upload-box p { margin:0 0 15px 0; font-size:18px; color:#0077ff; }
-        .upload-box button { padding:10px 20px; font-size:16px; border-radius:6px; border:none; background:#0077ff; color:white; cursor:pointer; }
+        .upload-box button {
+            padding:10px 20px; font-size:16px; border-radius:6px;
+            border:none; background:#0077ff; color:white; cursor:pointer;
+        }
         .upload-box button:hover { background:#005fcc; }
-        canvas { display:block; margin:20px auto; border:1px solid #ccc; cursor: crosshair; }
+
+        canvas {
+            display:block;
+            margin:20px auto;
+            border:1px solid #ccc;
+            cursor: crosshair;
+            background:white;
+        }
     </style>
 </head>
 <body>
@@ -31,11 +45,11 @@
     <canvas id="map-canvas"></canvas>
 </section>
 
-<!-- PDF.js local libs -->
+<!-- PDF.js -->
 <script src="./libs/pdf.js"></script>
 <script src="./libs/pdf.worker.js"></script>
 
-<!-- SAM script -->
+<!-- SAM mock -->
 <script src="./libs/sam.js"></script>
 
 <script>
@@ -48,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selectBtn.addEventListener('click', () => fileInput.click());
 
     let pdfViewport;
+    let renderedImage = null; // ← store drawn PDF here
 
     fileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
@@ -56,62 +71,72 @@ document.addEventListener('DOMContentLoaded', () => {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
         const page = await pdf.getPage(1);
-        pdfViewport = page.getViewport({scale: 2});
+
+        pdfViewport = page.getViewport({ scale: 2 });
         canvas.width = pdfViewport.width;
         canvas.height = pdfViewport.height;
 
-        await page.render({canvasContext: ctx, viewport: pdfViewport}).promise;
+        // Render PDF page ONCE into canvas
+        await page.render({ canvasContext: ctx, viewport: pdfViewport }).promise;
+
+        // Save as an image for fast redrawing
+        renderedImage = new Image();
+        renderedImage.src = canvas.toDataURL();
+        await renderedImage.decode();
     });
 
-    // DRAGGABLE RECTANGLE
+    // === RECTANGLE SELECTION ===
     let rect = null;
     let isDragging = false;
     let startX = 0, startY = 0;
 
     canvas.addEventListener('mousedown', (e) => {
-        const rectCanvas = canvas.getBoundingClientRect();
-        startX = e.clientX - rectCanvas.left;
-        startY = e.clientY - rectCanvas.top;
+        if (!renderedImage) return;
+
+        const r = canvas.getBoundingClientRect();
+        startX = e.clientX - r.left;
+        startY = e.clientY - r.top;
+
         rect = { x: startX, y: startY, width: 0, height: 0 };
         isDragging = true;
     });
 
     canvas.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        const rectCanvas = canvas.getBoundingClientRect();
-        const currentX = e.clientX - rectCanvas.left;
-        const currentY = e.clientY - rectCanvas.top;
+        if (!isDragging || !renderedImage) return;
+
+        const r = canvas.getBoundingClientRect();
+        const currentX = e.clientX - r.left;
+        const currentY = e.clientY - r.top;
+
         rect.width = currentX - startX;
         rect.height = currentY - startY;
 
-        // Redraw PDF page
+        // Redraw from stored PDF image
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        pdfjsLib.getDocument({data:fileInput.files[0].arrayBuffer()}).promise.then(pdf => {
-            pdf.getPage(1).then(page => {
-                const viewport = pdfViewport;
-                page.render({canvasContext: ctx, viewport: viewport}).promise.then(() => {
-                    // Draw rectangle
-                    if(rect){
-                        ctx.strokeStyle = 'red';
-                        ctx.lineWidth = 2;
-                        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-                        ctx.fillStyle = 'rgba(255,0,0,0.2)';
-                        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-                    }
-                });
-            });
-        });
+        ctx.drawImage(renderedImage, 0, 0);
+
+        // Draw red selection rectangle
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        ctx.fillStyle = 'rgba(255,0,0,0.2)';
+        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
     });
 
     canvas.addEventListener('mouseup', async () => {
         if (!isDragging) return;
+
         isDragging = false;
-        if(rect && window.samSegment){
+
+        console.log("Final rectangle:", rect);
+
+        if (rect && window.samSegment) {
             const mask = await window.samSegment(canvas, rect);
-            console.log('Segmentation mask:', mask);
+            console.log("Segmentation mask:", mask);
         }
     });
 });
 </script>
+
 </body>
 </html>
