@@ -1,145 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Map Extract</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    color: #333;
-  }
-
-  /* HERO SECTION */
-  .hero {
-    background: #f0f7ff;
-    padding: 80px 20px;
-    text-align: center;
-  }
-
-  .hero h1 {
-    font-size: 48px;
-    font-weight: bold;
-    margin-bottom: 20px;
-  }
-
-  .hero p {
-    font-size: 20px;
-    max-width: 600px;
-    margin: 0 auto 30px;
-    line-height: 1.5;
-  }
-
-  /* BUTTON */
-  .cta-btn {
-    padding: 14px 28px;
-    background: #0077ff;
-    color: white;
-    font-size: 18px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-
-  .cta-btn:hover {
-    background: #005fcc;
-  }
-
-  /* UPLOAD BOX */
-  .upload-box {
-    border: 2px dashed #0077ff;
-    border-radius: 12px;
-    padding: 50px;
-    max-width: 400px;
-    margin: 0 auto 30px;
-    text-align: center;
-    background: #f9fbff;
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
-  }
-
-  .upload-box:hover {
-    background: #f0f7ff;
-    border-color: #005fcc;
-  }
-
-  .upload-box p {
-    margin: 0 0 15px 0;
-    font-size: 18px;
-    color: #0077ff;
-  }
-
-  .upload-box button {
-    padding: 10px 20px;
-    font-size: 16px;
-    border-radius: 6px;
-    border: none;
-    background: #0077ff;
-    color: white;
-    cursor: pointer;
-  }
-
-  .upload-box button:hover {
-    background: #005fcc;
-  }
-
-  /* PDF Preview */
-  #pdf-preview {
-    display: block;
-    margin: 30px auto;
-    max-width: 90%;
-    max-height: 600px;
-    border: 1px solid #ccc;
-  }
-
-  /* HOW IT WORKS SECTION */
-  .how-it-works {
-    padding: 60px 20px;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  .how-it-works h2 {
-    font-size: 36px;
-    margin-bottom: 50px;
-    text-align: center;
-  }
-
-  .steps {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 30px;
-    justify-items: center;
-  }
-
-  .step {
-    background: #fafafa;
-    padding: 25px;
-    border-radius: 12px;
-    border: 1px solid #eee;
-    text-align: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  }
-
-  .step h3 {
-    margin-bottom: 10px;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <title>Map Extract</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; color:#333; }
+    .hero { background:#f0f7ff; padding:80px 20px; text-align:center; }
+    .hero h1 { font-size:48px; margin-bottom:20px; }
+    .hero p { font-size:20px; max-width:600px; margin:0 auto 30px; line-height:1.5; }
+    .cta-btn { padding:14px 28px; background:#0077ff; color:white; font-size:18px; border:none; border-radius:8px; cursor:pointer; }
+    .cta-btn:hover { background:#005fcc; }
+    .upload-box { border:2px dashed #0077ff; border-radius:12px; padding:50px; max-width:500px; margin:0 auto; text-align:center; background:#f9fbff; cursor:pointer; }
+    .upload-box:hover { background:#f0f7ff; border-color:#005fcc; }
+    .upload-box p { margin:0 0 15px 0; font-size:18px; color:#0077ff; }
+    .upload-box button { padding:10px 20px; font-size:16px; border-radius:6px; border:none; background:#0077ff; color:white; cursor:pointer; }
+    .upload-box button:hover { background:#005fcc; }
+    .how-it-works { padding:60px 20px; max-width:900px; margin:0 auto; }
+    .how-it-works h2 { font-size:36px; margin-bottom:50px; text-align:center; }
+    .steps { display:grid; grid-template-columns:repeat(auto-fit, minmax(250px,1fr)); gap:30px; justify-items:center; }
+    .step { background:#fafafa; padding:25px; border-radius:12px; border:1px solid #eee; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+    .step h3 { margin-bottom:10px; }
+    #pdf-preview { max-width:90%; max-height:600px; margin:20px auto; display:block; border:1px solid #ccc; }
+  </style>
 </head>
 <body>
 
   <!-- HERO SECTION -->
   <section class="hero">
     <h1>Map Extract</h1>
-    <p>Upload any map image or PDF and get clean, accurate extracted data — ready for GIS, analysis, or digitization.</p>
+    <p>Upload any map PDF and get clean, accurate extracted data — ready for GIS, analysis, or digitization.</p>
 
     <div class="upload-box" id="upload-box">
-        <p>Drag & drop PDF here</p>
-        <button id="select-pdf">Select Your File</button>
-        <input type="file" id="pdf-upload" style="display:none" accept=".pdf"/>
+      <p>Drag & drop PDF here</p>
+      <button id="select-pdf">Select Your File</button>
+      <input type="file" id="pdf-upload" style="display:none;" accept=".pdf"/>
     </div>
 
+    <!-- PDF Preview -->
     <canvas id="pdf-preview"></canvas>
   </section>
 
@@ -149,44 +46,41 @@
     <div class="steps">
       <div class="step">
         <h3>1. Upload Your Map</h3>
-        <p>Drag and drop or upload any map image — topographic, historical, scanned, or printed.</p>
+        <p>Drag and drop or select any map PDF.</p>
       </div>
-
       <div class="step">
-        <h3>2. We Extract the Data</h3>
-        <p>Our processing identifies features, lines, shapes, and text. No software install required.</p>
+        <h3>2. Preview & Edit</h3>
+        <p>See a preview of your map and select areas to extract.</p>
       </div>
-
       <div class="step">
-        <h3>3. Download Clean Data</h3>
-        <p>Get your extracted output as a clean image or data-ready file.</p>
+        <h3>3. Download Extracted Data</h3>
+        <p>Get your output as a PNG or .shp file.</p>
       </div>
     </div>
   </section>
 
   <!-- PDF.js local libs -->
   <script src="./libs/pdf.js"></script>
+  <script>
+    if (!pdfjsLib) {
+      alert("PDF library failed to load. Make sure you are online and the CDN is accessible.");
+    }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdf.worker.js';
+  </script>
 
-  <!-- SAM workflow logic -->
+  <!-- SAM segmentation script -->
   <script src="./libs/sam.js"></script>
 
   <script>
-    // Check PDF.js loaded
-    if (!window.pdfjsLib) {
-      alert("PDF library failed to load. Make sure you are online and the CDN is accessible.");
-    }
-
     const selectBtn = document.getElementById('select-pdf');
     const fileInput = document.getElementById('pdf-upload');
     const uploadBox = document.getElementById('upload-box');
-    const previewCanvas = document.getElementById('pdf-preview');
-    const previewCtx = previewCanvas.getContext('2d');
+    const canvas = document.getElementById('pdf-preview');
+    const ctx = canvas.getContext('2d');
 
     selectBtn.addEventListener('click', () => fileInput.click());
 
-    fileInput.addEventListener('change', handleFile);
-
-    async function handleFile(e) {
+    fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
@@ -194,28 +88,15 @@
       try {
         const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
         const page = await pdf.getPage(1);
-        const viewport = page.getViewport({scale: 2});
-        previewCanvas.width = viewport.width;
-        previewCanvas.height = viewport.height;
-        await page.render({canvasContext: previewCtx, viewport: viewport}).promise;
+        const viewport = page.getViewport({scale:1.5});
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({canvasContext: ctx, viewport}).promise;
       } catch (err) {
         console.error(err);
-        alert("Error processing PDF. Please try another file.");
+        alert("Error processing PDF. Make sure the PDF is valid.");
       }
-    }
-
-    // Only one copy of maskToImageData
-    function maskToImageData(mask, width, height) {
-      const imageData = new ImageData(width, height);
-      for (let i = 0; i < mask.length; i++) {
-        const v = mask[i] ? 255 : 0;
-        imageData.data[i*4 + 0] = v;
-        imageData.data[i*4 + 1] = v;
-        imageData.data[i*4 + 2] = v;
-        imageData.data[i*4 + 3] = 255;
-      }
-      return imageData;
-    }
+    });
   </script>
 
 </body>
