@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <title>Map Extract</title>
     <style>
         body {
@@ -31,21 +31,6 @@
             line-height: 1.5;
         }
 
-        .cta-btn {
-            padding: 14px 28px;
-            background: #0077ff;
-            color: white;
-            font-size: 18px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .cta-btn:hover {
-            background: #005fcc;
-        }
-
-        /* UPLOAD BOX */
         .upload-box {
             border: 2px dashed #0077ff;
             border-radius: 12px;
@@ -70,7 +55,7 @@
         }
 
         .upload-box button {
-            padding: 10px 20px;
+            padding: 12px 24px;
             font-size: 16px;
             border-radius: 6px;
             border: none;
@@ -83,16 +68,16 @@
             background: #005fcc;
         }
 
-        /* PDF canvas */
+        /* PDF Preview */
         #pdf-canvas {
-            border: 1px solid #ccc;
             display: block;
             margin: 20px auto;
+            border: 1px solid #ccc;
             max-width: 90%;
             max-height: 600px;
         }
 
-        /* HOW IT WORKS SECTION */
+        /* HOW IT WORKS */
         .how-it-works {
             padding: 60px 20px;
             max-width: 900px;
@@ -124,136 +109,105 @@
         .step h3 {
             margin-bottom: 10px;
         }
-
-        /* Spinner */
-        #spinner {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 100;
-        }
     </style>
 </head>
-
 <body>
 
-  <!-- HERO SECTION -->
-  <section class="hero">
-    <h1>Map Extract</h1>
-    <p>Upload any map PDF and extract water areas as a starting point for GIS workflows.</p>
+    <!-- HERO SECTION -->
+    <section class="hero">
+        <h1>Map Extract</h1>
+        <p>Upload any map image and get clean, accurate extracted data — ready for GIS, analysis, or digitization.</p>
 
-    <div class="upload-box" id="upload-box">
-        <p>Drag & drop PDF here</p>
-        <button id="select-file-btn">Select Your File</button>
-        <input type="file" id="pdf-upload" accept=".pdf" style="display:none" />
-    </div>
+        <div class="upload-box" id="upload-box">
+            <p>Drag & drop PDF here</p>
+            <button id="select-pdf">Select Your File</button>
+            <input type="file" id="pdf-upload" accept=".pdf" style="display:none;">
+        </div>
 
-    <img id="spinner" src="./assets/spinner.gif" alt="Processing..." />
+        <canvas id="pdf-canvas"></canvas>
+    </section>
 
-    <canvas id="pdf-canvas"></canvas>
-  </section>
+    <!-- HOW IT WORKS -->
+    <section class="how-it-works">
+        <h2>How It Works</h2>
+        <div class="steps">
+            <div class="step">
+                <h3>1. Upload Your Map</h3>
+                <p>Drag and drop or upload any map image — topographic, historical, scanned, or printed.</p>
+            </div>
+            <div class="step">
+                <h3>2. We Extract the Data</h3>
+                <p>Our processing identifies features, lines, shapes, and text. No software install required.</p>
+            </div>
+            <div class="step">
+                <h3>3. Download Clean Data</h3>
+                <p>Get your extracted output as a clean image or data-ready file.</p>
+            </div>
+        </div>
+    </section>
 
-  <!-- HOW IT WORKS -->
-  <section class="how-it-works">
-    <h2>How It Works</h2>
+    <!-- PDF.js -->
+    <script src="./libs/pdf.js"></script>
+    <script src="./libs/pdf.worker.js"></script>
 
-    <div class="steps">
-      <div class="step">
-        <h3>1. Upload Your Map</h3>
-        <p>Select or drag and drop a PDF map.</p>
-      </div>
+    <!-- SAM Segmentation -->
+    <script src="./libs/sam.js"></script>
 
-      <div class="step">
-        <h3>2. Segment Water</h3>
-        <p>Draw a rectangle on the map to extract water areas.</p>
-      </div>
+    <script>
+        // PDF.js Worker setup
+        pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdf.worker.js';
 
-      <div class="step">
-        <h3>3. Download</h3>
-        <p>Receive the extracted PNG or shapefile for GIS analysis.</p>
-      </div>
-    </div>
-  </section>
+        const selectBtn = document.getElementById('select-pdf');
+        const fileInput = document.getElementById('pdf-upload');
+        const uploadBox = document.getElementById('upload-box');
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
 
-  <!-- PDF.js libraries -->
-  <script src="./libs/pdf.js"></script>
-  <script src="./libs/pdf.worker.js"></script>
+        selectBtn.addEventListener('click', () => fileInput.click());
 
-  <!-- SAM script -->
-  <script type="module">
-    import { samSegment } from './libs/sam.js';
+        fileInput.addEventListener('change', handleFile);
 
-    const fileInput = document.getElementById('pdf-upload');
-    const selectBtn = document.getElementById('select-file-btn');
-    const uploadBox = document.getElementById('upload-box');
-    const canvas = document.getElementById('pdf-canvas');
-    const ctx = canvas.getContext('2d');
-    const spinner = document.getElementById('spinner');
+        async function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
 
-    selectBtn.addEventListener('click', () => fileInput.click());
+            const processingMsg = document.createElement('p');
+            processingMsg.textContent = 'Processing PDF...';
+            uploadBox.appendChild(processingMsg);
 
-    fileInput.addEventListener('change', handleFile);
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 2 });
 
-    async function handleFile(e) {
-        const file = e.target.files[0];
-        if (!file) return;
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
 
-        spinner.style.display = 'block';
+                await page.render({ canvasContext: ctx, viewport }).promise;
 
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-            const page = await pdf.getPage(1);
-            const viewport = page.getViewport({scale: 2});
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            await page.render({canvasContext: ctx, viewport}).promise;
-        } catch(err) {
-            alert('Error loading PDF');
-            console.error(err);
-        } finally {
-            spinner.style.display = 'none';
+                processingMsg.remove();
+
+                // Enable segmentation on click
+                canvas.addEventListener('click', async function segmentHandler(event) {
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    try {
+                        const mask = await samSegment(imageData); // from sam.js
+                        // Draw segmentation mask
+                        ctx.putImageData(mask, 0, 0);
+                    } catch(err) {
+                        alert('Segmentation failed: ' + err.message);
+                        console.error(err);
+                    }
+                    // Remove this click listener to prevent multiple triggers
+                    canvas.removeEventListener('click', segmentHandler);
+                });
+
+            } catch (err) {
+                processingMsg.textContent = 'Error processing PDF. Please try another file.';
+                console.error(err);
+            }
         }
-    }
-
-    // Rectangle selection for segmentation
-    let rectStart = null;
-    let rectEnd = null;
-
-    canvas.addEventListener('mousedown', e => {
-        const rect = canvas.getBoundingClientRect();
-        rectStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    });
-
-    canvas.addEventListener('mouseup', async e => {
-        if (!rectStart) return;
-        const rect = canvas.getBoundingClientRect();
-        rectEnd = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-
-        const x = Math.min(rectStart.x, rectEnd.x);
-        const y = Math.min(rectStart.y, rectEnd.y);
-        const width = Math.abs(rectEnd.x - rectStart.x);
-        const height = Math.abs(rectEnd.y - rectStart.y);
-
-        try {
-            spinner.style.display = 'block';
-            const imageData = ctx.getImageData(x, y, width, height);
-            const mask = await samSegment(imageData); // SAM-assisted segmentation
-            ctx.putImageData(mask, x, y);
-        } catch(err) {
-            alert('Segmentation failed');
-            console.error(err);
-        } finally {
-            spinner.style.display = 'none';
-        }
-
-        rectStart = null;
-        rectEnd = null;
-    });
-
-  </script>
-
+    </script>
 </body>
 </html>
