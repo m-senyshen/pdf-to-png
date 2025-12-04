@@ -2,73 +2,101 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Map Extract</title>
-
+  <title>Map Segment Tool</title>
   <style>
     body {
+      margin: 0;
       font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: auto;
+      background: #f5f5f7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       padding: 20px;
+    }
+
+    #container {
+      width: 900px;
+      max-width: 95vw;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.12);
       text-align: center;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 28px;
     }
 
     #pdfCanvas {
       border: 1px solid #ccc;
-      margin-top: 20px;
+      margin-top: 15px;
       max-width: 100%;
+      max-height: 80vh;
     }
 
-    #spinner {
-      display: none;
+    #resultImg {
       margin-top: 20px;
+      max-width: 100%;
+      border: 1px solid #ccc;
+      display: none;
+    }
+
+    #fileInput {
+      margin-top: 15px;
     }
   </style>
 </head>
 
 <body>
-  <h2>Map Extract - Water Segmentation (Rectangle Selection)</h2>
 
-  <input type="file" id="fileInput" accept="application/pdf" />
-  <br />
+  <div id="container">
+    <h1>Map Segmentation Tool</h1>
+    <input type="file" id="fileInput" accept="application/pdf" />
 
-  <img id="spinner" src="assets/spinner.gif" width="60" />
+    <canvas id="pdfCanvas"></canvas>
+    <img id="resultImg" />
 
-  <canvas id="pdfCanvas"></canvas>
+    <p id="status"></p>
+  </div>
 
   <!-- PDF.js -->
   <script src="./libs/pdf.js"></script>
 
-  <script>
+  <!-- Simple Rectangle Segmenter -->
+  <script type="module">
+    import { samSegment } from "./libs/sam.js";
+
     const fileInput = document.getElementById("fileInput");
-    const canvas = document.getElementById("pdfCanvas");
-    const ctx = canvas.getContext("2d");
+    const pdfCanvas = document.getElementById("pdfCanvas");
+    const ctx = pdfCanvas.getContext("2d");
+    const statusEl = document.getElementById("status");
+    const resultImg = document.getElementById("resultImg");
 
-    let pdfImageData = null; // stores rendered PDF snapshot
-    let pdfLoaded = false;
+    let pdfDoc = null;
+    let page = null;
+    let pdfImageBitmap = null;
 
-    let isDrawing = false;
+    let dragging = false;
     let startX = 0;
     let startY = 0;
     let currentX = 0;
     let currentY = 0;
 
-    fileInput.addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+    /* -----------------------------
+       Load PDF and Render Page 1
+    --------------------------------*/
+    async function loadPdf(buffer) {
+      statusEl.textContent = "Loading PDF…";
 
-      const arrayBuffer = await file.arrayBuffer();
+      pdfDoc = await pdfjsLib.getDocument({ data: buffer }).promise;
+      page = await pdfDoc.getPage(1);
 
-      // Load PDF
-      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-      const pdf = await loadingTask.promise;
-      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2 });
 
-      // Set scale so PDF fits width
-      const viewport = page.getViewport({ scale: 1.5 });
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
+      pdfCanvas.width = viewport.width;
+      pdfCanvas.height = viewport.height;
 
       const renderContext = {
         canvasContext: ctx,
@@ -77,52 +105,95 @@
 
       await page.render(renderContext).promise;
 
-      // Store snapshot of the PDF in memory
-      pdfImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      pdfLoaded = true;
-    });
+      // Store underlying bitmap for segmentation
+      pdfImageBitmap = await createImageBitmap(pdfCanvas);
 
-    // Draw rectangle helper
-    function redrawCanvas() {
-      if (!pdfLoaded || !pdfImageData) return;
-
-      ctx.putImageData(pdfImageData, 0, 0);
-
-      if (isDrawing) {
-        const rectW = currentX - startX;
-        const rectH = currentY - startY;
-
-        ctx.strokeStyle = "red";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(startX, startY, rectW, rectH);
-      }
+      statusEl.textContent = "PDF Loaded. Draw a rectangle.";
     }
 
-    // MOUSE EVENTS
-    canvas.addEventListener("mousedown", (e) => {
-      if (!pdfLoaded) return;
+    /* -----------------------------
+       File Upload
+    --------------------------------*/
+    fileInput.addEventListener("change", async e => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-      const rect = canvas.getBoundingClientRect();
-      startX = e.clientX - rect.left;
-      startY = e.clientY - rect.top;
-
-      isDrawing = true;
+      const buffer = await file.arrayBuffer();
+      await loadPdf(buffer);
     });
 
-    canvas.addEventListener("mousemove", (e) => {
-      if (!isDrawing || !pdfLoaded) return;
+    /* -----------------------------
+       Mouse Events for Rectangle
+    --------------------------------*/
+    pdfCanvas.addEventListener("mousedown", (e) => {
+      const rect = pdfCanvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+      dragging = true;
+    });
 
-      const rect = canvas.getBoundingClientRect();
+    pdfCanvas.addEventListener("mousemove", (e) => {
+      if (!dragging) return;
+
+      const rect = pdfCanvas.getBoundingClientRect();
       currentX = e.clientX - rect.left;
       currentY = e.clientY - rect.top;
 
-      redrawCanvas();
+      // Redraw original PDF image behind selection rectangle
+      ctx.drawImage(pdfImageBitmap, 0, 0);
+
+      drawRectangle();
     });
 
-    canvas.addEventListener("mouseup", () => {
-      isDrawing = false;
-      redrawCanvas();
+    pdfCanvas.addEventListener("mouseup", async (e) => {
+      if (!dragging) return;
+      dragging = false;
+
+      const rect = pdfCanvas.getBoundingClientRect();
+      currentX = e.clientX - rect.left;
+      currentY = e.clientY - rect.top;
+
+      ctx.drawImage(pdfImageBitmap, 0, 0);
+      drawRectangle();
+
+      const x = Math.min(startX, currentX);
+      const y = Math.min(startY, currentY);
+      const w = Math.abs(startX - currentX);
+      const h = Math.abs(startY - currentY);
+
+      statusEl.textContent = "Segmenting…";
+
+      // Prepare ImageData from the underlying canvas
+      const fullImageData = ctx.getImageData(0, 0, pdfCanvas.width, pdfCanvas.height);
+
+      const maskImageData = await samSegment(fullImageData, { x, y, w, h });
+
+      // Draw output
+      const outCanvas = document.createElement("canvas");
+      outCanvas.width = w;
+      outCanvas.height = h;
+      const octx = outCanvas.getContext("2d");
+      octx.putImageData(maskImageData, 0, 0);
+
+      resultImg.src = outCanvas.toDataURL("image/png");
+      resultImg.style.display = "block";
+
+      statusEl.textContent = "Done!";
     });
+
+    /* -----------------------------
+       Draw Selection Rectangle
+    --------------------------------*/
+    function drawRectangle() {
+      const x = Math.min(startX, currentX);
+      const y = Math.min(startY, currentY);
+      const w = Math.abs(startX - currentX);
+      const h = Math.abs(startY - currentY);
+
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, w, h);
+    }
 
   </script>
 </body>
