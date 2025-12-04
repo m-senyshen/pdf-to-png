@@ -31,31 +31,40 @@
             line-height: 1.5;
         }
 
-        .upload-box {
+        .cta-btn {
+            padding: 14px 28px;
+            background: #0077ff;
+            color: white;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .cta-btn:hover {
+            background: #005fcc;
+        }
+
+        /* UPLOAD BOX */
+        #upload-box {
             border: 2px dashed #0077ff;
             border-radius: 12px;
             padding: 50px;
-            max-width: 400px;
-            margin: 0 auto 20px auto;
+            max-width: 600px;
+            margin: 0 auto;
             text-align: center;
             background: #f9fbff;
             cursor: pointer;
             transition: background 0.2s, border-color 0.2s;
         }
 
-        .upload-box:hover {
+        #upload-box:hover {
             background: #f0f7ff;
             border-color: #005fcc;
         }
 
-        .upload-box p {
-            margin: 0 0 15px 0;
-            font-size: 18px;
-            color: #0077ff;
-        }
-
-        .upload-box button {
-            padding: 10px 20px;
+        #upload-box button {
+            padding: 12px 24px;
             font-size: 16px;
             border-radius: 6px;
             border: none;
@@ -64,16 +73,27 @@
             cursor: pointer;
         }
 
-        .upload-box button:hover {
+        #upload-box button:hover {
             background: #005fcc;
         }
 
-        #pdf-preview {
-            display: block;
-            margin: 20px auto;
-            max-width: 90%;
-            max-height: 600px;
+        #pdf-canvas-container {
+            position: relative;
+            max-width: 800px;
+            margin: 40px auto;
+        }
+
+        #pdf-canvas, #selection-canvas {
+            width: 100%;
             border: 1px solid #ccc;
+            display: block;
+        }
+
+        #selection-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
         }
 
         /* HOW IT WORKS SECTION */
@@ -108,103 +128,146 @@
         .step h3 {
             margin-bottom: 10px;
         }
+
+        #spinner {
+            display: none;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
-  <!-- HERO SECTION -->
-  <section class="hero">
-    <h1>Map Extract</h1>
-    <p>Upload any map image and get clean, accurate extracted data — ready for GIS, analysis, or digitization.</p>
 
-    <div id="upload-box" class="upload-box">
-        <p>Drag & drop PDF here</p>
+<!-- HERO SECTION -->
+<section class="hero">
+    <h1>Map Extract</h1>
+    <p>Upload any map PDF and extract features — starting with water areas.</p>
+
+    <div id="upload-box">
         <button id="select-pdf">Select Your File</button>
-        <input type="file" id="pdf-upload" accept=".pdf" style="display:none">
+        <input type="file" id="pdf-upload" accept="application/pdf" style="display:none" />
     </div>
 
-    <canvas id="pdf-preview"></canvas>
-    <div id="download-link-container"></div>
-  </section>
+    <div id="pdf-canvas-container">
+        <canvas id="pdf-canvas"></canvas>
+        <canvas id="selection-canvas"></canvas>
+    </div>
+    <img id="spinner" src="./assets/spinner.gif" alt="Processing...">
+    <a id="download-link" style="display:none; margin-top:20px; display:block;"></a>
+</section>
 
-  <!-- HOW IT WORKS -->
-  <section class="how-it-works">
+<!-- HOW IT WORKS -->
+<section class="how-it-works">
     <h2>How It Works</h2>
     <div class="steps">
-      <div class="step">
-        <h3>1. Upload Your Map</h3>
-        <p>Drag and drop or upload any map image — topographic, historical, scanned, or printed.</p>
-      </div>
-      <div class="step">
-        <h3>2. We Extract the Data</h3>
-        <p>Our processing identifies features, lines, shapes, and text. No software install required.</p>
-      </div>
-      <div class="step">
-        <h3>3. Download Clean Data</h3>
-        <p>Get your extracted output as a clean image or data-ready file.</p>
-      </div>
+        <div class="step">
+            <h3>1. Upload Your Map</h3>
+            <p>Select any map PDF — topographic, historical, scanned, or printed.</p>
+        </div>
+        <div class="step">
+            <h3>2. Select Area</h3>
+            <p>Draw a rectangle around the area you want to extract (starting with water).</p>
+        </div>
+        <div class="step">
+            <h3>3. Download Output</h3>
+            <p>After processing, download the extracted area as PNG or later as shapefile.</p>
+        </div>
     </div>
-  </section>
+</section>
 
-  <!-- PDF.js local libs -->
-  <script src="./libs/pdf.js"></script>
-  <script>
-    // Set workerSrc for PDF.js
-    pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdf.worker.js';
-  </script>
+<!-- SCRIPTS -->
+<script src="./libs/pdf.js"></script>
+<script src="./libs/pdf.worker.js"></script>
+<script src="./libs/sam.js"></script>
 
-  <!-- SAM segmentation script -->
-  <script type="module" src="./libs/sam.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdf.worker.js';
 
-  <!-- PDF upload and rendering -->
-  <script>
-    const selectBtn = document.getElementById('select-pdf');
-    const fileInput = document.getElementById('pdf-upload');
-    const uploadBox = document.getElementById('upload-box');
-    const previewCanvas = document.getElementById('pdf-preview');
-    const previewCtx = previewCanvas.getContext('2d');
-    const downloadContainer = document.getElementById('download-link-container');
+const selectBtn = document.getElementById('select-pdf');
+const fileInput = document.getElementById('pdf-upload');
+const pdfCanvas = document.getElementById('pdf-canvas');
+const selectionCanvas = document.getElementById('selection-canvas');
+const spinner = document.getElementById('spinner');
+const downloadLink = document.getElementById('download-link');
+const pdfCtx = pdfCanvas.getContext('2d');
+const selCtx = selectionCanvas.getContext('2d');
 
-    selectBtn.addEventListener('click', () => fileInput.click());
+let pdfDoc = null;
+let startX, startY, isDrawing = false;
 
-    fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+selectBtn.addEventListener('click', () => fileInput.click());
 
-        // Show processing message
-        let processingMsg = document.createElement('p');
-        processingMsg.textContent = 'Processing PDF...';
-        uploadBox.appendChild(processingMsg);
+fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    spinner.style.display = 'block';
+    downloadLink.style.display = 'none';
+    const arrayBuffer = await file.arrayBuffer();
+    try {
+        pdfDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+        const page = await pdfDoc.getPage(1);
+        const viewport = page.getViewport({scale: 2});
+        pdfCanvas.width = viewport.width;
+        pdfCanvas.height = viewport.height;
+        selectionCanvas.width = viewport.width;
+        selectionCanvas.height = viewport.height;
+        await page.render({canvasContext: pdfCtx, viewport: viewport}).promise;
+        spinner.style.display = 'none';
+    } catch (err) {
+        spinner.style.display = 'none';
+        alert('Error loading PDF');
+        console.error(err);
+    }
+});
 
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-            const page = await pdf.getPage(1);
-            const viewport = page.getViewport({scale: 2});
-            previewCanvas.width = viewport.width;
-            previewCanvas.height = viewport.height;
+// Rectangle selection
+selectionCanvas.addEventListener('mousedown', (e) => {
+    const rect = selectionCanvas.getBoundingClientRect();
+    startX = e.clientX - rect.left;
+    startY = e.clientY - rect.top;
+    isDrawing = true;
+});
 
-            await page.render({canvasContext: previewCtx, viewport: viewport}).promise;
+selectionCanvas.addEventListener('mousemove', (e) => {
+    if (!isDrawing) return;
+    const rect = selectionCanvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    selCtx.clearRect(0,0,selectionCanvas.width, selectionCanvas.height);
+    selCtx.strokeStyle = 'red';
+    selCtx.lineWidth = 2;
+    selCtx.strokeRect(startX, startY, mouseX-startX, mouseY-startY);
+});
 
-            // Convert to PNG
-            const pngDataUrl = previewCanvas.toDataURL('image/png');
+selectionCanvas.addEventListener('mouseup', async (e) => {
+    if (!isDrawing) return;
+    isDrawing = false;
+    const rect = selectionCanvas.getBoundingClientRect();
+    const endX = e.clientX - rect.left;
+    const endY = e.clientY - rect.top;
+    selCtx.clearRect(0,0,selectionCanvas.width, selectionCanvas.height);
 
-            // Clear old links/messages
-            downloadContainer.innerHTML = '';
-            processingMsg.remove();
+    const x = Math.min(startX, endX);
+    const y = Math.min(startY, endY);
+    const width = Math.abs(endX - startX);
+    const height = Math.abs(endY - startY);
 
-            const link = document.createElement('a');
-            link.href = pngDataUrl;
-            link.download = file.name.replace('.pdf', '.png');
-            link.textContent = 'Download PNG';
-            link.style.display = 'block';
-            link.style.marginTop = '20px';
-            downloadContainer.appendChild(link);
+    if(width < 5 || height < 5) return; // ignore tiny selections
 
-        } catch (err) {
-            processingMsg.textContent = 'Error processing PDF. Please try another file.';
-            console.error(err);
-        }
-    });
-  </script>
+    spinner.style.display = 'block';
+    try {
+        // Call SAM segmentation function
+        const resultDataUrl = await samSegment(pdfCanvas, x, y, width, height); // implement samSegment in sam.js
+        downloadLink.href = resultDataUrl;
+        downloadLink.download = 'segmented.png';
+        downloadLink.textContent = 'Download Segmented PNG';
+        downloadLink.style.display = 'block';
+    } catch(err) {
+        alert('Segmentation failed');
+        console.error(err);
+    }
+    spinner.style.display = 'none';
+});
+</script>
+
 </body>
 </html>
