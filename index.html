@@ -1,531 +1,222 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Map Extract — Large Preview (max-height 1000px)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    :root {
-      --accent: #0077ff;
-      --max-width: 1400px;
-      --max-preview-height: 1000px; /* chosen Option A */
-    }
+<meta charset="UTF-8" />
+<title>Map Extract</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    color: #333;
+  }
 
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      color: #222;
-      background: #fafbfd;
-    }
+  /* HERO SECTION */
+  .hero {
+    background: #f0f7ff;
+    padding: 80px 20px;
+    text-align: center;
+  }
 
-    #app-container {
-      max-width: var(--max-width);
-      margin: 20px auto;
-      padding: 20px;
-    }
+  .hero h1 {
+    font-size: 48px;
+    font-weight: bold;
+    margin-bottom: 20px;
+  }
 
-    header {
-      text-align: center;
-      margin-bottom: 16px;
-    }
+  .hero p {
+    font-size: 20px;
+    max-width: 600px;
+    margin: 0 auto 30px;
+    line-height: 1.5;
+  }
 
-    header h1 { margin: 0; font-size: 32px; color: #0b3b66; }
-    header p  { margin: 6px 0 0 0; color: #333; }
+  /* BUTTON */
+  .cta-btn {
+    padding: 14px 28px;
+    background: #0077ff;
+    color: white;
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
 
-    /* upload area */
-    .upload-box {
-      border: 2px dashed var(--accent);
-      border-radius: 12px;
-      padding: 16px;
-      background: #fff;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
+  .cta-btn:hover {
+    background: #005fcc;
+  }
 
-    .upload-left { display:flex; gap:12px; align-items:center; }
-    .upload-left p { margin: 0; color: var(--accent); font-weight:600; }
+  /* UPLOAD BOX */
+  .upload-box {
+    border: 2px dashed #0077ff;
+    border-radius: 12px;
+    padding: 50px;
+    max-width: 400px;
+    margin: 0 auto 30px;
+    text-align: center;
+    background: #f9fbff;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
 
-    .controls { display:flex; gap:8px; align-items:center; }
-    button.primary {
-      background: var(--accent);
-      color: white;
-      border: none;
-      padding: 10px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight:600;
-    }
-    button.secondary {
-      background: white;
-      border: 1px solid #ddd;
-      padding: 8px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
+  .upload-box:hover {
+    background: #f0f7ff;
+    border-color: #005fcc;
+  }
 
-    .status { margin-left: 8px; color:#333; }
+  .upload-box p {
+    margin: 0 0 15px 0;
+    font-size: 18px;
+    color: #0077ff;
+  }
 
-    /* preview area */
-    .preview-wrapper {
-      margin-top: 18px;
-      position: relative;
-      background: #ffffff;
-      border-radius: 10px;
-      padding: 12px;
-      box-shadow: 0 6px 18px rgba(10,20,40,0.06);
-    }
+  .upload-box button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: none;
+    background: #0077ff;
+    color: white;
+    cursor: pointer;
+  }
 
-    .preview-inner {
-      width: 100%;
-      max-width: 100%;
-      margin: 0 auto;
-      display: flex;
-      justify-content: center;
-    }
+  .upload-box button:hover {
+    background: #005fcc;
+  }
 
-    /* container that holds the canvas; centers it and limits size */
-    #canvas-container {
-      width: 100%;
-      position: relative;
-      display: inline-block;
-      /* border: 1px solid #eee; */
-    }
+  /* PDF Preview */
+  #pdf-preview {
+    display: block;
+    margin: 30px auto;
+    max-width: 90%;
+    max-height: 600px;
+    border: 1px solid #ccc;
+  }
 
-    /* the rendered PDF canvas */
-    #pdf-canvas {
-      display: block;
-      width: 100%;
-      height: auto;
-      border-radius: 6px;
-      box-shadow: 0 3px 12px rgba(10,20,40,0.06);
-    }
+  /* HOW IT WORKS SECTION */
+  .how-it-works {
+    padding: 60px 20px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
 
-    /* overlay for masks / drawing - absolutely positioned over pdf-canvas */
-    #overlay-canvas {
-      position: absolute;
-      left: 0;
-      top: 0;
-      pointer-events: none; /* we will attach drawing to the base canvas. overlay only for display */
-    }
+  .how-it-works h2 {
+    font-size: 36px;
+    margin-bottom: 50px;
+    text-align: center;
+  }
 
-    /* temporary bbox element drawn while dragging */
-    .bbox {
-      position: absolute;
-      border: 2px dashed rgba(0,120,255,0.9);
-      background: rgba(0,120,255,0.06);
-      pointer-events: none;
-      z-index: 40;
-      border-radius: 4px;
-    }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    justify-items: center;
+  }
 
-    /* per-page controls (download page PNG, mask controls) */
-    .page-controls { margin-top: 10px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .step {
+    background: #fafafa;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid #eee;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
 
-    /* spinner */
-    .spinner {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid var(--accent);
-      border-radius: 50%;
-      width: 32px;
-      height: 32px;
-      animation: spin 1s linear infinite;
-      display:inline-block;
-    }
-    @keyframes spin { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
-
-    /* mask controls area */
-    .mask-controls { margin-top: 10px; display:flex; gap:8px; justify-content:center; }
-
-    /* small responsive tweaks */
-    @media (max-width: 720px) {
-      header h1 { font-size: 24px; }
-      .upload-box { padding: 12px; gap:8px; }
-      button.primary { padding: 8px 10px; }
-    }
-  </style>
+  .step h3 {
+    margin-bottom: 10px;
+  }
+</style>
 </head>
 <body>
-  <div id="app-container">
-    <header>
-      <h1>Map Extract</h1>
-      <p>Draw a bounding box around water (or any feature). Segmentation runs automatically.</p>
-    </header>
 
-    <div class="upload-box">
-      <div class="upload-left">
-        <p>Drag & drop PDF or</p>
-        <div>
-          <button id="select-pdf-btn" class="primary">Select Your File</button>
-          <input id="pdf-upload" type="file" accept="application/pdf" style="display:none" />
-        </div>
-        <div class="status" id="upload-status"></div>
-      </div>
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <h1>Map Extract</h1>
+    <p>Upload any map image or PDF and get clean, accurate extracted data — ready for GIS, analysis, or digitization.</p>
 
-      <div class="controls">
-        <button id="prev-page" class="secondary" title="Previous page">‹ Prev</button>
-        <span id="page-indicator">—</span>
-        <button id="next-page" class="secondary" title="Next page">Next ›</button>
-        <button id="download-page" class="secondary" title="Download rendered page PNG">Download page PNG</button>
-      </div>
+    <div class="upload-box" id="upload-box">
+        <p>Drag & drop PDF here</p>
+        <button id="select-pdf">Select Your File</button>
+        <input type="file" id="pdf-upload" style="display:none" accept=".pdf"/>
     </div>
 
-    <div class="preview-wrapper">
-      <div class="preview-inner">
-        <div id="canvas-container" aria-live="polite">
-          <!-- pdf-canvas will be sized to container width and adjusted by JS to preserve aspect ratio with max-height cap -->
-          <canvas id="pdf-canvas"></canvas>
-          <!-- overlay canvas for masks / drawing (absolute, matches pdf-canvas size) -->
-          <canvas id="overlay-canvas"></canvas>
-        </div>
+    <canvas id="pdf-preview"></canvas>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-it-works">
+    <h2>How It Works</h2>
+    <div class="steps">
+      <div class="step">
+        <h3>1. Upload Your Map</h3>
+        <p>Drag and drop or upload any map image — topographic, historical, scanned, or printed.</p>
       </div>
 
-      <div class="page-controls" id="page-controls" style="display:none;">
-        <div id="processing-indicator" style="display:none;"><span class="spinner"></span> <span id="processing-text">Processing...</span></div>
+      <div class="step">
+        <h3>2. We Extract the Data</h3>
+        <p>Our processing identifies features, lines, shapes, and text. No software install required.</p>
       </div>
 
-      <div class="mask-controls" id="mask-controls" style="display:none;"></div>
+      <div class="step">
+        <h3>3. Download Clean Data</h3>
+        <p>Get your extracted output as a clean image or data-ready file.</p>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <!-- local pdf.js (your working library) -->
+  <!-- PDF.js local libs -->
   <script src="./libs/pdf.js"></script>
 
-  <!-- optional ONNX runtime (keeps available) -->
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+  <!-- SAM workflow logic -->
+  <script src="./libs/sam.js"></script>
 
-  <!-- SAM module (local) -->
-  <script type="module">
-    import { initModel, segmentBoxOnCanvas, maskToImageData, maskToGeoJSON } from './js/sam.js';
+  <script>
+    // Check PDF.js loaded
+    if (!window.pdfjsLib) {
+      alert("PDF library failed to load. Make sure you are online and the CDN is accessible.");
+    }
 
-    // try to initialize model if you place /models/mobile_sam.onnx; silent fallback to color-threshold if missing
-    initModel('/models/mobile_sam.onnx').then(()=>console.log('SAM init attempted'));
+    const selectBtn = document.getElementById('select-pdf');
+    const fileInput = document.getElementById('pdf-upload');
+    const uploadBox = document.getElementById('upload-box');
+    const previewCanvas = document.getElementById('pdf-preview');
+    const previewCtx = previewCanvas.getContext('2d');
 
-    // UI elements
-    const selectBtn = document.getElementById('select-pdf-btn');
-    const pdfInput = document.getElementById('pdf-upload');
-    const status = document.getElementById('upload-status');
-    const pdfCanvas = document.getElementById('pdf-canvas');
-    const overlayCanvas = document.getElementById('overlay-canvas');
-    const canvasContainer = document.getElementById('canvas-container');
-    const processingIndicator = document.getElementById('processing-indicator');
-    const processingText = document.getElementById('processing-text');
-    const maskControls = document.getElementById('mask-controls');
-    const prevBtn = document.getElementById('prev-page');
-    const nextBtn = document.getElementById('next-page');
-    const pageIndicator = document.getElementById('page-indicator');
-    const downloadPageBtn = document.getElementById('download-page');
+    selectBtn.addEventListener('click', () => fileInput.click());
 
-    let pdfDoc = null;
-    let currentPage = 1;
-    let renderedPages = {}; // cache of rendered ImageData or canvases by page
-    let currentRendered = null;
-    const MAX_PREVIEW_HEIGHT = 1000; // per your choice
+    fileInput.addEventListener('change', handleFile);
 
-    // wire UI
-    selectBtn.addEventListener('click', ()=> pdfInput.click());
-    pdfInput.addEventListener('change', async (e)=> { if (e.target.files.length) await loadPdfFile(e.target.files[0]); });
-    canvasContainer.addEventListener('dragover', (e)=>{ e.preventDefault(); canvasContainer.style.outline = '2px dashed rgba(0,120,255,0.18)'; });
-    canvasContainer.addEventListener('dragleave', (e)=>{ e.preventDefault(); canvasContainer.style.outline = ''; });
-    canvasContainer.addEventListener('drop', async (e)=>{ e.preventDefault(); canvasContainer.style.outline=''; if (e.dataTransfer.files.length) await loadPdfFile(e.dataTransfer.files[0]); });
+    async function handleFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
 
-    prevBtn.addEventListener('click', ()=> changePage(currentPage - 1));
-    nextBtn.addEventListener('click', ()=> changePage(currentPage + 1));
-    downloadPageBtn.addEventListener('click', downloadCurrentPagePNG);
-
-    // load PDF and render first page(s)
-    async function loadPdfFile(file) {
-      // clear state
-      pdfDoc = null; currentPage = 1; renderedPages = {}; currentRendered = null;
-      status.textContent = `Loading ${file.name}...`;
-      pageIndicator.textContent = '—';
-      maskControls.style.display = 'none';
-      // show spinner
-      showProcessing(true, 'Loading PDF...');
+      const arrayBuffer = await file.arrayBuffer();
       try {
-        const arrayBuffer = await file.arrayBuffer();
-        pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        status.textContent = `Loaded: ${file.name} — ${pdfDoc.numPages} page(s)`;
-        pageIndicator.textContent = `1 / ${pdfDoc.numPages}`;
-        document.getElementById('page-controls').style.display = 'flex';
-        await renderAndDisplayPage(1);
+        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({scale: 2});
+        previewCanvas.width = viewport.width;
+        previewCanvas.height = viewport.height;
+        await page.render({canvasContext: previewCtx, viewport: viewport}).promise;
       } catch (err) {
         console.error(err);
-        status.textContent = 'Error loading PDF.';
-      } finally {
-        showProcessing(false);
+        alert("Error processing PDF. Please try another file.");
       }
     }
 
-    async function changePage(n) {
-      if (!pdfDoc) return;
-      n = Math.max(1, Math.min(pdfDoc.numPages, n));
-      if (n === currentPage) return;
-      currentPage = n;
-      pageIndicator.textContent = `${currentPage} / ${pdfDoc.numPages}`;
-      await renderAndDisplayPage(currentPage);
-    }
-
-    async function renderAndDisplayPage(pageNum) {
-      showProcessing(true, `Rendering page ${pageNum}...`);
-      maskControls.style.display = 'none';
-      // Use cached if available
-      if (renderedPages[pageNum]) {
-        drawRenderedToCanvas(renderedPages[pageNum]);
-        showProcessing(false);
-        return;
+    // Only one copy of maskToImageData
+    function maskToImageData(mask, width, height) {
+      const imageData = new ImageData(width, height);
+      for (let i = 0; i < mask.length; i++) {
+        const v = mask[i] ? 255 : 0;
+        imageData.data[i*4 + 0] = v;
+        imageData.data[i*4 + 1] = v;
+        imageData.data[i*4 + 2] = v;
+        imageData.data[i*4 + 3] = 255;
       }
-
-      try {
-        const page = await pdfDoc.getPage(pageNum);
-        // compute scale so that the canvas fits container width and preserves aspect ratio, but respects max height
-        const containerWidth = Math.min(canvasContainer.clientWidth, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--max-width')) || canvasContainer.clientWidth);
-        // get page viewport at scale=1 to compute aspect ratio
-        const baseViewport = page.getViewport({ scale: 1.0 });
-        const aspect = baseViewport.height / baseViewport.width;
-        // target width is container width
-        let targetWidth = containerWidth;
-        let targetHeight = Math.round(targetWidth * aspect);
-        // cap height
-        if (targetHeight > MAX_PREVIEW_HEIGHT) {
-          const scaleDown = MAX_PREVIEW_HEIGHT / targetHeight;
-          targetHeight = MAX_PREVIEW_HEIGHT;
-          targetWidth = Math.round(targetWidth * scaleDown);
-        }
-        // render with scale to match pixel dimensions (device px)
-        const pixelRatio = window.devicePixelRatio || 1;
-        const renderScale = (targetWidth * pixelRatio) / baseViewport.width;
-        const viewport = page.getViewport({ scale: renderScale });
-        // set canvas physical size
-        pdfCanvas.width = Math.round(viewport.width);
-        pdfCanvas.height = Math.round(viewport.height);
-        // set CSS size to targetWidth/targetHeight (so it fits the container while canvas has device px sensitivity)
-        pdfCanvas.style.width = `${targetWidth}px`;
-        pdfCanvas.style.height = `${targetHeight}px`;
-
-        // prepare overlay canvas to match
-        overlayCanvas.width = pdfCanvas.width;
-        overlayCanvas.height = pdfCanvas.height;
-        overlayCanvas.style.width = pdfCanvas.style.width;
-        overlayCanvas.style.height = pdfCanvas.style.height;
-        overlayCanvas.style.left = `${pdfCanvas.offsetLeft}px`;
-        overlayCanvas.style.top = `${pdfCanvas.offsetTop}px`;
-
-        const ctx = pdfCanvas.getContext('2d');
-        ctx.clearRect(0,0,pdfCanvas.width,pdfCanvas.height);
-        await page.render({ canvasContext: ctx, viewport }).promise;
-
-        // cache rendered (we can cache the ImageData)
-        const imgData = ctx.getImageData(0,0,pdfCanvas.width,pdfCanvas.height);
-        renderedPages[pageNum] = imgData;
-        drawRenderedToCanvas(imgData);
-      } catch (err) {
-        console.error('Render failed:', err);
-        status.textContent = 'Error rendering page.';
-      } finally {
-        showProcessing(false);
-      }
+      return imageData;
     }
-
-    function drawRenderedToCanvas(imgData) {
-      const ctx = pdfCanvas.getContext('2d');
-      ctx.putImageData(imgData, 0, 0);
-      // clear overlay
-      const octx = overlayCanvas.getContext('2d');
-      octx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
-      // show page-related mask controls
-      maskControls.style.display = 'none';
-      currentRendered = imgData;
-      // update page indicator if available
-      pageIndicator.textContent = `${currentPage} / ${pdfDoc ? pdfDoc.numPages : '?'}`;
-    }
-
-    function showProcessing(show, text='') {
-      if (show) {
-        processingIndicator.style.display = 'inline-flex';
-        processingText.textContent = text || 'Processing...';
-      } else {
-        processingIndicator.style.display = 'none';
-      }
-    }
-
-    // Download current page PNG
-    function downloadCurrentPagePNG() {
-      if (!currentRendered) return;
-      const tmp = document.createElement('canvas');
-      tmp.width = currentRendered.width;
-      tmp.height = currentRendered.height;
-      tmp.getContext('2d').putImageData(currentRendered, 0, 0);
-      const a = document.createElement('a');
-      a.href = tmp.toDataURL('image/png');
-      a.download = `page${currentPage}.png`;
-      a.click();
-    }
-
-    // ---------- BOUNDING BOX DRAW & immediate segmentation ----------
-    // We'll attach mousedown/mousemove/mouseup to pdfCanvas and render a temporary bbox element inside canvasContainer.
-    let drawing = false;
-    let startX = 0, startY = 0;
-    let bboxEl = null;
-    pdfCanvas.addEventListener('mousedown', (e) => {
-      if (!pdfDoc) return;
-      drawing = true;
-      const rect = pdfCanvas.getBoundingClientRect();
-      startX = (e.clientX - rect.left) * (pdfCanvas.width / rect.width);
-      startY = (e.clientY - rect.top) * (pdfCanvas.height / rect.height);
-      // create bbox DOM element for visual feedback (CSS coords in pixels of displayed canvas)
-      if (bboxEl) bboxEl.remove();
-      bboxEl = document.createElement('div');
-      bboxEl.className = 'bbox';
-      // position using CSS display size (not canvas physical)
-      const cssLeft = e.clientX - rect.left + pdfCanvas.offsetLeft;
-      const cssTop = e.clientY - rect.top + pdfCanvas.offsetTop;
-      bboxEl.style.left = `${cssLeft}px`;
-      bboxEl.style.top = `${cssTop}px`;
-      bboxEl.style.width = '0px';
-      bboxEl.style.height = '0px';
-      canvasContainer.appendChild(bboxEl);
-    });
-
-    pdfCanvas.addEventListener('mousemove', (e) => {
-      if (!drawing || !bboxEl) return;
-      const rect = pdfCanvas.getBoundingClientRect();
-      const curX = (e.clientX - rect.left) * (pdfCanvas.width / rect.width);
-      const curY = (e.clientY - rect.top) * (pdfCanvas.height / rect.height);
-      const x = Math.min(startX, curX), y = Math.min(startY, curY);
-      const w = Math.abs(curX - startX), h = Math.abs(curY - startY);
-      // update bboxEl in CSS pixels (scale from canvas physical to displayed size)
-      const cssX = (x / pdfCanvas.width) * rect.width + pdfCanvas.offsetLeft;
-      const cssY = (y / pdfCanvas.height) * rect.height + pdfCanvas.offsetTop;
-      const cssW = (w / pdfCanvas.width) * rect.width;
-      const cssH = (h / pdfCanvas.height) * rect.height;
-      bboxEl.style.left = `${cssX}px`;
-      bboxEl.style.top = `${cssY}px`;
-      bboxEl.style.width = `${cssW}px`;
-      bboxEl.style.height = `${cssH}px`;
-    });
-
-    window.addEventListener('mouseup', async (e) => {
-      if (!drawing) return;
-      drawing = false;
-      if (!bboxEl) return;
-      // compute final box in canvas physical pixels
-      const rect = pdfCanvas.getBoundingClientRect();
-      const cssLeft = parseFloat(bboxEl.style.left) - pdfCanvas.offsetLeft;
-      const cssTop  = parseFloat(bboxEl.style.top) - pdfCanvas.offsetTop;
-      const cssW = parseFloat(bboxEl.style.width);
-      const cssH = parseFloat(bboxEl.style.height);
-      // convert CSS to canvas physical coordinates
-      const boxX = Math.round((cssLeft / rect.width) * pdfCanvas.width);
-      const boxY = Math.round((cssTop / rect.height) * pdfCanvas.height);
-      const boxW = Math.max(2, Math.round((cssW / rect.width) * pdfCanvas.width));
-      const boxH = Math.max(2, Math.round((cssH / rect.height) * pdfCanvas.height));
-      // remove visual bbox
-      bboxEl.remove(); bboxEl = null;
-      // run segmentation on the cropped region
-      try {
-        showProcessing(true, 'Segmenting selection...');
-        const result = await segmentBoxOnCanvas(pdfCanvas, { x: boxX, y: boxY, w: boxW, h: boxH }); // {mask, width, height}
-        // draw mask onto overlay in correct scaled position
-        drawMaskOnOverlay(result.mask, result.width, result.height, boxX, boxY);
-        // show mask controls (download / export)
-        showMaskControls(result.mask, result.width, result.height, boxX, boxY);
-      } catch (err) {
-        console.error('Segmentation failed', err);
-      } finally {
-        showProcessing(false);
-      }
-    });
-
-    function drawMaskOnOverlay(mask, mw, mh, offsetX, offsetY) {
-      overlayCanvas.getContext('2d').clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
-      const imgData = maskToImageData(mask, mw, mh, [0,120,255,180]);
-      // draw into a temp canvas then copy (keeps ImageData sizes correct)
-      const tmp = document.createElement('canvas');
-      tmp.width = mw; tmp.height = mh;
-      tmp.getContext('2d').putImageData(imgData, 0, 0);
-      // draw to overlay at offset (physical pixels)
-      const octx = overlayCanvas.getContext('2d');
-      octx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
-      octx.drawImage(tmp, offsetX, offsetY);
-    }
-
-    function showMaskControls(mask, mw, mh, offsetX, offsetY) {
-      maskControls.style.display = 'flex';
-      maskControls.innerHTML = ''; // reset
-      const dlBtn = document.createElement('button');
-      dlBtn.className = 'secondary';
-      dlBtn.textContent = 'Download mask PNG';
-      dlBtn.onclick = ()=> {
-        // create canvas with mask and download
-        const tmp = document.createElement('canvas');
-        tmp.width = mw; tmp.height = mh;
-        tmp.getContext('2d').putImageData(maskToImageData(mask, mw, mh, [0,120,255,180]), 0, 0);
-        const a = document.createElement('a');
-        a.href = tmp.toDataURL('image/png');
-        a.download = `page${currentPage}_mask.png`;
-        a.click();
-      };
-
-      const geoBtn = document.createElement('button');
-      geoBtn.className = 'secondary';
-      geoBtn.textContent = 'Export GeoJSON';
-      geoBtn.onclick = ()=> {
-        const geo = maskToGeoJSON(mask, mw, mh, offsetX, offsetY);
-        const blob = new Blob([JSON.stringify(geo, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `page${currentPage}_mask.geojson`;
-        a.click();
-      };
-
-      maskControls.appendChild(dlBtn);
-      maskControls.appendChild(geoBtn);
-    }
-
-    // Utility: convert binary mask into ImageData overlay (exported from sam.js but easy to call here if needed)
-    function maskToImageData(mask, width, height, overlayColor=[0,120,255,150]) {
-      const id = new ImageData(width, height);
-      for (let i = 0; i < width * height; i++) {
-        const v = mask[i];
-        id.data[i*4 + 0] = overlayColor[0];
-        id.data[i*4 + 1] = overlayColor[1];
-        id.data[i*4 + 2] = overlayColor[2];
-        id.data[i*4 + 3] = v ? overlayColor[3] : 0;
-      }
-      return id;
-    }
-
-    // Expose maskToGeoJSON to inline code via import's function (but if sam.js provides it, prefer that)
-    function maskToGeoJSON(mask, width, height, offsetX=0, offsetY=0) {
-      // call imported maskToGeoJSON if available
-      try {
-        return window && window._sam_maskToGeoJSON ? window._sam_maskToGeoJSON(mask,width,height,offsetX,offsetY) : (function fallback(){
-          // simple fallback: bounding box polygon
-          return {
-            type: 'FeatureCollection',
-            features: [{
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'Polygon',
-                coordinates: [[[offsetX, offsetY],[offsetX+width, offsetY],[offsetX+width, offsetY+height],[offsetX, offsetY+height],[offsetX, offsetY]]]
-              }
-            }]
-          };
-        })();
-      } catch(e){ console.error(e); return null; }
-    }
-
-    // wire keyboard: press Escape to cancel any active bbox element
-    window.addEventListener('keydown', (e)=> {
-      if (e.key === 'Escape' && bboxEl) { bboxEl.remove(); bboxEl = null; drawing = false; }
-    });
-
-    // expose for debugging
-    window._mapExtractDebug = { changePage, renderAndDisplayPage, renderedPages };
   </script>
+
 </body>
 </html>
