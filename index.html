@@ -1,142 +1,413 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <title>Map Extract</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin:0; padding:0; color:#333; }
-        .hero { background:#f0f7ff; padding:40px 20px; text-align:center; }
-        .hero h1 { font-size:48px; margin-bottom:20px; }
-        .hero p { font-size:20px; max-width:600px; margin:0 auto 30px; line-height:1.5; }
-        .upload-box {
-            border:2px dashed #0077ff; border-radius:12px;
-            padding:50px; max-width:400px; margin:20px auto;
-            text-align:center; background:#f9fbff; cursor:pointer;
-        }
-        .upload-box:hover { background:#f0f7ff; border-color:#005fcc; }
-        .upload-box p { margin:0 0 15px 0; font-size:18px; color:#0077ff; }
-        .upload-box button {
-            padding:10px 20px; font-size:16px; border-radius:6px;
-            border:none; background:#0077ff; color:white; cursor:pointer;
-        }
-        .upload-box button:hover { background:#005fcc; }
-
-        canvas {
-            display:block;
-            margin:20px auto;
-            border:1px solid #ccc;
-            cursor: crosshair;
-            background:white;
-        }
-    </style>
+<meta charset="utf-8" />
+<title>Map Extract — Georeference & Export</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root{--accent:#0077ff}
+  body{font-family:Arial, sans-serif; margin:0; padding:24px; background:#f6f7fb; color:#222}
+  .container{max-width:1200px;margin:0 auto;background:#fff;border-radius:10px;padding:18px;box-shadow:0 6px 30px rgba(10,20,40,0.06)}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  h1{margin:0;font-size:20px;color:#06345a}
+  .controls{display:flex;gap:8px;align-items:center}
+  button{background:var(--accent);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+  .muted-btn{background:#eef4ff;color:#06345a;border:1px solid #dbeafe}
+  main{display:grid;grid-template-columns:1fr 360px;gap:18px;margin-top:16px}
+  #left{min-height:420px}
+  #right{padding:8px;border-left:1px solid #f0f2f6}
+  .upload-box{border:2px dashed var(--accent);padding:16px;border-radius:10px;text-align:center;background:#f8fbff}
+  canvas{display:block;width:100%;max-height:75vh;border:1px solid #e6e9ef;background:#fff}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  td,th{padding:6px;border-bottom:1px solid #f0f2f6;font-size:13px}
+  .small{font-size:13px;color:#666}
+  .status{margin-top:8px;color:#333}
+  .input-inline{display:flex;gap:6px}
+  input[type="number"]{width:120px;padding:6px;border-radius:6px;border:1px solid #dbe3ee}
+  .secondary{background:#f2f6fb;color:#06345a;border:1px solid #dbeafe}
+  .danger{background:#ffecf0;color:#7a1220;border:1px solid #f5c6d0}
+  .gcp-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .hint{font-size:13px;color:#6b7280;margin-top:8px}
+</style>
 </head>
 <body>
-
-<section class="hero">
-    <h1>Map Extract</h1>
-    <p>Upload a map PDF and segment areas of interest.</p>
-
-    <div class="upload-box" id="upload-box">
-        <p>Drag & drop PDF here</p>
-        <button id="select-pdf">Select Your File</button>
-        <input type="file" id="pdf-upload" accept="application/pdf" style="display:none" />
+<div class="container">
+  <header>
+    <h1>Map Extract — Georeference + Export</h1>
+    <div class="controls">
+      <button id="btn-georef" class="muted-btn">Georeference Mode</button>
+      <button id="btn-clear-gcps" class="secondary">Clear GCPs</button>
+      <button id="btn-compute" class="secondary">Compute Transform</button>
+      <button id="btn-export-geojson" class="secondary">Export Selection GeoJSON</button>
     </div>
+  </header>
 
-    <canvas id="map-canvas"></canvas>
-</section>
+  <main>
+    <section id="left">
+      <div class="upload-box">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:center">
+          <button id="select-pdf">Select PDF</button>
+          <input type="file" id="file-input" accept="application/pdf" style="display:none" />
+        </div>
+        <div class="small" style="margin-top:8px">Upload a PDF map (first page used). Use Georeference Mode to add control points.</div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div style="position:relative">
+          <canvas id="pdf-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="status" id="status">Status: idle</div>
+    </section>
+
+    <aside id="right">
+      <h3 style="margin:0;font-size:15px">Ground Control Points (GCPs)</h3>
+      <div class="hint">Click on the map in Georeference Mode to add a pixel point; then enter the geographic coordinate (lon,lat).</div>
+
+      <div id="gcp-list" style="margin-top:10px">
+        <table id="gcp-table">
+          <thead><tr><th>px X</th><th>px Y</th><th>lon</th><th>lat</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:10px">
+        <label class="small">Model:</label>
+        <div style="margin-top:6px" class="input-inline">
+          <select id="model-select">
+            <option value="affine">Affine (3+ points)</option>
+            <option value="poly2">2nd-degree polynomial (6+ points)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="gcp-row">
+          <div class="small">RMS error:</div>
+          <div id="rms" style="font-weight:700;margin-left:8px">—</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="small">Instructions:</div>
+        <ol class="small">
+          <li>Add GCPs across the map (corners + interior)</li>
+          <li>Enter correct lon,lat for each</li>
+          <li>Choose model & Compute Transform</li>
+          <li>Draw rectangle on map to select area; Export to GeoJSON</li>
+        </ol>
+      </div>
+    </aside>
+  </main>
+</div>
 
 <!-- PDF.js -->
 <script src="./libs/pdf.js"></script>
-<script src="./libs/pdf.worker.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdf.worker.js';
+</script>
 
-<!-- SAM mock -->
+<!-- sam.js placeholder remains if you need later -->
 <script src="./libs/sam.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const fileInput = document.getElementById('pdf-upload');
-    const selectBtn = document.getElementById('select-pdf');
-    const canvas = document.getElementById('map-canvas');
-    const ctx = canvas.getContext('2d');
+/* ---------------------------
+  Utilities: small linear algebra
+   - build normal equations
+   - solve via Gaussian elimination (safe for small matrices)
+----------------------------*/
+function transpose(A){
+  const m=A.length, n=A[0].length; const AT = Array.from({length:n},_=>Array(m).fill(0));
+  for(let i=0;i<m;i++) for(let j=0;j<n;j++) AT[j][i]=A[i][j];
+  return AT;
+}
+function matMul(A,B){
+  const m=A.length, n=B[0].length, p=A[0].length;
+  const C=Array.from({length:m},_=>Array(n).fill(0));
+  for(let i=0;i<m;i++) for(let j=0;j<n;j++) { let s=0; for(let k=0;k<p;k++) s+=A[i][k]*B[k][j]; C[i][j]=s; }
+  return C;
+}
+function matVecMul(A,v){ return A.map(row => row.reduce((s,x,i)=>s + x * v[i],0)); }
 
-    selectBtn.addEventListener('click', () => fileInput.click());
+/* Solve linear system Ax = b using Gaussian elimination (A is square)
+   Returns array x or throws if singular. */
+function solveLinear(Aorig, borig){
+  const n=Aorig.length;
+  const A=Aorig.map(r=>r.slice());
+  const b=borig.slice();
+  for(let i=0;i<n;i++){
+    // partial pivot
+    let maxRow=i; for(let r=i+1;r<n;r++) if(Math.abs(A[r][i])>Math.abs(A[maxRow][i])) maxRow=r;
+    if(Math.abs(A[maxRow][i]) < 1e-12) throw new Error('Matrix singular or near-singular');
+    [A[i],A[maxRow]]=[A[maxRow],A[i]];
+    [b[i],b[maxRow]]=[b[maxRow],b[i]];
+    // normalize and eliminate
+    const pivot=A[i][i];
+    for(let j=i;j<n;j++) A[i][j]/=pivot;
+    b[i]/=pivot;
+    for(let r=0;r<n;r++){
+      if(r===i) continue;
+      const factor=A[r][i];
+      for(let j=i;j<n;j++) A[r][j] -= factor * A[i][j];
+      b[r] -= factor * b[i];
+    }
+  }
+  return b; // b now contains solution
+}
 
-    let pdfViewport;
-    let renderedImage = null; // ← store drawn PDF here
+/* Least squares via normal equations: solve min ||M p - y||^2
+   returns p = (M^T M)^{-1} M^T y
+*/
+function leastSquares(M, y){
+  const MT = transpose(M);
+  const MTM = matMul(MT, M);
+  const MTy = matVecMul(MT, y);
+  return solveLinear(MTM, MTy);
+}
 
-    fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+/* ---------------------------
+  Transform estimation
+----------------------------*/
+function fitAffine(gcpPairs){
+  // gcpPairs: [{x,y,X,Y}, ...] (pixel x,y -> geographic X,Y)
+  const M = gcpPairs.map(g => [1, g.x, g.y]); // N x 3
+  const X = gcpPairs.map(g=>g.X);
+  const Y = gcpPairs.map(g=>g.Y);
+  // solve for a = [a0,a1,a2], b = [b0,b1,b2]
+  const a = leastSquares(M, X);
+  const b = leastSquares(M, Y);
+  // return function to map pixel -> geo
+  const mapFn = (pt) => {
+    const Xv = a[0] + a[1]*pt.x + a[2]*pt.y;
+    const Yv = b[0] + b[1]*pt.x + b[2]*pt.y;
+    return {X:Xv, Y:Yv};
+  };
+  // compute residuals RMS
+  const res = gcpPairs.map(g=>{const p=mapFn(g); return Math.hypot(p.X - g.X, p.Y - g.Y)});
+  const rms = Math.sqrt(res.reduce((s,v)=>s+v*v,0)/res.length);
+  return {mapFn, params:{a,b}, rms};
+}
 
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-        const page = await pdf.getPage(1);
+function fitPoly2(gcpPairs){
+  // basis [1, x, y, x^2, xy, y^2]
+  const M = gcpPairs.map(g => [1, g.x, g.y, g.x*g.x, g.x*g.y, g.y*g.y]);
+  const X = gcpPairs.map(g=>g.X);
+  const Y = gcpPairs.map(g=>g.Y);
+  const a = leastSquares(M, X);
+  const b = leastSquares(M, Y);
+  const mapFn = (pt) => {
+    const v = [1, pt.x, pt.y, pt.x*pt.x, pt.x*pt.y, pt.y*pt.y];
+    const Xv = a.reduce((s,ai,i)=>s + ai * v[i], 0);
+    const Yv = b.reduce((s,bi,i)=>s + bi * v[i], 0);
+    return {X:Xv, Y:Yv};
+  };
+  const res = gcpPairs.map(g=>{const p=mapFn(g); return Math.hypot(p.X - g.X, p.Y - g.Y)});
+  const rms = Math.sqrt(res.reduce((s,v)=>s+v*v,0)/res.length);
+  return {mapFn, params:{a,b}, rms};
+}
 
-        pdfViewport = page.getViewport({ scale: 2 });
-        canvas.width = pdfViewport.width;
-        canvas.height = pdfViewport.height;
+/* ---------------------------
+  UI + PDF rendering + GCP handling
+----------------------------*/
+const selectPdfBtn = document.getElementById('select-pdf');
+const fileInput = document.getElementById('file-input');
+const canvas = document.getElementById('pdf-canvas');
+const ctx = canvas.getContext('2d');
+const status = document.getElementById('status');
+const gcpTableBody = document.querySelector('#gcp-table tbody');
+const btnGeoref = document.getElementById('btn-georef');
+const btnClearGCPs = document.getElementById('btn-clear-gcps');
+const btnCompute = document.getElementById('btn-compute');
+const modelSelect = document.getElementById('model-select');
+const rmsEl = document.getElementById('rms');
+const btnExportGeoJSON = document.getElementById('btn-export-geojson');
 
-        // Render PDF page ONCE into canvas
-        await page.render({ canvasContext: ctx, viewport: pdfViewport }).promise;
+let pageViewport = null;
+let renderedImage = null;
+let gcps = []; // array of {x,y,X,Y}
+let georefMode = false;
+let lastComputed = null; // {mapFn, params, rms, model}
 
-        // Save as an image for fast redrawing
-        renderedImage = new Image();
-        renderedImage.src = canvas.toDataURL();
-        await renderedImage.decode();
-    });
-
-    // === RECTANGLE SELECTION ===
-    let rect = null;
-    let isDragging = false;
-    let startX = 0, startY = 0;
-
-    canvas.addEventListener('mousedown', (e) => {
-        if (!renderedImage) return;
-
-        const r = canvas.getBoundingClientRect();
-        startX = e.clientX - r.left;
-        startY = e.clientY - r.top;
-
-        rect = { x: startX, y: startY, width: 0, height: 0 };
-        isDragging = true;
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-        if (!isDragging || !renderedImage) return;
-
-        const r = canvas.getBoundingClientRect();
-        const currentX = e.clientX - r.left;
-        const currentY = e.clientY - r.top;
-
-        rect.width = currentX - startX;
-        rect.height = currentY - startY;
-
-        // Redraw from stored PDF image
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(renderedImage, 0, 0);
-
-        // Draw red selection rectangle
-        ctx.strokeStyle = 'red';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-        ctx.fillStyle = 'rgba(255,0,0,0.2)';
-        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-    });
-
-    canvas.addEventListener('mouseup', async () => {
-        if (!isDragging) return;
-
-        isDragging = false;
-
-        console.log("Final rectangle:", rect);
-
-        if (rect && window.samSegment) {
-            const mask = await window.samSegment(canvas, rect);
-            console.log("Segmentation mask:", mask);
-        }
-    });
+selectPdfBtn.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', async (evt)=>{
+  const f = evt.target.files[0];
+  if(!f) return;
+  status.textContent = 'Loading PDF...';
+  try{
+    const ab = await f.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data:ab}).promise;
+    const page = await pdf.getPage(1);
+    pageViewport = page.getViewport({scale: 2});
+    canvas.width = pageViewport.width;
+    canvas.height = pageViewport.height;
+    await page.render({canvasContext: ctx, viewport: pageViewport}).promise;
+    // cache rendered image
+    renderedImage = new Image();
+    renderedImage.src = canvas.toDataURL();
+    await renderedImage.decode();
+    status.textContent = 'PDF loaded. Toggle Georeference Mode to add GCPs.';
+  }catch(err){
+    console.error(err);
+    status.textContent = 'Error loading PDF';
+  }
 });
-</script>
 
+/* GCP table helpers */
+function refreshGcpTable(){
+  gcpTableBody.innerHTML = '';
+  gcps.forEach((g,i)=>{
+    const row = document.createElement('tr');
+    // px x
+    const td1 = document.createElement('td'); td1.textContent = g.x.toFixed(1);
+    const td2 = document.createElement('td'); td2.textContent = g.y.toFixed(1);
+    const td3 = document.createElement('td'); // lon input
+    const inLon = document.createElement('input'); inLon.type='number'; inLon.step='any'; inLon.value = g.X ?? '';
+    inLon.style.width='100%';
+    inLon.addEventListener('change', ()=>{ g.X = parseFloat(inLon.value); });
+    td3.appendChild(inLon);
+    const td4 = document.createElement('td'); // lat input
+    const inLat = document.createElement('input'); inLat.type='number'; inLat.step='any'; inLat.value = g.Y ?? '';
+    inLat.style.width='100%';
+    inLat.addEventListener('change', ()=>{ g.Y = parseFloat(inLat.value); });
+    td4.appendChild(inLat);
+    const td5 = document.createElement('td');
+    const del = document.createElement('button'); del.textContent='Remove'; del.className='secondary';
+    del.onclick = ()=>{ gcps.splice(i,1); refreshGcpTable(); };
+    td5.appendChild(del);
+    row.appendChild(td1); row.appendChild(td2); row.appendChild(td3); row.appendChild(td4); row.appendChild(td5);
+    gcpTableBody.appendChild(row);
+  });
+}
+
+/* click-to-add GCP */
+canvas.addEventListener('click', (e)=>{
+  if(!georefMode || !renderedImage) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  // add with empty geographic coords for user to fill in
+  gcps.push({x,y, X: null, Y: null});
+  refreshGcpTable();
+  // draw marker
+  ctx.drawImage(renderedImage,0,0);
+  for(const g of gcps){
+    ctx.fillStyle = 'rgba(0,120,255,0.9)';
+    ctx.beginPath(); ctx.arc(g.x, g.y, 5,0,Math.PI*2); ctx.fill();
+  }
+});
+
+/* toggle georef mode */
+btnGeoref.addEventListener('click', ()=>{
+  georefMode = !georefMode;
+  btnGeoref.textContent = georefMode ? 'Exit Georeference Mode' : 'Georeference Mode';
+  btnGeoref.className = georefMode ? 'danger' : 'muted-btn';
+});
+
+/* clear GCPs */
+btnClearGCPs.addEventListener('click', ()=>{
+  gcps = []; refreshGcpTable();
+  if(renderedImage) ctx.drawImage(renderedImage,0,0);
+  lastComputed = null; rmsEl.textContent='—';
+});
+
+/* compute transform */
+btnCompute.addEventListener('click', ()=>{
+  // ensure we have numeric X,Y for each GCP
+  const valid = gcps.filter(g=>typeof g.X === 'number' && typeof g.Y === 'number');
+  if(valid.length < 3 && modelSelect.value === 'affine'){ alert('Affine needs 3 or more GCPs'); return; }
+  if(valid.length < 6 && modelSelect.value === 'poly2'){ alert('Poly2 needs 6 or more GCPs'); return; }
+  try{
+    let res = null;
+    if(modelSelect.value === 'affine'){
+      res = fitAffine(valid);
+    } else {
+      res = fitPoly2(valid);
+    }
+    lastComputed = res;
+    rmsEl.textContent = res.rms.toFixed(3) + ' (units of geo coords)';
+    status.textContent = 'Transform computed. RMS error shown.';
+    // visualize transformed GCPs overlay
+    if(renderedImage){ ctx.drawImage(renderedImage,0,0); 
+      ctx.fillStyle='rgba(0,200,80,0.9)';
+      for(const g of valid){
+        const p = res.mapFn({x:g.x,y:g.y});
+        // draw small cross to indicate geo-projection result in pixel space? we only map pixel->geo so can't plot geo results back without inverse; skip plotting geo points.
+        // Instead mark original pixel positions:
+        ctx.beginPath(); ctx.arc(g.x,g.y,5,0,Math.PI*2); ctx.fill();
+      }
+    }
+  }catch(err){
+    alert('Compute failed: '+err);
+    console.error(err);
+  }
+});
+
+/* Rectangle drawing and storage */
+let selecting=false, sX=0,sY=0, curRect=null;
+canvas.addEventListener('mousedown', (e)=>{
+  if(georefMode) return; // avoid conflict
+  if(!renderedImage) return;
+  selecting = true;
+  const r = canvas.getBoundingClientRect();
+  sX = e.clientX - r.left; sY = e.clientY - r.top;
+  curRect = {x:sX,y:sY,w:0,h:0};
+});
+canvas.addEventListener('mousemove', (e)=>{
+  if(!selecting || !renderedImage) return;
+  const r = canvas.getBoundingClientRect();
+  const cx = e.clientX - r.left, cy = e.clientY - r.top;
+  curRect.w = cx - sX; curRect.h = cy - sY;
+  // redraw
+  ctx.drawImage(renderedImage,0,0);
+  if(gcps.length) for(const g of gcps){ ctx.fillStyle='rgba(0,120,255,0.9)'; ctx.beginPath(); ctx.arc(g.x,g.y,4,0,Math.PI*2); ctx.fill(); }
+  ctx.strokeStyle='red'; ctx.lineWidth=2;
+  ctx.strokeRect(curRect.x,curRect.y,curRect.w,curRect.h);
+  ctx.fillStyle='rgba(255,0,0,0.15)'; ctx.fillRect(curRect.x,curRect.y,curRect.w,curRect.h);
+});
+canvas.addEventListener('mouseup', (e)=>{
+  if(!selecting) return;
+  selecting=false;
+  status.textContent = 'Selection ready. Click "Export Selection GeoJSON" to download (requires transform).';
+});
+
+/* Export selected rectangle polygon as GeoJSON (pixel->geo) */
+btnExportGeoJSON.addEventListener('click', ()=>{
+  if(!curRect){ alert('No selection rectangle. Draw a rectangle on the map first.'); return; }
+  if(!lastComputed || !lastComputed.mapFn){ alert('No computed transform. Add GCPs and compute transform first.'); return; }
+  // get polygon corners in pixel coords (use ccw)
+  const x = curRect.x, y = curRect.y, w = curRect.w, h = curRect.h;
+  const corners = [
+    {x:x, y:y},
+    {x:x+w, y:y},
+    {x:x+w, y:y+h},
+    {x:x, y:y+h},
+    {x:x, y:y}
+  ];
+  // map to geo coords
+  const coords = corners.map(pt => {
+    const geo = lastComputed.mapFn(pt);
+    return [geo.X, geo.Y];
+  });
+  const feature = {
+    type:'Feature',
+    properties:{source:'map-extract', model: modelSelect.value, rms: lastComputed.rms},
+    geometry:{type:'Polygon', coordinates:[coords]}
+  };
+  const fc = { type:'FeatureCollection', features:[feature] };
+  const blob = new Blob([JSON.stringify(fc,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'selection.geojson';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+/* initial draw helper */
+function redrawBase(){
+  if(renderedImage) ctx.drawImage(renderedImage,0,0);
+}
+</script>
 </body>
 </html>
