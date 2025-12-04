@@ -1,213 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Map Extract</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            color: #333;
-        }
-
-        /* HERO SECTION */
-        .hero {
-            background: #f0f7ff;
-            padding: 80px 20px;
-            text-align: center;
-        }
-
-        .hero h1 {
-            font-size: 48px;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-
-        .hero p {
-            font-size: 20px;
-            max-width: 600px;
-            margin: 0 auto 30px;
-            line-height: 1.5;
-        }
-
-        .upload-box {
-            border: 2px dashed #0077ff;
-            border-radius: 12px;
-            padding: 50px;
-            max-width: 400px;
-            margin: 0 auto;
-            text-align: center;
-            background: #f9fbff;
-            cursor: pointer;
-            transition: background 0.2s, border-color 0.2s;
-        }
-
-        .upload-box:hover {
-            background: #f0f7ff;
-            border-color: #005fcc;
-        }
-
-        .upload-box p {
-            margin: 0 0 15px 0;
-            font-size: 18px;
-            color: #0077ff;
-        }
-
-        .upload-box button {
-            padding: 12px 24px;
-            font-size: 16px;
-            border-radius: 6px;
-            border: none;
-            background: #0077ff;
-            color: white;
-            cursor: pointer;
-        }
-
-        .upload-box button:hover {
-            background: #005fcc;
-        }
-
-        /* PDF Preview */
-        #pdf-canvas {
-            display: block;
-            margin: 20px auto;
-            border: 1px solid #ccc;
-            max-width: 90%;
-            max-height: 600px;
-        }
-
-        /* HOW IT WORKS */
-        .how-it-works {
-            padding: 60px 20px;
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .how-it-works h2 {
-            font-size: 36px;
-            margin-bottom: 50px;
-            text-align: center;
-        }
-
-        .steps {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            justify-items: center;
-        }
-
-        .step {
-            background: #fafafa;
-            padding: 25px;
-            border-radius: 12px;
-            border: 1px solid #eee;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-
-        .step h3 {
-            margin-bottom: 10px;
-        }
+        body { font-family: Arial, sans-serif; margin:0; padding:0; color:#333; }
+        .hero { background:#f0f7ff; padding:40px 20px; text-align:center; }
+        .hero h1 { font-size:48px; margin-bottom:20px; }
+        .hero p { font-size:20px; max-width:600px; margin:0 auto 30px; line-height:1.5; }
+        .upload-box { border:2px dashed #0077ff; border-radius:12px; padding:50px; max-width:400px; margin:20px auto; text-align:center; background:#f9fbff; cursor:pointer; }
+        .upload-box:hover { background:#f0f7ff; border-color:#005fcc; }
+        .upload-box p { margin:0 0 15px 0; font-size:18px; color:#0077ff; }
+        .upload-box button { padding:10px 20px; font-size:16px; border-radius:6px; border:none; background:#0077ff; color:white; cursor:pointer; }
+        .upload-box button:hover { background:#005fcc; }
+        canvas { display:block; margin:20px auto; border:1px solid #ccc; }
     </style>
 </head>
 <body>
 
-    <!-- HERO SECTION -->
-    <section class="hero">
-        <h1>Map Extract</h1>
-        <p>Upload any map image and get clean, accurate extracted data — ready for GIS, analysis, or digitization.</p>
+<section class="hero">
+    <h1>Map Extract</h1>
+    <p>Upload a map PDF and segment areas of interest.</p>
 
-        <div class="upload-box" id="upload-box">
-            <p>Drag & drop PDF here</p>
-            <button id="select-pdf">Select Your File</button>
-            <input type="file" id="pdf-upload" accept=".pdf" style="display:none;">
-        </div>
+    <div class="upload-box" id="upload-box">
+        <p>Drag & drop PDF here</p>
+        <button id="select-pdf">Select Your File</button>
+        <input type="file" id="pdf-upload" accept="application/pdf" style="display:none" />
+    </div>
 
-        <canvas id="pdf-canvas"></canvas>
-    </section>
+    <canvas id="map-canvas"></canvas>
+</section>
 
-    <!-- HOW IT WORKS -->
-    <section class="how-it-works">
-        <h2>How It Works</h2>
-        <div class="steps">
-            <div class="step">
-                <h3>1. Upload Your Map</h3>
-                <p>Drag and drop or upload any map image — topographic, historical, scanned, or printed.</p>
-            </div>
-            <div class="step">
-                <h3>2. We Extract the Data</h3>
-                <p>Our processing identifies features, lines, shapes, and text. No software install required.</p>
-            </div>
-            <div class="step">
-                <h3>3. Download Clean Data</h3>
-                <p>Get your extracted output as a clean image or data-ready file.</p>
-            </div>
-        </div>
-    </section>
+<!-- PDF.js local libs -->
+<script src="./libs/pdf.js"></script>
+<script src="./libs/pdf.worker.js"></script>
 
-    <!-- PDF.js -->
-    <script src="./libs/pdf.js"></script>
-    <script src="./libs/pdf.worker.js"></script>
+<!-- SAM script -->
+<script src="./libs/sam.js"></script>
 
-    <!-- SAM Segmentation -->
-    <script src="./libs/sam.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const fileInput = document.getElementById('pdf-upload');
+    const selectBtn = document.getElementById('select-pdf');
+    const uploadBox = document.getElementById('upload-box');
+    const canvas = document.getElementById('map-canvas');
+    const ctx = canvas.getContext('2d');
 
-    <script>
-        // PDF.js Worker setup
-        pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdf.worker.js';
+    selectBtn.addEventListener('click', () => fileInput.click());
 
-        const selectBtn = document.getElementById('select-pdf');
-        const fileInput = document.getElementById('pdf-upload');
-        const uploadBox = document.getElementById('upload-box');
-        const canvas = document.getElementById('pdf-canvas');
-        const ctx = canvas.getContext('2d');
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-        selectBtn.addEventListener('click', () => fileInput.click());
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({scale: 2});
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
 
-        fileInput.addEventListener('change', handleFile);
+        await page.render({canvasContext: ctx, viewport: viewport}).promise;
 
-        async function handleFile(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const processingMsg = document.createElement('p');
-            processingMsg.textContent = 'Processing PDF...';
-            uploadBox.appendChild(processingMsg);
-
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                const page = await pdf.getPage(1);
-                const viewport = page.getViewport({ scale: 2 });
-
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-
-                await page.render({ canvasContext: ctx, viewport }).promise;
-
-                processingMsg.remove();
-
-                // Enable segmentation on click
-                canvas.addEventListener('click', async function segmentHandler(event) {
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    try {
-                        const mask = await samSegment(imageData); // from sam.js
-                        // Draw segmentation mask
-                        ctx.putImageData(mask, 0, 0);
-                    } catch(err) {
-                        alert('Segmentation failed: ' + err.message);
-                        console.error(err);
-                    }
-                    // Remove this click listener to prevent multiple triggers
-                    canvas.removeEventListener('click', segmentHandler);
-                });
-
-            } catch (err) {
-                processingMsg.textContent = 'Error processing PDF. Please try another file.';
-                console.error(err);
-            }
-        }
-    </script>
+        // Enable segmentation on click
+        canvas.addEventListener('click', async (ev) => {
+            const rect = {
+                x: 50, y: 50,
+                width: viewport.width/3,
+                height: viewport.height/3
+            };
+            const mask = await window.samSegment(canvas, rect);
+            console.log('Segmentation mask:', mask);
+        }, { once: true });
+    });
+});
+</script>
 </body>
 </html>
