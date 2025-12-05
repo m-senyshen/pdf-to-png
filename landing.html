@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Map Extract — Convert Maps to Usable Data</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        background: #ffffff;
+        color: #111;
+        line-height: 1.6;
+    }
+
+    header {
+        padding: 24px 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    header h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+    }
+
+    header a {
+        text-decoration: none;
+        color: #0070f3;
+        font-weight: 500;
+    }
+
+    /* HERO SECTION */
+    .hero {
+        text-align: center;
+        padding: 120px 20px 100px;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .hero h2 {
+        font-size: 48px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        letter-spacing: -1px;
+    }
+
+    .hero p {
+        font-size: 20px;
+        max-width: 650px;
+        margin: 0 auto 40px;
+        color: #444;
+    }
+
+    .cta-btn {
+        background: #111;
+        color: #fff;
+        border: none;
+        padding: 16px 34px;
+        font-size: 18px;
+        font-weight: 600;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .cta-btn:hover {
+        background: #222;
+    }
+
+    /* SECTION */
+    section {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 80px 20px;
+    }
+
+    section h3 {
+        text-align: center;
+        font-size: 32px;
+        margin-bottom: 40px;
+    }
+
+    /* Icons */
+    .steps {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 40px;
+        text-align: center;
+    }
+
+    .steps div {
+        padding: 20px;
+    }
+
+    .steps img {
+        width: 60px;
+        opacity: 0.8;
+        margin-bottom: 12px;
+    }
+
+    /* Features */
+    .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 40px;
+        margin-top: 40px;
+        text-align: left;
+    }
+
+    .feature-box {
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #eee;
+    }
+
+    .feature-box h4 {
+        margin-top: 0;
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    footer {
+        padding: 40px;
+        text-align: center;
+        color: #777;
+        margin-top: 40px;
+        border-top: 1px solid #eee;
+        font-size: 14px;
+    }
+
+</style>
+</head>
+<body>
+
+<header>
+    <h1>Map Extract</h1>
+    <a href="index.html">Launch App →</a>
+</header>
+
+
+<!-- HERO -->
+<div class="hero">
+    <h2>Turn Any Map into Usable Data</h2>
+    <p>Map Extract lets you upload a scanned map or PDF, georeference it, extract features like water bodies, and export to GIS formats like GeoJSON and Shapefile.</p>
+
+    <a href="index.html">
+        <button class="cta-btn">Launch Map Extract</button>
+    </a>
+</div>
+
+
+<!-- HOW IT WORKS -->
+<section>
+    <h3>How It Works</h3>
+
+    <div class="steps">
+        <div>
+            <img src="https://img.icons8.com/ios-filled/100/000000/upload.png" alt="">
+            <h4>1. Upload Your Map</h4>
+            <p>Upload any scanned or digital map in PDF format.</p>
+        </div>
+
+        <div>
+            <img src="https://img.icons8.com/ios-filled/100/000000/map.png" alt="">
+            <h4>2. Extract Features</h4>
+            <p>Isolate water, landforms, contours, and more — automatically.</p>
+        </div>
+
+        <div>
+            <img src="https://img.icons8.com/ios-filled/100/000000/geo-fence.png" alt="">
+            <h4>3. Export Data</h4>
+            <p>Download GIS-ready data (GeoJSON or SHP) for your projects.</p>
+        </div>
+    </div>
+</section>
+
+
+<!-- FEATURES -->
+<section>
+    <h3>Features</h3>
+
+    <div class="features">
+
+        <div class="feature-box">
+            <h4>Water Body Extraction</h4>
+            <p>
+                Automatically convert lakes and rivers from scanned maps into real GIS polygons.
+            </p>
+        </div>
+
+        <div class="feature-box">
+            <h4>Georeferencing Tools</h4>
+            <p>
+                Add ground control points and compute affine transforms without desktop GIS software.
+            </p>
+        </div>
+
+        <div class="feature-box">
+            <h4>Export to GIS</h4>
+            <p>
+                Export your extracted shapes to GeoJSON or Shapefile for use in QGIS, ArcGIS, and more.
+            </p>
+        </div>
+
+        <div class="feature-box">
+            <h4>Legend-Aware AI (Coming Soon)</h4>
+            <p>
+                Automatically detect feature types directly from the map legend using AI.
+            </p>
+        </div>
+
+    </div>
+</section>
+
+
+<footer>
+    © 2025 Map Extract — Built by Matt Senyshen  
+</footer>
+
+</body>
+</html>
