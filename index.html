@@ -18,7 +18,17 @@
   main { display:grid; grid-template-columns:1fr 360px; gap:18px; margin-top:16px; }
   #left { min-height:420px; }
   .upload-box { border:2px dashed var(--accent); padding:16px; border-radius:10px; text-align:center; background:#f8fbff; }
-  canvas { display:block; width:100%; max-height:75vh; border:1px solid #e6e9ef; background:#fff; cursor:crosshair; }
+
+  /* ⭐ FIXED CANVAS ASPECT RATIO — no stretching */
+  canvas {
+    display: block;
+    max-width: 100%;   /* shrink if needed */
+    height: auto;      /* maintain correct aspect ratio */
+    border: 1px solid #e6e9ef;
+    background: #fff;
+    cursor: crosshair;
+  }
+
   table { width:100%; border-collapse:collapse; margin-top:8px; }
   td,th { padding:6px; border-bottom:1px solid #f0f2f6; font-size:13px; }
   .small { font-size:13px; color:#666; }
@@ -51,7 +61,7 @@
 
     <aside id="right">
 
-      <!-- 📘 Instructions Panel -->
+      <!-- ⭐ Instructions Section -->
       <div id="instructions-section" style="margin-bottom:20px;">
         <h3 id="instructions-toggle" style="cursor:pointer; margin:0;">
           📘 Instructions ▼
@@ -71,14 +81,13 @@
           Click <em>Compute Transform</em>. RMS error shows how good the fit is.</p>
 
           <p><strong>5️⃣ Extract Water</strong><br>
-          Click <em>Extract Water</em> to detect lakes/rivers.</p>
+          Click <em>Extract Water</em> to detect lakes and rivers.</p>
 
           <p><strong>6️⃣ Export Water Layer</strong><br>
           Click <em>Export Water GeoJSON</em> to download the GIS dataset.</p>
         </div>
       </div>
 
-      <!-- GCP Section -->
       <h3>Ground Control Points</h3>
       <div class="small">Click the map in Georeference Mode to add pixel points, then enter lon/lat.</div>
 
@@ -104,7 +113,6 @@
 
       <hr style="margin:20px 0"/>
 
-      <!-- Water Extraction Panel -->
       <div>
         <h3>Water Extraction</h3>
         <button id="btn-extract-water" class="secondary" style="margin-bottom:6px;">Extract Water</button>
@@ -137,23 +145,19 @@
 <script src="./libs/sam.js"></script>
 
 <script>
-/* ---------------------------------------------------
-   INSTRUCTIONS COLLAPSE TOGGLE
---------------------------------------------------- */
+/* ---------- Instructions Toggle ---------- */
 const instrToggle = document.getElementById("instructions-toggle");
 const instrContent = document.getElementById("instructions-content");
 
 instrToggle.onclick = () => {
-  const isHidden = instrContent.style.display === "none";
-  instrContent.style.display = isHidden ? "block" : "none";
-  instrToggle.textContent = isHidden ? "📘 Instructions ▼" : "📘 Instructions ▲";
+  const hidden = instrContent.style.display === "none";
+  instrContent.style.display = hidden ? "block" : "none";
+  instrToggle.textContent = hidden ? "📘 Instructions ▼" : "📘 Instructions ▲";
 };
 
-
 /* ---------------------------------------------------
-   EVERYTHING BELOW THIS POINT IS YOUR EXISTING LOGIC
-   (georeferencing, water extraction, export, etc.)
-   — unchanged from previous working build —
+   (ALL YOUR EXISTING APPLICATION LOGIC BELOW)
+   Nothing has been changed from the prior working version.
 --------------------------------------------------- */
 
 /* ---------- Linear Algebra Utilities ---------- */
@@ -193,7 +197,7 @@ function leastSquares(M,y){
   return solveLinear(MTM,MTy);
 }
 
-/* ---------- Transform Fitting ---------- */
+/* ---------- Transform fitting (Affine & Poly2) ---------- */
 function fitAffine(gcps){
   const M=gcps.map(g=>[1,g.x,g.y]);
   const X=gcps.map(g=>g.X);
@@ -218,7 +222,7 @@ function fitPoly2(gcps){
   return {mapFn,rms};
 }
 
-/* ---------- App State ---------- */
+/* ---------- Application State ---------- */
 const canvas=document.getElementById("pdf-canvas");
 const ctx=canvas.getContext("2d");
 const fileInput=document.getElementById("file-input");
@@ -274,7 +278,7 @@ function redrawBase(){
   if(showWaterOverlay) drawWaterOverlay();
 }
 
-/* ---------- GCP Handling ---------- */
+/* ---------- GCP Interaction ---------- */
 btnGeoref.onclick=()=>{
   georefMode=!georefMode;
   btnGeoref.textContent=georefMode?"Exit Georeference Mode":"Georeference Mode";
@@ -344,10 +348,7 @@ btnCompute.onclick=()=>{
   }catch(err){ alert("Failed: "+err); }
 };
 
-/* ---------------------------------------------------
-   Water Extraction Logic (unchanged)
---------------------------------------------------- */
-
+/* ---------- Water detection & polygon extraction ---------- */
 function isWaterPixel(r,g,b){
   return (b>120 && b>r+25 && b>g+15);
 }
@@ -416,6 +417,7 @@ function extractWaterRegions(mask,width,height){
         }
 
         if(regionIndices.length < 50) continue;
+
         const regionSet=new Set(regionIndices);
         const boundary=[];
         for(const i of regionIndices){
@@ -434,7 +436,7 @@ function extractWaterRegions(mask,width,height){
 
         if(boundary.length < 3) continue;
 
-        let sumX=0, sumY=0;
+        let sumX=0,sumY=0;
         for(const p of boundary){sumX+=p.x; sumY+=p.y;}
         const cx=sumX/boundary.length, cy=sumY/boundary.length;
 
@@ -445,11 +447,13 @@ function extractWaterRegions(mask,width,height){
         withAngle.sort((a,b)=>a.angle-b.angle);
 
         let poly=withAngle.map(p=>[p.x,p.y]);
-        poly=simplifyRDP(poly,1.5);
+        poly=simplifyRDP(poly, 1.5);
 
         if(poly.length>2){
           const first=poly[0], last=poly[poly.length-1];
-          if(first[0]!==last[0] || first[1]!==last[1]) poly.push([first[0],first[1]]);
+          if(first[0]!==last[0] || first[1]!==last[1]){
+            poly.push([first[0],first[1]]);
+          }
           regions.push(poly);
         }
       }
@@ -470,7 +474,7 @@ function pixelPolyToFeature(poly,mapFn){
   };
 }
 
-/* ---------- Water Extraction Button ---------- */
+/* ---------- Water Buttons ---------- */
 btnExtract.onclick=()=>{
   if(!renderedImage) return alert("Load a PDF first.");
   if(!lastComputed) return alert("Compute transform first.");
@@ -488,7 +492,6 @@ btnExtract.onclick=()=>{
   status.textContent=`Water extraction complete (${polys.length} regions).`;
 };
 
-/* ---------- Clear Water Button ---------- */
 btnClearWater.onclick=()=>{
   waterPixelPolys=[];
   waterFeatures=[];
@@ -497,13 +500,11 @@ btnClearWater.onclick=()=>{
   status.textContent="Water cleared.";
 };
 
-/* ---------- Toggle Overlay ---------- */
 chkOverlay.onchange = (e)=>{
   showWaterOverlay = e.target.checked;
   redrawBase();
 };
 
-/* ---------- Draw Water Polygons ---------- */
 function drawWaterOverlay(){
   if(!waterPixelPolys.length) return;
   ctx.strokeStyle="rgba(0,120,255,0.9)";
@@ -523,14 +524,15 @@ function drawWaterOverlay(){
   }
 }
 
-/* ---------- Export GeoJSON ---------- */
 btnExport.onclick=()=>{
   if(waterFeatures.length===0) return alert("No water to export.");
   const fc={type:"FeatureCollection",features:waterFeatures};
   const blob=new Blob([JSON.stringify(fc,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
-  a.href=url; a.download="water.geojson"; a.click();
+  a.href=url;
+  a.download="water.geojson";
+  a.click();
   URL.revokeObjectURL(url);
 };
 </script>
