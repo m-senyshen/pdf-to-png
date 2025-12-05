@@ -5,25 +5,25 @@
 <title>Map Extract — Georeference & Water Extraction</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
-  :root{--accent:#0077ff}
-  body{font-family:Arial, sans-serif; margin:0; padding:24px; background:#f6f7fb; color:#222}
-  .container{max-width:1200px;margin:0 auto;background:#fff;border-radius:10px;padding:18px;box-shadow:0 6px 30px rgba(10,20,40,0.06)}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  h1{margin:0;font-size:20px;color:#06345a}
-  .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  button{background:var(--accent);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
-  .muted-btn{background:#eef4ff;color:#06345a;border:1px solid #dbeafe}
-  .secondary{background:#f2f6fb;color:#06345a;border:1px solid #dbeafe}
-  .danger{background:#ffe9ec;color:#7a1220;border:1px solid #e9b5be}
-  main{display:grid;grid-template-columns:1fr 360px;gap:18px;margin-top:16px}
-  #left{min-height:420px}
-  .upload-box{border:2px dashed var(--accent);padding:16px;border-radius:10px;text-align:center;background:#f8fbff}
-  canvas{display:block;width:100%;max-height:75vh;border:1px solid #e6e9ef;background:#fff}
-  table{width:100%;border-collapse:collapse;margin-top:8px}
-  td,th{padding:6px;border-bottom:1px solid #f0f2f6;font-size:13px}
-  .small{font-size:13px;color:#666}
-  .status{margin-top:8px;color:#333}
-  input[type="number"]{width:120px;padding:6px;border-radius:6px;border:1px solid #dbe3ee}
+  :root { --accent:#0077ff; }
+  body { font-family:Arial, sans-serif; margin:0; padding:24px; background:#f6f7fb; color:#222; }
+  .container { max-width:1200px; margin:0 auto; background:#fff; border-radius:10px; padding:18px; box-shadow:0 6px 30px rgba(10,20,40,0.06); }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  h1 { margin:0; font-size:20px; color:#06345a; }
+  .controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  button { background:var(--accent); color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600; }
+  .muted-btn { background:#eef4ff; color:#06345a; border:1px solid #dbeafe; }
+  .secondary { background:#f2f6fb; color:#06345a; border:1px solid #dbeafe; }
+  .danger { background:#ffe9ec; color:#7a1220; border:1px solid #e9b5be; }
+  main { display:grid; grid-template-columns:1fr 360px; gap:18px; margin-top:16px; }
+  #left { min-height:420px; }
+  .upload-box { border:2px dashed var(--accent); padding:16px; border-radius:10px; text-align:center; background:#f8fbff; }
+  canvas { display:block; width:100%; max-height:75vh; border:1px solid #e6e9ef; background:#fff; cursor:crosshair; }
+  table { width:100%; border-collapse:collapse; margin-top:8px; }
+  td,th { padding:6px; border-bottom:1px solid #f0f2f6; font-size:13px; }
+  .small { font-size:13px; color:#666; }
+  .status { margin-top:8px; color:#333; }
+  input[type="number"] { width:120px; padding:6px; border-radius:6px; border:1px solid #dbe3ee; }
 </style>
 </head>
 <body>
@@ -34,7 +34,6 @@
       <button id="btn-georef" class="muted-btn">Georeference Mode</button>
       <button id="btn-clear-gcps" class="secondary">Clear GCPs</button>
       <button id="btn-compute" class="secondary">Compute Transform</button>
-      <button id="btn-extract-water" class="secondary">Extract Water</button>
       <button id="btn-export-geojson" class="secondary">Export Water GeoJSON</button>
     </div>
   </header>
@@ -51,16 +50,18 @@
     </section>
 
     <aside id="right">
-      <h3 style="margin-top:0">Ground Control Points (GCPs)</h3>
-      <div class="small">Click on the map in Georeference Mode to add pixel points; then enter lon/lat.</div>
+      <h3 style="margin-top:0">Ground Control Points</h3>
+      <div class="small">Click the map in Georeference Mode to add pixel points, then enter lon/lat.</div>
 
       <table id="gcp-table">
-        <thead><tr><th>px X</th><th>px Y</th><th>lon</th><th>lat</th><th></th></tr></thead>
+        <thead>
+          <tr><th>px X</th><th>px Y</th><th>lon</th><th>lat</th><th></th></tr>
+        </thead>
         <tbody></tbody>
       </table>
 
       <div style="margin-top:10px">
-        <label class="small">Model:</label><br>
+        <label class="small">Transform Model:</label><br>
         <select id="model-select">
           <option value="affine">Affine (3+ points)</option>
           <option value="poly2">2nd-degree Polynomial (6+ points)</option>
@@ -72,93 +73,78 @@
         <div id="rms" style="font-weight:700;margin-top:4px">—</div>
       </div>
 
-      <div style="margin-top:16px">
-        <div class="small"><strong>Water Extraction (MVP)</strong></div>
-        <div class="small">
-          1. Georeference the map<br/>
-          2. Click “Extract Water” to detect blue areas<br/>
-          3. Export water polygons as GeoJSON and load in QGIS
+      <hr style="margin:20px 0"/>
+
+      <!-- ⭐ NEW WATER EXTRACTION UI PANEL ⭐ -->
+      <div>
+        <h3>Water Extraction</h3>
+
+        <button id="btn-extract-water" class="secondary" style="margin-bottom:6px;">Extract Water</button>
+        <button id="btn-clear-water" class="secondary">Clear Water</button>
+
+        <div style="margin-top:12px;">
+          <label>
+            <input type="checkbox" id="chk-water-overlay" checked />
+            Show Water Overlay
+          </label>
+        </div>
+
+        <div class="small" style="margin-top:8px;">
+          Water features detected:
+          <span id="water-count" style="font-weight:bold;">0</span>
         </div>
       </div>
+
     </aside>
   </main>
 </div>
 
 <!-- PDF.js -->
 <script src="./libs/pdf.js"></script>
-<script>
-pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
-</script>
+<script> pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js"; </script>
 
-<!-- (Optional) SAM stub for later -->
+<!-- SAM stub file (not yet used for water extraction) -->
 <script src="./libs/sam.js"></script>
 
 <script>
-/* ========= LINEAR ALGEBRA HELPERS ========= */
-function transpose(A){return A[0].map((_,i)=>A.map(row=>row[i]));}
-function matMul(A,B){
-  const m=A.length,n=B[0].length,p=B.length;
-  const R=Array.from({length:m},()=>Array(n).fill(0));
-  for(let i=0;i<m;i++)for(let j=0;j<n;j++)for(let k=0;k<p;k++)R[i][j]+=A[i][k]*B[k][j];
-  return R;
-}
-function matVecMul(A,v){return A.map(row=>row.reduce((s,x,i)=>s+x*v[i],0));}
+/* ---------- Linear Algebra Utilities (unchanged) ---------- */
+function transpose(A){return A[0].map((_,i)=>A.map(r=>r[i]));}
+function matMul(A,B){const R=Array.from({length:A.length},()=>Array(B[0].length).fill(0));
+  for(let i=0;i<A.length;i++)for(let j=0;j<B[0].length;j++)for(let k=0;k<B.length;k++)R[i][j]+=A[i][k]*B[k][j];
+  return R;}
+function matVecMul(A,v){return A.map(r=>r.reduce((s,x,i)=>s+x*v[i],0));}
 function solveLinear(A,b){
-  A=A.map(r=>r.slice()); b=b.slice();
-  const n=A.length;
+  A=A.map(r=>r.slice()); b=b.slice(); const n=A.length;
   for(let i=0;i<n;i++){
-    let max=i;
-    for(let r=i+1;r<n;r++) if(Math.abs(A[r][i])>Math.abs(A[max][i])) max=r;
-    if(max!==i){[A[i],A[max]]=[A[max],A[i]];[b[i],b[max]]=[b[max],b[i]];}
-    const pivot=A[i][i];
-    if(Math.abs(pivot)<1e-12) throw new Error("Singular matrix");
-    for(let j=i;j<n;j++)A[i][j]/=pivot;
-    b[i]/=pivot;
-    for(let r=0;r<n;r++){
-      if(r===i)continue;
-      const f=A[r][i];
-      for(let j=i;j<n;j++)A[r][j]-=f*A[i][j];
-      b[r]-=f*b[i];
-    }
-  }
-  return b;
-}
-function leastSquares(M,y){
-  const MT=transpose(M);
-  const MTM=matMul(MT,M);
-  const MTy=matVecMul(MT,y);
-  return solveLinear(MTM,MTy);
-}
+    let max=i; for(let r=i+1;r<n;r++) if(Math.abs(A[r][i])>Math.abs(A[max][i])) max=r;
+    if(max!==i){[A[i],A[max]]=[A[max],A[i]]; [b[i],b[max]]=[b[max],b[i]];}
+    const pivot=A[i][i]; if(Math.abs(pivot)<1e-12) throw("Singular");
+    for(let j=i;j<n;j++)A[i][j]/=pivot; b[i]/=pivot;
+    for(let r=0;r<n;r++){if(r===i)continue; const f=A[r][i];
+      for(let j=i;j<n;j++)A[r][j]-=f*A[i][j]; b[r]-=f*b[i];}} return b;}
+function leastSquares(M,y){const MT=transpose(M); const MTM=matMul(MT,M); const MTy=matVecMul(MT,y); return solveLinear(MTM,MTy);}
 
-/* ========= TRANSFORM FITTING ========= */
+/* ---------- Transform Fit (unchanged) ---------- */
 function fitAffine(gcps){
   const M=gcps.map(g=>[1,g.x,g.y]);
   const X=gcps.map(g=>g.X);
   const Y=gcps.map(g=>g.Y);
-  const a=leastSquares(M,X);
-  const b=leastSquares(M,Y);
-  const mapFn=p=>({X:a[0]+a[1]*p.x+a[2]*p.y,Y:b[0]+b[1]*p.x+b[2]*p.y});
+  const a=leastSquares(M,X), b=leastSquares(M,Y);
+  const mapFn=(p)=>({X:a[0]+a[1]*p.x+a[2]*p.y,Y:b[0]+b[1]*p.x+b[2]*p.y});
   const rms=Math.sqrt(gcps.reduce((s,g)=>{const p=mapFn(g);return s+(p.X-g.X)**2+(p.Y-g.Y)**2;},0)/gcps.length);
-  return {mapFn,rms, aParams:a, bParams:b};
+  return {mapFn,rms};
 }
 function fitPoly2(gcps){
   const M=gcps.map(g=>[1,g.x,g.y,g.x*g.x,g.x*g.y,g.y*g.y]);
-  const X=gcps.map(g=>g.X);
-  const Y=gcps.map(g=>g.Y);
-  const a=leastSquares(M,X);
-  const b=leastSquares(M,Y);
-  const mapFn=p=>{
-    const v=[1,p.x,p.y,p.x*p.x,p.x*p.y,p.y*p.y];
-    return {
-      X:v.reduce((s,_,i)=>s+v[i]*a[i],0),
-      Y:v.reduce((s,_,i)=>s+v[i]*b[i],0)
-    };
-  };
+  const X=gcps.map(g=>g.X), Y=gcps.map(g=>g.Y);
+  const a=leastSquares(M,X), b=leastSquares(M,Y);
+  const mapFn=p=>{const v=[1,p.x,p.y,p.x*p.x,p.x*p.y,p.y*p.y];
+    return {X:v.reduce((s,_,i)=>s+v[i]*a[i],0), Y:v.reduce((s,_,i)=>s+v[i]*b[i],0)};};
   const rms=Math.sqrt(gcps.reduce((s,g)=>{const p=mapFn(g);return s+(p.X-g.X)**2+(p.Y-g.Y)**2;},0)/gcps.length);
-  return {mapFn,rms, aParams:a, bParams:b};
+  return {mapFn,rms};
 }
 
-/* ========= APP STATE ========= */
+/* ---------- App State ---------- */
 const canvas=document.getElementById("pdf-canvas");
 const ctx=canvas.getContext("2d");
 const fileInput=document.getElementById("file-input");
@@ -166,8 +152,11 @@ const selectPdf=document.getElementById("select-pdf");
 const btnGeoref=document.getElementById("btn-georef");
 const btnClear=document.getElementById("btn-clear-gcps");
 const btnCompute=document.getElementById("btn-compute");
-const btnExtractWater=document.getElementById("btn-extract-water");
+const btnExtract=document.getElementById("btn-extract-water");
+const btnClearWater=document.getElementById("btn-clear-water");
 const btnExport=document.getElementById("btn-export-geojson");
+const chkOverlay=document.getElementById("chk-water-overlay");
+const waterCount=document.getElementById("water-count");
 const status=document.getElementById("status");
 const gcpTable=document.querySelector("#gcp-table tbody");
 const rmsEl=document.getElementById("rms");
@@ -178,13 +167,11 @@ let georefMode=false;
 let gcps=[];
 let lastComputed=null;
 
-// rectangle selection (still available if needed)
-let selecting=false, sX=0,sY=0, curRect=null;
-
-// water features in geo coords
+let waterPixelPolys=[];
 let waterFeatures=[];
+let showWaterOverlay=true;
 
-/* ========= PDF LOAD ========= */
+/* ---------- PDF Loading ---------- */
 selectPdf.onclick=()=>fileInput.click();
 fileInput.onchange=async()=>{
   const f=fileInput.files[0];
@@ -200,24 +187,21 @@ fileInput.onchange=async()=>{
   renderedImage=new Image();
   renderedImage.src=canvas.toDataURL();
   await renderedImage.decode();
-  status.textContent="PDF loaded. Add GCPs and compute transform.";
-  waterFeatures=[];
+  status.textContent="PDF loaded.";
+  waterPixelPolys=[]; waterFeatures=[]; waterCount.textContent="0";
+  redrawBase();
 };
 
 function redrawBase(){
   if(renderedImage) ctx.drawImage(renderedImage,0,0);
-  // draw GCP markers
   gcps.forEach(g=>{
     ctx.fillStyle="rgba(0,120,255,0.9)";
-    ctx.beginPath();
-    ctx.arc(g.x,g.y,4,0,Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(g.x,g.y,4,0,6.28); ctx.fill();
   });
-  // overlay water regions
-  drawWaterOverlay();
+  if(showWaterOverlay) drawWaterOverlay();
 }
 
-/* ========= GCP MODE ========= */
+/* ---------- GCP Handling ---------- */
 btnGeoref.onclick=()=>{
   georefMode=!georefMode;
   btnGeoref.textContent=georefMode?"Exit Georeference Mode":"Georeference Mode";
@@ -226,130 +210,84 @@ btnGeoref.onclick=()=>{
 };
 
 btnClear.onclick=()=>{
-  gcps=[]; refreshTable(); lastComputed=null; rmsEl.textContent="—";
+  gcps=[]; refreshTable();
+  lastComputed=null; rmsEl.textContent="—";
   redrawBase();
 };
 
-canvas.addEventListener("click",(e)=>{
+canvas.addEventListener("click",e=>{
   if(!georefMode || !renderedImage) return;
-
-  const rect=canvas.getBoundingClientRect();
-  const scaleX=canvas.width/rect.width;
-  const scaleY=canvas.height/rect.height;
-
-  const x=(e.clientX-rect.left)*scaleX;
-  const y=(e.clientY-rect.top)*scaleY;
-
+  const r=canvas.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(canvas.width/r.width);
+  const y=(e.clientY-r.top)*(canvas.height/r.height);
   gcps.push({x,y,X:null,Y:null});
-  refreshTable();
-  redrawBase();
+  refreshTable(); redrawBase();
 });
 
 function refreshTable(){
   gcpTable.innerHTML="";
   gcps.forEach((g,i)=>{
     const row=document.createElement("tr");
-    const px=document.createElement("td"); px.textContent=g.x.toFixed(1);
-    const py=document.createElement("td"); py.textContent=g.y.toFixed(1);
+    const c1=document.createElement("td"); c1.textContent=g.x.toFixed(1);
+    const c2=document.createElement("td"); c2.textContent=g.y.toFixed(1);
 
-    const lon=document.createElement("td");
-    const lonInput=document.createElement("input");
-    lonInput.type="number";lonInput.step="any";lonInput.value=g.X ?? "";
-    lonInput.onchange=()=>g.X=parseFloat(lonInput.value);
-    lon.appendChild(lonInput);
+    const lonTd=document.createElement("td");
+    const lon=document.createElement("input");
+    lon.type="number"; lon.step="any"; lon.value=g.X ?? "";
+    lon.onchange=()=>g.X=parseFloat(lon.value);
+    lonTd.appendChild(lon);
 
-    const lat=document.createElement("td");
-    const latInput=document.createElement("input");
-    latInput.type="number";latInput.step="any";latInput.value=g.Y ?? "";
-    latInput.onchange=()=>g.Y=parseFloat(latInput.value);
-    lat.appendChild(latInput);
+    const latTd=document.createElement("td");
+    const lat=document.createElement("input");
+    lat.type="number"; lat.step="any"; lat.value=g.Y ?? "";
+    lat.onchange=()=>g.Y=parseFloat(lat.value);
+    latTd.appendChild(lat);
 
     const del=document.createElement("td");
     const btn=document.createElement("button");
-    btn.textContent="X";btn.className="secondary";
-    btn.onclick=()=>{gcps.splice(i,1);refreshTable();redrawBase();};
+    btn.textContent="X"; btn.className="secondary";
+    btn.onclick=()=>{gcps.splice(i,1); refreshTable(); redrawBase();};
     del.appendChild(btn);
 
-    row.appendChild(px);row.appendChild(py);row.appendChild(lon);row.appendChild(lat);row.appendChild(del);
+    row.appendChild(c1); row.appendChild(c2);
+    row.appendChild(lonTd); row.appendChild(latTd);
+    row.appendChild(del);
     gcpTable.appendChild(row);
   });
 }
 
-/* ========= COMPUTE TRANSFORM ========= */
+/* ---------- Compute Transform ---------- */
 btnCompute.onclick=()=>{
   const valid=gcps.filter(g=>typeof g.X==="number" && typeof g.Y==="number");
-  if(modelSelect.value==="affine" && valid.length<3){alert("Affine requires 3+ GCPs.");return;}
-  if(modelSelect.value==="poly2" && valid.length<6){alert("2nd-degree polynomial requires 6+ GCPs.");return;}
+  if(modelSelect.value==="affine" && valid.length<3) return alert("Affine requires 3+ GCPs.");
+  if(modelSelect.value==="poly2" && valid.length<6) return alert("Poly2 requires 6+ GCPs.");
+
   try{
-    lastComputed = modelSelect.value==="affine" ? fitAffine(valid) : fitPoly2(valid);
+    lastComputed = modelSelect.value==="affine"
+      ? fitAffine(valid)
+      : fitPoly2(valid);
     rmsEl.textContent=lastComputed.rms.toFixed(3);
     status.textContent="Transform computed.";
-    redrawBase();
-  }catch(err){
-    alert("Failed to compute transform: "+err);
-  }
+  }catch(err){ alert("Failed: "+err); }
 };
 
-/* ========= RECTANGLE SELECTION (still available) ========= */
-canvas.addEventListener("mousedown",(e)=>{
-  if(georefMode || !renderedImage) return;
-  const rect=canvas.getBoundingClientRect();
-  const scaleX=canvas.width/rect.width;
-  const scaleY=canvas.height/rect.height;
-  selecting=true;
-  sX=(e.clientX-rect.left)*scaleX;
-  sY=(e.clientY-rect.top)*scaleY;
-  curRect={x:sX,y:sY,w:0,h:0};
-});
-
-canvas.addEventListener("mousemove",(e)=>{
-  if(!selecting || !renderedImage) return;
-  const rect=canvas.getBoundingClientRect();
-  const scaleX=canvas.width/rect.width;
-  const scaleY=canvas.height/rect.height;
-  const mx=(e.clientX-rect.left)*scaleX;
-  const my=(e.clientY-rect.top)*scaleY;
-  curRect.w=mx-sX;
-  curRect.h=my-sY;
-
-  redrawBase();
-  ctx.strokeStyle="red";
-  ctx.lineWidth=2;
-  ctx.strokeRect(curRect.x,curRect.y,curRect.w,curRect.h);
-  ctx.fillStyle="rgba(255,0,0,0.15)";
-  ctx.fillRect(curRect.x,curRect.y,curRect.w,curRect.h);
-});
-
-canvas.addEventListener("mouseup",()=>{
-  selecting=false;
-  if(curRect) status.textContent="Rectangle selected (currently not used for water export).";
-});
-
-/* ========= WATER DETECTION ========= */
-
-// Basic blue-pixel heuristic for water
+/* ---------- Simple Blue-Pixel Water Detection ---------- */
 function isWaterPixel(r,g,b){
-  return (
-    b > 120 &&       // strong blue
-    b > r + 25 &&    // clearly bluer than red
-    b > g + 15       // bluer than green
-  );
+  return (b>120 && b>r+25 && b>g+15);
 }
 
-// Build water mask: Uint8Array (1 = water, 0 = non-water)
 function getWaterMask(){
-  if(!renderedImage) return null;
   const img=ctx.getImageData(0,0,canvas.width,canvas.height);
   const d=img.data;
   const mask=new Uint8Array(canvas.width*canvas.height);
   for(let i=0;i<d.length;i+=4){
     const r=d[i],g=d[i+1],b=d[i+2];
-    mask[i/4]=isWaterPixel(r,g,b)?1:0;
+    mask[i/4] = isWaterPixel(r,g,b) ? 1 : 0;
   }
   return mask;
 }
 
-// Simple connected-components over mask, returning bounding-box polygons
+/* ---------- Connected Components (Bounding Boxes) ---------- */
 function extractWaterRegions(mask,width,height){
   const visited=new Uint8Array(width*height);
   const polys=[];
@@ -365,33 +303,27 @@ function extractWaterRegions(mask,width,height){
         let count=0;
         while(stack.length){
           const i=stack.pop();
-          const py=Math.floor(i/width);
-          const px=i%width;
+          const py=Math.floor(i/width), px=i%width;
           count++;
-          if(px<minX)minX=px;
-          if(px>maxX)maxX=px;
-          if(py<minY)minY=py;
-          if(py>maxY)maxY=py;
-          for(const [dx,dy] of dirs){
+          if(px<minX)minX=px; if(px>maxX)maxX=px;
+          if(py<minY)minY=py; if(py>maxY)maxY=py;
+          for(const[dx,dy] of dirs){
             const nx=px+dx, ny=py+dy;
             if(nx<0||ny<0||nx>=width||ny>=height)continue;
             const ni=ny*width+nx;
             if(mask[ni]===1 && !visited[ni]){
-              visited[ni]=1;
-              stack.push(ni);
+              visited[ni]=1; stack.push(ni);
             }
           }
         }
-        // ignore tiny specks
-        if(count > 50){
-          const poly=[
+        if(count>50){
+          polys.push([
             [minX,minY],
             [maxX,minY],
             [maxX,maxY],
             [minX,maxY],
-            [minX,minY],
-          ];
-          polys.push(poly);
+            [minX,minY]
+          ]);
         }
       }
     }
@@ -399,8 +331,7 @@ function extractWaterRegions(mask,width,height){
   return polys;
 }
 
-// Convert a pixel-space polygon to a GeoJSON water feature
-function pixelPolyToWaterFeature(poly,mapFn){
+function pixelPolyToFeature(poly,mapFn){
   const coords=poly.map(([x,y])=>{
     const g=mapFn({x,y});
     return [g.X,g.Y];
@@ -412,57 +343,60 @@ function pixelPolyToWaterFeature(poly,mapFn){
   };
 }
 
-// Store pixel polys too for drawing
-let waterPixelPolys = [];
+/* ---------- Water Extraction Button ---------- */
+btnExtract.onclick=()=>{
+  if(!renderedImage) return alert("Load a PDF first.");
+  if(!lastComputed) return alert("Compute transform first.");
 
-btnExtractWater.onclick=()=>{
-  if(!renderedImage){
-    alert("Load a PDF first.");
-    return;
-  }
-  if(!lastComputed){
-    alert("Compute georeferencing transform first.");
-    return;
-  }
+  status.textContent="Extracting water…";
 
-  status.textContent="Detecting water...";
   const mask=getWaterMask();
   const polys=extractWaterRegions(mask,canvas.width,canvas.height);
 
-  waterFeatures=[];
   waterPixelPolys = polys;
+  waterFeatures = polys.map(p=>pixelPolyToFeature(p,lastComputed.mapFn));
 
-  for(const poly of polys){
-    const feat=pixelPolyToWaterFeature(poly,lastComputed.mapFn);
-    waterFeatures.push(feat);
-  }
-
+  waterCount.textContent = polys.length;
   redrawBase();
-  status.textContent=`Water extraction complete. Regions found: ${waterFeatures.length}.`;
+
+  status.textContent = `Water extraction complete (${polys.length} regions).`;
 };
 
-// Draw water rectangles on canvas
+/* ---------- Clear Water Button ---------- */
+btnClearWater.onclick=()=>{
+  waterPixelPolys=[];
+  waterFeatures=[];
+  waterCount.textContent="0";
+  redrawBase();
+  status.textContent="Water cleared.";
+};
+
+/* ---------- Toggle Overlay ---------- */
+chkOverlay.onchange = (e)=>{
+  showWaterOverlay = e.target.checked;
+  redrawBase();
+};
+
+/* ---------- Draw Water Bounding Boxes ---------- */
 function drawWaterOverlay(){
-  if(!waterPixelPolys || waterPixelPolys.length===0) return;
   ctx.strokeStyle="rgba(0,120,255,0.9)";
-  ctx.lineWidth=2;
   ctx.fillStyle="rgba(0,120,255,0.15)";
+  ctx.lineWidth=2;
+
   for(const poly of waterPixelPolys){
-    const [p0,p1,p2,p3] = poly;
+    const [p0,p1,p2,p3]=poly;
     const x=p0[0], y=p0[1];
     const w=p1[0]-p0[0];
     const h=p3[1]-p0[1];
+
     ctx.fillRect(x,y,w,h);
     ctx.strokeRect(x,y,w,h);
   }
 }
 
-/* ========= EXPORT WATER AS GEOJSON ========= */
+/* ---------- Export GeoJSON ---------- */
 btnExport.onclick=()=>{
-  if(!waterFeatures || waterFeatures.length===0){
-    alert("No water features to export. Run Extract Water first.");
-    return;
-  }
+  if(waterFeatures.length===0) return alert("No water to export.");
   const fc={type:"FeatureCollection",features:waterFeatures};
   const blob=new Blob([JSON.stringify(fc,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
