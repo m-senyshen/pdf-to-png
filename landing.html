@@ -15,7 +15,7 @@
     }
 
     header {
-        padding: 24px 40px;
+        padding: 20px 32px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -33,25 +33,25 @@
         font-weight: 500;
     }
 
-    /* HERO SECTION */
+    /* HERO SECTION - tightened spacing */
     .hero {
         text-align: center;
-        padding: 120px 20px 100px;
+        padding: 80px 20px 60px;
         max-width: 900px;
         margin: 0 auto;
     }
 
     .hero h2 {
-        font-size: 48px;
+        font-size: 44px;
         font-weight: 700;
-        margin-bottom: 20px;
+        margin-bottom: 14px;
         letter-spacing: -1px;
     }
 
     .hero p {
         font-size: 20px;
-        max-width: 650px;
-        margin: 0 auto 40px;
+        max-width: 620px;
+        margin: 0 auto 30px;
         color: #444;
     }
 
@@ -59,8 +59,8 @@
         background: #111;
         color: #fff;
         border: none;
-        padding: 16px 34px;
-        font-size: 18px;
+        padding: 14px 32px;
+        font-size: 17px;
         font-weight: 600;
         border-radius: 12px;
         cursor: pointer;
@@ -71,44 +71,43 @@
         background: #222;
     }
 
-    /* SECTION */
+    /* SECTION - tightened spacing */
     section {
         max-width: 980px;
         margin: 0 auto;
-        padding: 80px 20px;
+        padding: 50px 20px;
     }
 
     section h3 {
         text-align: center;
-        font-size: 32px;
-        margin-bottom: 40px;
+        font-size: 30px;
+        margin-bottom: 30px;
     }
 
-    /* Icons */
+    /* Steps grid */
     .steps {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 40px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 28px;
         text-align: center;
     }
 
     .steps div {
-        padding: 20px;
+        padding: 12px;
     }
 
     .steps img {
-        width: 60px;
-        opacity: 0.8;
-        margin-bottom: 12px;
+        width: 54px;
+        opacity: 0.85;
+        margin-bottom: 10px;
     }
 
-    /* Features */
+    /* Features grid */
     .features {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 40px;
-        margin-top: 40px;
-        text-align: left;
+        gap: 30px;
+        margin-top: 30px;
     }
 
     .feature-box {
@@ -124,10 +123,10 @@
     }
 
     footer {
-        padding: 40px;
+        padding: 30px;
         text-align: center;
         color: #777;
-        margin-top: 40px;
+        margin-top: 20px;
         border-top: 1px solid #eee;
         font-size: 14px;
     }
@@ -145,9 +144,9 @@
 <!-- HERO -->
 <div class="hero">
     <h2>Turn Any Map into Usable Data</h2>
-    <p>Map Extract lets you upload a scanned map or PDF, georeference it, extract features like water bodies, and export to GIS formats like GeoJSON and Shapefile.</p>
+    <p>Map Extract helps you upload a scanned map or PDF, georeference it, extract water features, and export GIS-ready data.</p>
 
-    <a href="index.html">
+    <a href="app.html">
         <button class="cta-btn">Launch Map Extract</button>
     </a>
 </div>
@@ -167,13 +166,14 @@
         <div>
             <img src="https://img.icons8.com/ios-filled/100/000000/map.png" alt="">
             <h4>2. Extract Features</h4>
-            <p>Isolate water, landforms, contours, and more — automatically.</p>
+            <p>Identify water bodies and prepare them for GIS use.</p>
         </div>
 
         <div>
-            <img src="https://img.icons8.com/ios-filled/100/000000/geo-fence.png" alt="">
-            <h4>3. Export Data</h4>
-            <p>Download GIS-ready data (GeoJSON or SHP) for your projects.</p>
+            <!-- Mail / letter icon -->
+            <img src="https://img.icons8.com/ios-filled/100/000000/new-post.png" alt="">
+            <h4>3. Export Your Data</h4>
+            <p>Download GeoJSON or Shapefile to use in QGIS, ArcGIS, and more.</p>
         </div>
     </div>
 </section>
@@ -187,30 +187,22 @@
 
         <div class="feature-box">
             <h4>Water Body Extraction</h4>
-            <p>
-                Automatically convert lakes and rivers from scanned maps into real GIS polygons.
-            </p>
+            <p>Automatically detect lakes and rivers from scanned maps.</p>
         </div>
 
         <div class="feature-box">
             <h4>Georeferencing Tools</h4>
-            <p>
-                Add ground control points and compute affine transforms without desktop GIS software.
-            </p>
+            <p>Add GCPs and compute affine transforms inline — no desktop GIS needed.</p>
         </div>
 
         <div class="feature-box">
             <h4>Export to GIS</h4>
-            <p>
-                Export your extracted shapes to GeoJSON or Shapefile for use in QGIS, ArcGIS, and more.
-            </p>
+            <p>Output real GIS features as GeoJSON or SHP.</p>
         </div>
 
         <div class="feature-box">
-            <h4>Legend-Aware AI (Coming Soon)</h4>
-            <p>
-                Automatically detect feature types directly from the map legend using AI.
-            </p>
+            <h4>Upcoming AI Legend Detection</h4>
+            <p>Let AI detect water, roads, forests, and contours automatically.</p>
         </div>
 
     </div>
@@ -218,7 +210,7 @@
 
 
 <footer>
-    © 2025 Map Extract — Built by Matt Senyshen  
+    © 2025 Map Extract — Built by Matt Senyshen
 </footer>
 
 </body>
