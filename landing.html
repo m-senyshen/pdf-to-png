@@ -6,24 +6,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-    /* ENTIRE PAGE GRID BACKGROUND */
     body {
         margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
         background-color: #ffffff;
-
-        /* Full-page subtle GIS grid */
         background-image:
             linear-gradient(#ececec 1px, transparent 1px),
             linear-gradient(90deg, #ececec 1px, transparent 1px);
         background-size: 28px 28px;
         background-position: center;
-
         color: #111;
         line-height: 1.6;
     }
 
-    /* 🔹 Sticky navigation bar */
     nav {
         position: sticky;
         top: 0;
@@ -53,10 +48,10 @@
         margin-left: 20px;
     }
 
-    /* HERO SECTION — shifted upward */
+    /* HERO — reduced padding-bottom */
     .hero {
         text-align: center;
-        padding: 50px 20px 60px; /* was 80px top → now 50px */
+        padding: 50px 20px 30px; /* ↓ was 60px */
         max-width: 900px;
         margin: 0 auto;
     }
@@ -65,7 +60,7 @@
         font-size: 44px;
         font-weight: 700;
         margin-bottom: 14px;
-        margin-top: 20px; /* Shifted up slightly */
+        margin-top: 20px;
         letter-spacing: -1px;
     }
 
@@ -92,11 +87,11 @@
         background: #222;
     }
 
-    /* SECTION */
+    /* SECTION — reduced padding-top */
     section {
         max-width: 980px;
         margin: 0 auto;
-        padding: 50px 20px;
+        padding: 30px 20px; /* ↓ was 50px */
     }
 
     section h3 {
@@ -105,7 +100,6 @@
         margin-bottom: 30px;
     }
 
-    /* Steps grid */
     .steps {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -116,7 +110,6 @@
     .steps div { padding: 12px; }
     .steps img { width: 54px; opacity: 0.85; margin-bottom: 10px; }
 
-    /* Features grid */
     .features {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -146,21 +139,18 @@
         border-top: 1px solid #eee;
         font-size: 14px;
     }
+
 </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
 <nav>
     <h1>Map Extract</h1>
-
-    <!-- Removed: Home link -->
     <div>
         <a href="app.html">Launch App →</a>
     </div>
 </nav>
 
-<!-- HERO -->
 <div class="hero">
     <h2>Turn Any Map into Usable Data</h2>
     <p>Map Extract helps you upload scanned maps, georeference them, extract water features, and export GIS-ready datasets.</p>
@@ -170,7 +160,6 @@
     </a>
 </div>
 
-<!-- HOW IT WORKS -->
 <section>
     <h3>How It Works</h3>
 
@@ -195,7 +184,6 @@
     </div>
 </section>
 
-<!-- FEATURES -->
 <section>
     <h3>Features</h3>
 
