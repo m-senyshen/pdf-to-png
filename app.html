@@ -413,8 +413,8 @@ function detectMapBoundaryFromCanvas(){
   let bottom = bestMaxY + 1;
 
   // 4. Shrink inward slightly (Option 2)
-  const shrinkX = Math.max(3, Math.round((right-left) * 0.02));
-  const shrinkY = Math.max(3, Math.round((bottom-top) * 0.02));
+  const shrinkX = Math.max(3, Math.round((right-left) * 0.005));
+  const shrinkY = Math.max(3, Math.round((bottom-top) * 0.005));
 
   left   = Math.min(Math.max(0, left   + shrinkX), w);
   right  = Math.max(Math.min(w, right  - shrinkX), 0);
