@@ -76,7 +76,7 @@
         }
         .cta-btn:hover { background: #005fcc; }
 
-        /* HOW IT WORKS */
+        /* SECTION TITLES */
         .section-title {
             font-size: 32px;
             text-align: center;
@@ -110,6 +110,47 @@
             margin: 10px 0 5px;
         }
 
+        /* WORKFLOW DIAGRAM */
+        .workflow-container {
+            max-width: 1200px;
+            margin: 20px auto 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 25px;
+            flex-wrap: wrap;
+            padding: 10px;
+        }
+
+        .workflow-step {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 230px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .workflow-step h3 {
+            margin-top: 10px;
+            margin-bottom: 8px;
+        }
+
+        .workflow-step p {
+            font-size: 15px;
+            line-height: 1.4;
+        }
+
+        .workflow-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .workflow-arrow {
+            font-size: 32px;
+            opacity: 0.5;
+        }
+
         /* SECURITY SECTION */
         .security-section {
             background: #f7faff;
@@ -134,7 +175,6 @@
             color: #777;
             font-size: 14px;
         }
-
     </style>
 </head>
 <body>
@@ -151,7 +191,7 @@
 <!-- HERO -->
 <section class="hero">
     <h1>Extract GIS Data From Any Map</h1>
-    <p>Upload any PDF map and automatically extract clean, GIS-ready water features and vector layers.</p>
+    <p>Upload a PDF or scanned map and instantly extract clean, GIS-ready water and vector features — all processed in your browser.</p>
     <button class="cta-btn" onclick="window.location='app.html'">Launch App</button>
 </section>
 
@@ -163,21 +203,56 @@
     <div class="example-card">
         <img src="https://via.placeholder.com/300x200?text=Original+Map" />
         <h3>Original Map</h3>
-        <p>Uploaded PDF map with legends, borders, and text.</p>
+        <p>Uploaded PDF map including legends, borders, and additional information.</p>
     </div>
 
     <div class="example-card">
         <img src="https://via.placeholder.com/300x200?text=Detected+Water+Mask" />
         <h3>Detected Water Mask</h3>
-        <p>Automatic map body detection removes legends & metadata.</p>
+        <p>Automatic boundary detection isolates only the true map content.</p>
     </div>
 
     <div class="example-card">
         <img src="https://via.placeholder.com/300x200?text=GIS+Shapes" />
-        <h3>GIS-Ready Vector Output</h3>
-        <p>Export as GeoJSON or SHP for QGIS or ArcGIS workflows.</p>
+        <h3>GIS-Ready Output</h3>
+        <p>Export GeoJSON or SHP for seamless use in QGIS or ArcGIS.</p>
     </div>
 
+</div>
+
+<!-- HOW IT WORKS -->
+<h2 class="section-title">How It Works</h2>
+
+<div class="workflow-container">
+    <div class="workflow-step">
+        <div class="workflow-icon">📤</div>
+        <h3>1. Upload Your Map</h3>
+        <p>Import any PDF or scanned map directly into your browser.</p>
+    </div>
+
+    <div class="workflow-arrow">→</div>
+
+    <div class="workflow-step">
+        <div class="workflow-icon">🧭</div>
+        <h3>2. Detect Map Body</h3>
+        <p>Advanced algorithms remove legends, margins, and title blocks.</p>
+    </div>
+
+    <div class="workflow-arrow">→</div>
+
+    <div class="workflow-step">
+        <div class="workflow-icon">💧</div>
+        <h3>3. Extract Water Features</h3>
+        <p>Identify and convert lakes, rivers, and water boundaries automatically.</p>
+    </div>
+
+    <div class="workflow-arrow">→</div>
+
+    <div class="workflow-step">
+        <div class="workflow-icon">📦</div>
+        <h3>4. Export GIS Data</h3>
+        <p>Download GeoJSON or SHP files for use in your mapping workflow.</p>
+    </div>
 </div>
 
 <!-- SECURITY & PRIVACY -->
@@ -185,10 +260,10 @@
     <h2 class="section-title" style="margin-top:0;">Security & Privacy</h2>
     <ul class="security-list">
         <li>✔ <strong>Your files never leave your computer.</strong> All processing happens directly in your browser.</li>
-        <li>✔ No uploads, no servers, no external storage.</li>
-        <li>✔ Safe for confidential engineering, planning, and environmental projects.</li>
-        <li>✔ Built on trusted open-source libraries (PDF.js, ONNX Runtime).</li>
-        <li>✔ Ideal for organizations with strict data-handling requirements.</li>
+        <li>✔ No uploads, no servers, and no storage of your data.</li>
+        <li>✔ Safe for confidential engineering, planning, and environmental work.</li>
+        <li>✔ Built using trusted open-source libraries like PDF.js and ONNX Runtime.</li>
+        <li>✔ Ideal for organizations with strict privacy requirements.</li>
     </ul>
 </div>
 
