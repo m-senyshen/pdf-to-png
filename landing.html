@@ -14,31 +14,49 @@
         line-height: 1.6;
     }
 
-    header {
-        padding: 20px 32px;
+    /* 🔹 Sticky navigation bar */
+    nav {
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid #eee;
+        padding: 14px 32px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
     }
 
-    header h1 {
+    nav h1 {
         margin: 0;
-        font-size: 22px;
+        font-size: 20px;
         font-weight: 600;
+        color: #222;
     }
 
-    header a {
+    nav a {
+        margin-left: 20px;
         text-decoration: none;
         color: #0070f3;
         font-weight: 500;
+        font-size: 15px;
     }
 
-    /* HERO SECTION - tightened spacing */
+    /* HERO SECTION */
     .hero {
         text-align: center;
         padding: 80px 20px 60px;
         max-width: 900px;
         margin: 0 auto;
+
+        /* 🔹 Subtle GIS grid background */
+        background-image:
+            linear-gradient(#eaeaea 1px, transparent 1px),
+            linear-gradient(90deg, #eaeaea 1px, transparent 1px);
+        background-size: 28px 28px;
+        background-position: center;
     }
 
     .hero h2 {
@@ -71,7 +89,7 @@
         background: #222;
     }
 
-    /* SECTION - tightened spacing */
+    /* SECTION */
     section {
         max-width: 980px;
         margin: 0 auto;
@@ -135,22 +153,24 @@
 </head>
 <body>
 
-<header>
+<!-- 🔹 Sticky Navbar -->
+<nav>
     <h1>Map Extract</h1>
-    <a href="app.html">Launch App →</a>
-</header>
-
+    <div>
+        <a href="landing.html">Home</a>
+        <a href="app.html">Launch App →</a>
+    </div>
+</nav>
 
 <!-- HERO -->
 <div class="hero">
     <h2>Turn Any Map into Usable Data</h2>
-    <p>Map Extract helps you upload a scanned map or PDF, georeference it, extract water features, and export GIS-ready data.</p>
+    <p>Map Extract helps you upload scanned maps, georeference them, extract water features, and export GIS-ready datasets.</p>
 
     <a href="app.html">
         <button class="cta-btn">Launch Map Extract</button>
     </a>
 </div>
-
 
 <!-- HOW IT WORKS -->
 <section>
@@ -166,18 +186,16 @@
         <div>
             <img src="https://img.icons8.com/ios-filled/100/000000/map.png" alt="">
             <h4>2. Extract Features</h4>
-            <p>Identify water bodies and prepare them for GIS use.</p>
+            <p>Automatically identify water bodies using computer vision.</p>
         </div>
 
         <div>
-            <!-- Mail / letter icon -->
             <img src="https://img.icons8.com/ios-filled/100/000000/new-post.png" alt="">
             <h4>3. Export Your Data</h4>
-            <p>Download GeoJSON or Shapefile to use in QGIS, ArcGIS, and more.</p>
+            <p>Download GeoJSON or Shapefile and use it in QGIS or ArcGIS.</p>
         </div>
     </div>
 </section>
-
 
 <!-- FEATURES -->
 <section>
@@ -187,27 +205,26 @@
 
         <div class="feature-box">
             <h4>Water Body Extraction</h4>
-            <p>Automatically detect lakes and rivers from scanned maps.</p>
+            <p>Detect lakes, rivers, and shorelines directly from scanned maps.</p>
         </div>
 
         <div class="feature-box">
             <h4>Georeferencing Tools</h4>
-            <p>Add GCPs and compute affine transforms inline — no desktop GIS needed.</p>
+            <p>Place ground control points and compute accurate coordinate transforms.</p>
         </div>
 
         <div class="feature-box">
             <h4>Export to GIS</h4>
-            <p>Output real GIS features as GeoJSON or SHP.</p>
+            <p>Output high-quality GeoJSON or SHP files ready for analysis.</p>
         </div>
 
         <div class="feature-box">
-            <h4>Upcoming AI Legend Detection</h4>
-            <p>Let AI detect water, roads, forests, and contours automatically.</p>
+            <h4>AI Feature Recognition (Coming Soon)</h4>
+            <p>Automatic symbol and legend interpretation using next-gen AI models.</p>
         </div>
 
     </div>
 </section>
-
 
 <footer>
     © 2025 Map Extract — Built by Matt Senyshen
