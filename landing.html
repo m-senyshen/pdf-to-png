@@ -6,10 +6,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
+    /* ENTIRE PAGE GRID BACKGROUND */
     body {
         margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-        background: #ffffff;
+        background-color: #ffffff;
+
+        /* Full-page subtle GIS grid */
+        background-image:
+            linear-gradient(#ececec 1px, transparent 1px),
+            linear-gradient(90deg, #ececec 1px, transparent 1px);
+        background-size: 28px 28px;
+        background-position: center;
+
         color: #111;
         line-height: 1.6;
     }
@@ -44,19 +53,12 @@
         font-size: 15px;
     }
 
-    /* HERO SECTION */
+    /* HERO SECTION (grid removed from here) */
     .hero {
         text-align: center;
         padding: 80px 20px 60px;
         max-width: 900px;
         margin: 0 auto;
-
-        /* 🔹 Subtle GIS grid background */
-        background-image:
-            linear-gradient(#eaeaea 1px, transparent 1px),
-            linear-gradient(90deg, #eaeaea 1px, transparent 1px);
-        background-size: 28px 28px;
-        background-position: center;
     }
 
     .hero h2 {
@@ -110,15 +112,8 @@
         text-align: center;
     }
 
-    .steps div {
-        padding: 12px;
-    }
-
-    .steps img {
-        width: 54px;
-        opacity: 0.85;
-        margin-bottom: 10px;
-    }
+    .steps div { padding: 12px; }
+    .steps img { width: 54px; opacity: 0.85; margin-bottom: 10px; }
 
     /* Features grid */
     .features {
@@ -132,6 +127,8 @@
         padding: 20px;
         border-radius: 10px;
         border: 1px solid #eee;
+        background: rgba(255,255,255,0.75); /* slight transparency on grid */
+        backdrop-filter: blur(4px);
     }
 
     .feature-box h4 {
@@ -153,7 +150,7 @@
 </head>
 <body>
 
-<!-- 🔹 Sticky Navbar -->
+<!-- NAVBAR -->
 <nav>
     <h1>Map Extract</h1>
     <div>
@@ -202,7 +199,6 @@
     <h3>Features</h3>
 
     <div class="features">
-
         <div class="feature-box">
             <h4>Water Body Extraction</h4>
             <p>Detect lakes, rivers, and shorelines directly from scanned maps.</p>
@@ -222,7 +218,6 @@
             <h4>AI Feature Recognition (Coming Soon)</h4>
             <p>Automatic symbol and legend interpretation using next-gen AI models.</p>
         </div>
-
     </div>
 </section>
 
