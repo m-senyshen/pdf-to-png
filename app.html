@@ -13,8 +13,6 @@
     color:#222;
     line-height:1.6;
   }
-
-  /* Sticky navbar (same as landing) */
   nav {
     position: sticky;
     top: 0;
@@ -40,9 +38,7 @@
     font-size: 15px;
     margin-left: 20px;
   }
-  .back-link {
-    color:#000;
-  }
+  .back-link { color:#000; }
 
   .container {
     max-width:1200px;
@@ -88,7 +84,6 @@
     gap:18px;
     margin-top:16px;
   }
-  #left { min-height:420px; }
 
   .upload-box {
     border:2px dashed var(--accent);
@@ -106,7 +101,6 @@
     height:auto;
     border:1px solid #e6e9ef;
     background:#fff;
-    cursor:crosshair;
   }
 
   table { width:100%; border-collapse:collapse; margin-top:8px; }
@@ -168,8 +162,6 @@
       </div>
 
       <h3>Ground Control Points</h3>
-      <div class="small">Click the map in Georeference Mode to add pixel points.</div>
-
       <table id="gcp-table">
         <thead>
           <tr><th>px X</th><th>px Y</th><th>lon</th><th>lat</th><th></th></tr>
@@ -218,7 +210,6 @@
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
 </script>
-<script src="./libs/sam.js"></script>
 
 <script>
 /* ---------- Instructions Toggle ---------- */
@@ -230,16 +221,10 @@ instrToggle.onclick = () => {
   instrToggle.textContent = hidden ? "📘 Instructions ▼" : "📘 Instructions ▲";
 };
 
-/* ---------- Linear Algebra Utilities ---------- */
+/* ---------- Math Helpers ---------- */
 function transpose(A){return A[0].map((_,i)=>A.map(r=>r[i]));}
-function matMul(A,B){
-  const R=Array.from({length:A.length},()=>Array(B[0].length).fill(0));
-  for(let i=0;i<A.length;i++)
-    for(let j=0;j<B[0].length;j++)
-      for(let k=0;k<B.length;k++)
-        R[i][j]+=A[i][k]*B[k][j];
-  return R;
-}
+function matMul(A,B){const R=Array.from({length:A.length},()=>Array(B[0].length).fill(0));
+  for(let i=0;i<A.length;i++)for(let j=0;j<B[0].length;j++)for(let k=0;k<B.length;k++)R[i][j]+=A[i][k]*B[k][j];return R;}
 function matVecMul(A,v){return A.map(r=>r.reduce((s,x,i)=>s+x*v[i],0));}
 function solveLinear(A,b){
   A=A.map(r=>r.slice()); b=b.slice(); const n=A.length;
@@ -247,10 +232,8 @@ function solveLinear(A,b){
     let max=i;
     for(let r=i+1;r<n;r++) if(Math.abs(A[r][i])>Math.abs(A[max][i])) max=r;
     if(max!==i){[A[i],A[max]]=[A[max],A[i]]; [b[i],b[max]]=[b[max],b[i]];}
-    const pivot=A[i][i];
-    if(Math.abs(pivot)<1e-12) throw("Singular");
-    for(let j=i;j<n;j++)A[i][j]/=pivot;
-    b[i]/=pivot;
+    const pivot=A[i][i]; if(Math.abs(pivot)<1e-12) throw("Singular");
+    for(let j=i;j<n;j++)A[i][j]/=pivot; b[i]/=pivot;
     for(let r=0;r<n;r++){
       if(r===i)continue;
       const f=A[r][i];
@@ -267,11 +250,10 @@ function leastSquares(M,y){
   return solveLinear(MTM,MTy);
 }
 
-/* ---------- Transform fitting ---------- */
+/* ---------- Transform Functions ---------- */
 function fitAffine(gcps){
   const M=gcps.map(g=>[1,g.x,g.y]);
-  const X=gcps.map(g=>g.X);
-  const Y=gcps.map(g=>g.Y);
+  const X=gcps.map(g=>g.X), Y=gcps.map(g=>g.Y);
   const a=leastSquares(M,X), b=leastSquares(M,Y);
   const mapFn=p=>({X:a[0]+a[1]*p.x+a[2]*p.y, Y:b[0]+b[1]*p.x+b[2]*p.y});
   const rms=Math.sqrt(gcps.reduce((s,g)=>{const p=mapFn(g);return s+(p.X-g.X)**2+(p.Y-g.Y)**2;},0)/gcps.length);
@@ -292,7 +274,7 @@ function fitPoly2(gcps){
   return {mapFn,rms};
 }
 
-/* ---------- App State ---------- */
+/* ---------- State ---------- */
 const canvas=document.getElementById("pdf-canvas");
 const ctx=canvas.getContext("2d");
 const fileInput=document.getElementById("file-input");
@@ -319,44 +301,34 @@ let waterFeatures=[];
 let showWaterOverlay=true;
 let mapBoundary=null; // {left,right,top,bottom}
 
-/* ---------- Drawing helpers ---------- */
+/* ---------- Drawing ---------- */
 function drawExclusionMask(){
   if(!mapBoundary) return;
-  const {left,right,top,bottom} = mapBoundary;
+  const {left,right,top,bottom}=mapBoundary;
   ctx.save();
-  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-  ctx.fillRect(0, 0, canvas.width, top);
-  ctx.fillRect(0, bottom, canvas.width, canvas.height - bottom);
-  ctx.fillRect(0, top, left, bottom - top);
-  ctx.fillRect(right, top, canvas.width - right, bottom - top);
+  ctx.fillStyle="rgba(0,0,0,0.35)";
+  ctx.fillRect(0,0,canvas.width,top);
+  ctx.fillRect(0,bottom,canvas.width,canvas.height-bottom);
+  ctx.fillRect(0,top,left, bottom-top);
+  ctx.fillRect(right,top,canvas.width-right, bottom-top);
   ctx.restore();
 }
-
 function drawWaterOverlay(){
   if(!waterPixelPolys.length) return;
   ctx.strokeStyle="rgba(0,120,255,0.9)";
   ctx.fillStyle="rgba(0,120,255,0.18)";
   ctx.lineWidth=2;
-
   for(const poly of waterPixelPolys){
-    if(poly.length<2) continue;
     ctx.beginPath();
     ctx.moveTo(poly[0][0], poly[0][1]);
-    for(let i=1;i<poly.length;i++){
-      ctx.lineTo(poly[i][0], poly[i][1]);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    for(let i=1;i<poly.length;i++) ctx.lineTo(poly[i][0], poly[i][1]);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
   }
 }
-
 function redrawBase(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(renderedImage){
-    ctx.drawImage(renderedImage,0,0,canvas.width,canvas.height);
-    drawExclusionMask();
-  }
+  if(renderedImage) ctx.drawImage(renderedImage,0,0,canvas.width,canvas.height);
+  drawExclusionMask();
   gcps.forEach(g=>{
     ctx.fillStyle="rgba(0,120,255,0.9)";
     ctx.beginPath(); ctx.arc(g.x,g.y,4,0,6.28); ctx.fill();
@@ -364,74 +336,99 @@ function redrawBase(){
   if(showWaterOverlay) drawWaterOverlay();
 }
 
-/* ---------- Refined map boundary detection ---------- */
+/* ---------- NEW: Connected Component Map Detection ---------- */
 function detectMapBoundaryFromCanvas(){
-  const w=canvas.width, h=canvas.height;
-  if(!w || !h) return;
-  const img = ctx.getImageData(0,0,w,h);
+  const w = canvas.width, h = canvas.height;
+  if (!w || !h) return;
+
+  const img = ctx.getImageData(0, 0, w, h);
   const d = img.data;
 
-  const rowInk = new Array(h).fill(0);
-  const colInk = new Array(w).fill(0);
+  // 1. Build ink mask
+  const inkMask = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const di = i * 4;
+    const r = d[di], g = d[di+1], b = d[di+2];
+    const bright = 0.299*r + 0.587*g + 0.114*b;
+    inkMask[i] = (bright < 245) ? 1 : 0;
+  }
 
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
-      const idx = (y*w + x)*4;
-      const r=d[idx], g=d[idx+1], b=d[idx+2];
-      const brightness = 0.299*r + 0.587*g + 0.114*b;
-      if(brightness < 245){
-        rowInk[y]++;
-        colInk[x]++;
+  // 2. Connected components
+  const visited = new Uint8Array(w * h);
+  let bestSize = 0, bestMinX=0, bestMinY=0, bestMaxX=0, bestMaxY=0;
+  const stack = [];
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const idx = y * w + x;
+      if (!inkMask[idx] || visited[idx]) continue;
+
+      let size = 0;
+      let minX = x, maxX = x, minY = y, maxY = y;
+
+      stack.push(idx);
+      visited[idx] = 1;
+
+      while (stack.length) {
+        const i = stack.pop();
+        const py = (i / w) | 0;
+        const px = i % w;
+        size++;
+
+        if (px < minX) minX = px;
+        if (px > maxX) maxX = px;
+        if (py < minY) minY = py;
+        if (py > maxY) maxY = py;
+
+        for (const [dx,dy] of dirs) {
+          const nx = px + dx, ny = py + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const ni = ny * w + nx;
+          if (inkMask[ni] && !visited[ni]) {
+            visited[ni] = 1;
+            stack.push(ni);
+          }
+        }
+      }
+
+      if (size > bestSize) {
+        bestSize = size;
+        bestMinX = minX; bestMaxX = maxX;
+        bestMinY = minY; bestMaxY = maxY;
       }
     }
   }
 
-  const maxRowInk = Math.max(...rowInk);
-  const maxColInk = Math.max(...colInk);
-
-  // If image is mostly blank, bail out
-  if(maxRowInk === 0 || maxColInk === 0){
-    console.warn("No ink detected; using full image as boundary.");
+  if (bestSize === 0) {
+    console.warn("No ink regions found; using full image.");
     mapBoundary = null;
     return;
   }
 
-  // Adaptive thresholds: only treat rows/cols with strong ink as interior
-  const rowThreshold = maxRowInk * 0.25; // 25% of peak row density
-  const colThreshold = maxColInk * 0.25; // 25% of peak col density
+  // 3. Convert to bounding box
+  let left   = bestMinX;
+  let right  = bestMaxX + 1;
+  let top    = bestMinY;
+  let bottom = bestMaxY + 1;
 
-  let top=0;
-  while(top<h && rowInk[top] < rowThreshold) top++;
-  let bottom=h-1;
-  while(bottom>=0 && rowInk[bottom] < rowThreshold) bottom--;
+  // 4. Shrink inward slightly (Option 2)
+  const shrinkX = Math.max(3, Math.round((right-left) * 0.02));
+  const shrinkY = Math.max(3, Math.round((bottom-top) * 0.02));
 
-  let left=0;
-  while(left<w && colInk[left] < colThreshold) left++;
-  let right=w-1;
-  while(right>=0 && colInk[right] < colThreshold) right--;
+  left   = Math.min(Math.max(0, left   + shrinkX), w);
+  right  = Math.max(Math.min(w, right  - shrinkX), 0);
+  top    = Math.min(Math.max(0, top    + shrinkY), h);
+  bottom = Math.max(Math.min(h, bottom - shrinkY), 0);
 
-  if(top>=bottom || left>=right){
-    console.warn("Map boundary detection failed; using full image.");
-    mapBoundary=null;
-    return;
-  }
-
-  // Slightly shrink inward to avoid borders (stronger padding now)
-  const padX = Math.round(w * 0.02); // 2% padding horizontally
-  const padY = Math.round(h * 0.02); // 2% padding vertically
-  left = Math.max(0, left + padX);
-  right = Math.min(w, right - padX);
-  top = Math.max(0, top + padY);
-  bottom = Math.min(h, bottom - padY);
-
-  if(top>=bottom || left>=right){
-    console.warn("Map boundary collapsed after padding; using full image.");
+  if (left >= right || top >= bottom) {
+    console.warn("Boundary collapsed; using full image.");
     mapBoundary = null;
     return;
   }
 
   mapBoundary = {left, right, top, bottom};
-  console.log("Refined map boundary:", mapBoundary);
+  console.log("Final map interior boundary:", mapBoundary);
 }
 
 /* ---------- PDF Loading ---------- */
@@ -440,13 +437,17 @@ selectPdf.onclick=()=>fileInput.click();
 fileInput.onchange=async()=>{
   const f=fileInput.files[0];
   if(!f) return;
-  statusEl.textContent="Loading PDF...";
+
+  statusEl.textContent="Loading PDF…";
+  waterPixelPolys=[]; waterFeatures=[]; waterCount.textContent="0";
+
   const ab=await f.arrayBuffer();
   const pdf=await pdfjsLib.getDocument({data:ab}).promise;
   const page=await pdf.getPage(1);
   const viewport=page.getViewport({scale:2});
   canvas.width=viewport.width;
   canvas.height=viewport.height;
+
   await page.render({canvasContext:ctx,viewport}).promise;
 
   detectMapBoundaryFromCanvas();
@@ -455,25 +456,15 @@ fileInput.onchange=async()=>{
   renderedImage.src=canvas.toDataURL();
   await renderedImage.decode();
 
-  statusEl.textContent = mapBoundary
-    ? "PDF loaded. Map interior detected."
-    : "PDF loaded. Using full page (boundary detection skipped).";
-
-  waterPixelPolys=[]; waterFeatures=[]; waterCount.textContent="0";
+  statusEl.textContent="PDF loaded.";
   redrawBase();
 };
 
-/* ---------- GCP Interaction ---------- */
+/* ---------- GCPs ---------- */
 btnGeoref.onclick=()=>{
   georefMode=!georefMode;
   btnGeoref.textContent=georefMode?"Exit Georeference Mode":"Georeference Mode";
   btnGeoref.className=georefMode?"danger":"muted-btn";
-  redrawBase();
-};
-
-btnClear.onclick=()=>{
-  gcps=[]; refreshTable();
-  lastComputed=null; rmsEl.textContent="—";
   redrawBase();
 };
 
@@ -489,21 +480,22 @@ canvas.addEventListener("click",e=>{
 function refreshTable(){
   gcpTable.innerHTML="";
   gcps.forEach((g,i)=>{
-    const row=document.createElement("tr");
-    const c1=document.createElement("td"); c1.textContent=g.x.toFixed(1);
-    const c2=document.createElement("td"); c2.textContent=g.y.toFixed(1);
+    const tr=document.createElement("tr");
 
-    const lonTd=document.createElement("td");
+    const t1=document.createElement("td"); t1.textContent=g.x.toFixed(1);
+    const t2=document.createElement("td"); t2.textContent=g.y.toFixed(1);
+
+    const lonTD=document.createElement("td");
     const lon=document.createElement("input");
     lon.type="number"; lon.step="any"; lon.value=g.X ?? "";
     lon.onchange=()=>g.X=parseFloat(lon.value);
-    lonTd.appendChild(lon);
+    lonTD.appendChild(lon);
 
-    const latTd=document.createElement("td");
+    const latTD=document.createElement("td");
     const lat=document.createElement("input");
     lat.type="number"; lat.step="any"; lat.value=g.Y ?? "";
     lat.onchange=()=>g.Y=parseFloat(lat.value);
-    latTd.appendChild(lat);
+    latTD.appendChild(lat);
 
     const del=document.createElement("td");
     const btn=document.createElement("button");
@@ -511,31 +503,35 @@ function refreshTable(){
     btn.onclick=()=>{gcps.splice(i,1); refreshTable(); redrawBase();};
     del.appendChild(btn);
 
-    row.appendChild(c1); row.appendChild(c2);
-    row.appendChild(lonTd); row.appendChild(latTd);
-    row.appendChild(del);
-    gcpTable.appendChild(row);
+    tr.appendChild(t1); tr.appendChild(t2);
+    tr.appendChild(lonTD); tr.appendChild(latTD);
+    tr.appendChild(del);
+
+    gcpTable.appendChild(tr);
   });
 }
 
 /* ---------- Compute Transform ---------- */
 btnCompute.onclick=()=>{
   const valid=gcps.filter(g=>typeof g.X==="number" && typeof g.Y==="number");
-  if(modelSelect.value==="affine" && valid.length<3) return alert("Affine requires 3+ GCPs.");
-  if(modelSelect.value==="poly2" && valid.length<6) return alert("Poly2 requires 6+ GCPs.");
+  if(modelSelect.value==="affine" && valid.length<3) return alert("Affine requires ≥3 GCPs");
+  if(modelSelect.value==="poly2" && valid.length<6) return alert("Poly2 requires ≥6 GCPs");
 
   try{
-    lastComputed = modelSelect.value==="affine"
-      ? fitAffine(valid)
-      : fitPoly2(valid);
+    lastComputed=modelSelect.value==="affine" ? 
+      fitAffine(valid) : fitPoly2(valid);
+
     rmsEl.textContent=lastComputed.rms.toFixed(3);
     statusEl.textContent="Transform computed.";
-  }catch(err){ alert("Failed: "+err); }
+    redrawBase();
+  }catch(err){
+    alert("Failed: "+err);
+  }
 };
 
-/* ---------- Water detection & polygon extraction ---------- */
+/* ---------- Water Extraction ---------- */
 function isWaterPixel(r,g,b){
-  return (b>120 && b>r+25 && b>g+15);
+  return (b > 120 && b > r+25 && b > g+15);
 }
 
 function getWaterMask(){
@@ -543,31 +539,32 @@ function getWaterMask(){
     return new Uint8Array(canvas.width*canvas.height);
   }
   const w=canvas.width, h=canvas.height;
+
   const off=document.createElement("canvas");
   off.width=w; off.height=h;
   const octx=off.getContext("2d");
   octx.drawImage(renderedImage,0,0,w,h);
+
   const img=octx.getImageData(0,0,w,h);
   const d=img.data;
-
   const mask=new Uint8Array(w*h);
 
-  const useBoundary = !!mapBoundary;
-  const left  = useBoundary ? mapBoundary.left   : 0;
-  const right = useBoundary ? mapBoundary.right  : w;
-  const top   = useBoundary ? mapBoundary.top    : 0;
-  const bottom= useBoundary ? mapBoundary.bottom : h;
+  const useBoundary=!!mapBoundary;
+  const left  = useBoundary? mapBoundary.left   : 0;
+  const right = useBoundary? mapBoundary.right  : w;
+  const top   = useBoundary? mapBoundary.top    : 0;
+  const bottom= useBoundary? mapBoundary.bottom : h;
 
   for(let y=0;y<h;y++){
     for(let x=0;x<w;x++){
-      const idx = y*w + x;
+      const idx=y*w+x;
 
+      // outside map interior → no water
       if(x < left || x >= right || y < top || y >= bottom){
-        mask[idx]=0;
-        continue;
+        mask[idx]=0; continue;
       }
 
-      const di = idx*4;
+      const di=idx*4;
       const r=d[di], g=d[di+1], b=d[di+2];
       mask[idx] = isWaterPixel(r,g,b) ? 1 : 0;
     }
@@ -585,88 +582,78 @@ function perpendicularDistance(pt, lineStart, lineEnd){
   const projX=x1+t*dx, projY=y1+t*dy;
   return Math.hypot(x-projX,y-projY);
 }
-function simplifyRDP(points, epsilon){
+function simplifyRDP(points,epsilon){
   if(points.length<=2) return points.slice();
   let maxDist=0, index=-1;
   for(let i=1;i<points.length-1;i++){
-    const d=perpendicularDistance(points[i], points[0], points[points.length-1]);
+    const d=perpendicularDistance(points[i],
+      points[0], points[points.length-1]);
     if(d>maxDist){maxDist=d; index=i;}
   }
   if(maxDist>epsilon){
     const left=simplifyRDP(points.slice(0,index+1),epsilon);
     const right=simplifyRDP(points.slice(index),epsilon);
     return left.slice(0,left.length-1).concat(right);
-  }else{
-    return [points[0], points[points.length-1]];
   }
+  return [points[0], points[points.length-1]];
 }
 
-function extractWaterRegions(mask,width,height){
-  const visited=new Uint8Array(width*height);
-  const regions=[];
+function extractWaterRegions(mask,w,h){
+  const visited=new Uint8Array(w*h);
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  const regions=[];
 
-  for(let y=0;y<height;y++){
+  for(let y=0;y<h;y++){
     for(let x=0;x<w;x++){
-      const idx=y*width+x;
+      const idx=y*w+x;
       if(mask[idx]===1 && !visited[idx]){
-        const regionIndices=[];
         const stack=[idx];
         visited[idx]=1;
+        const region=[];
         while(stack.length){
           const i=stack.pop();
-          regionIndices.push(i);
-          const py=(i/width)|0, px=i%width;
+          region.push(i);
+          const py=(i/w)|0, px=i%w;
           for(const[dx,dy] of dirs){
             const nx=px+dx, ny=py+dy;
-            if(nx<0||ny<0||nx>=width||ny>=height) continue;
-            const ni=ny*width+nx;
+            if(nx<0||ny<0||nx>=w||ny>=h) continue;
+            const ni=ny*w+nx;
             if(mask[ni]===1 && !visited[ni]){
-              visited[ni]=1;
-              stack.push(ni);
+              visited[ni]=1; stack.push(ni);
             }
           }
         }
 
-        if(regionIndices.length < 50) continue;
-
-        const regionSet=new Set(regionIndices);
+        if(region.length < 50) continue;
+        const set=new Set(region);
         const boundary=[];
-        for(const i of regionIndices){
-          const py=(i/width)|0, px=i%width;
-          let isBoundary=false;
+        for(const i of region){
+          const py=(i/w)|0, px=i%w;
+          let isB=false;
           for(const[dx,dy] of dirs){
             const nx=px+dx, ny=py+dy;
-            if(nx<0||ny<0||nx>=width||ny>=height){isBoundary=true;break;}
-            const ni=ny*width+nx;
-            if(!regionSet.has(ni)){isBoundary=true;break;}
+            if(nx<0||ny<0||nx>=w||ny>=h){isB=true; break;}
+            if(!set.has(ny*w+nx)){isB=true; break;}
           }
-          if(isBoundary){
-            boundary.push({x:px+0.5, y:py+0.5});
-          }
+          if(isB) boundary.push([px+0.5,py+0.5]);
         }
-
         if(boundary.length < 3) continue;
 
-        let sumX=0,sumY=0;
-        for(const p of boundary){sumX+=p.x; sumY+=p.y;}
-        const cx=sumX/boundary.length, cy=sumY/boundary.length;
+        let cx=0,cy=0;
+        for(const p of boundary){cx+=p[0];cy+=p[1];}
+        cx/=boundary.length; cy/=boundary.length;
 
-        const withAngle=boundary.map(p=>({
-          x:p.x, y:p.y,
-          angle:Math.atan2(p.y-cy,p.x-cx)
-        }));
-        withAngle.sort((a,b)=>a.angle-b.angle);
+        boundary.sort((a,b)=>{
+          const aa=Math.atan2(a[1]-cy,a[0]-cx);
+          const bb=Math.atan2(b[1]-cy,b[0]-cx);
+          return aa-bb;
+        });
 
-        let poly=withAngle.map(p=>[p.x,p.y]);
-        poly=simplifyRDP(poly, 1.5);
-
-        if(poly.length>2){
-          const first=poly[0], last=poly[poly.length-1];
-          if(first[0]!==last[0] || first[1]!==last[1]){
-            poly.push([first[0],first[1]]);
-          }
-          regions.push(poly);
+        let simple=simplifyRDP(boundary,1.5);
+        if(simple.length>2){
+          const f=simple[0], l=simple[simple.length-1];
+          if(f[0]!==l[0] || f[1]!==l[1]) simple.push([f[0],f[1]]);
+          regions.push(simple);
         }
       }
     }
@@ -686,7 +673,6 @@ function pixelPolyToFeature(poly,mapFn){
   };
 }
 
-/* ---------- Water Buttons ---------- */
 btnExtract.onclick=()=>{
   if(!renderedImage) return alert("Load a PDF first.");
   if(!lastComputed) return alert("Compute transform first.");
@@ -712,20 +698,18 @@ btnClearWater.onclick=()=>{
   statusEl.textContent="Water cleared.";
 };
 
-chkOverlay.onchange = (e)=>{
-  showWaterOverlay = e.target.checked;
+chkOverlay.onchange=e=>{
+  showWaterOverlay=e.target.checked;
   redrawBase();
 };
 
 btnExport.onclick=()=>{
-  if(waterFeatures.length===0) return alert("No water to export.");
+  if(waterFeatures.length===0) return alert("No water features.");
   const fc={type:"FeatureCollection",features:waterFeatures};
   const blob=new Blob([JSON.stringify(fc,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
-  a.href=url;
-  a.download="water.geojson";
-  a.click();
+  a.href=url; a.download="water.geojson"; a.click();
   URL.revokeObjectURL(url);
 };
 </script>
