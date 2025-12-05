@@ -46,17 +46,17 @@
     }
 
     nav a {
-        margin-left: 20px;
         text-decoration: none;
         color: #0070f3;
         font-weight: 500;
         font-size: 15px;
+        margin-left: 20px;
     }
 
-    /* HERO SECTION (grid removed from here) */
+    /* HERO SECTION — shifted upward */
     .hero {
         text-align: center;
-        padding: 80px 20px 60px;
+        padding: 50px 20px 60px; /* was 80px top → now 50px */
         max-width: 900px;
         margin: 0 auto;
     }
@@ -65,6 +65,7 @@
         font-size: 44px;
         font-weight: 700;
         margin-bottom: 14px;
+        margin-top: 20px; /* Shifted up slightly */
         letter-spacing: -1px;
     }
 
@@ -127,7 +128,7 @@
         padding: 20px;
         border-radius: 10px;
         border: 1px solid #eee;
-        background: rgba(255,255,255,0.75); /* slight transparency on grid */
+        background: rgba(255,255,255,0.75);
         backdrop-filter: blur(4px);
     }
 
@@ -145,7 +146,6 @@
         border-top: 1px solid #eee;
         font-size: 14px;
     }
-
 </style>
 </head>
 <body>
@@ -153,8 +153,9 @@
 <!-- NAVBAR -->
 <nav>
     <h1>Map Extract</h1>
+
+    <!-- Removed: Home link -->
     <div>
-        <a href="landing.html">Home</a>
         <a href="app.html">Launch App →</a>
     </div>
 </nav>
@@ -216,7 +217,7 @@
 
         <div class="feature-box">
             <h4>AI Feature Recognition (Coming Soon)</h4>
-            <p>Automatic symbol and legend interpretation using next-gen AI models.</p>
+            <p>Automatic legend and symbol detection using next-gen AI.</p>
         </div>
     </div>
 </section>
