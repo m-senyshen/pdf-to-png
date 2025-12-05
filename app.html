@@ -100,7 +100,6 @@
     margin:0 auto 8px;
   }
 
-  /* Maintain PDF aspect, no stretching */
   canvas {
     display:block;
     max-width:100%;
@@ -154,7 +153,6 @@
     </section>
 
     <aside id="right">
-      <!-- Instructions -->
       <div id="instructions-section" style="margin-bottom:20px;">
         <h3 id="instructions-toggle" style="cursor:pointer; margin:0;">
           📘 Instructions ▼
@@ -216,13 +214,10 @@
   </main>
 </div>
 
-<!-- PDF.js -->
 <script src="./libs/pdf.js"></script>
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
 </script>
-
-<!-- SAM stub -->
 <script src="./libs/sam.js"></script>
 
 <script>
@@ -272,7 +267,7 @@ function leastSquares(M,y){
   return solveLinear(MTM,MTy);
 }
 
-/* ---------- Transform fitting (Affine & Poly2) ---------- */
+/* ---------- Transform fitting ---------- */
 function fitAffine(gcps){
   const M=gcps.map(g=>[1,g.x,g.y]);
   const X=gcps.map(g=>g.X);
@@ -297,7 +292,7 @@ function fitPoly2(gcps){
   return {mapFn,rms};
 }
 
-/* ---------- Application State ---------- */
+/* ---------- App State ---------- */
 const canvas=document.getElementById("pdf-canvas");
 const ctx=canvas.getContext("2d");
 const fileInput=document.getElementById("file-input");
@@ -324,19 +319,15 @@ let waterFeatures=[];
 let showWaterOverlay=true;
 let mapBoundary=null; // {left,right,top,bottom}
 
-/* ---------- Utility: redraw base (map, mask, GCPs, water) ---------- */
+/* ---------- Drawing helpers ---------- */
 function drawExclusionMask(){
   if(!mapBoundary) return;
   const {left,right,top,bottom} = mapBoundary;
   ctx.save();
-  ctx.fillStyle = "rgba(0, 0, 0, 0.35)"; // medium grey
-  // top band
+  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
   ctx.fillRect(0, 0, canvas.width, top);
-  // bottom band
   ctx.fillRect(0, bottom, canvas.width, canvas.height - bottom);
-  // left band
   ctx.fillRect(0, top, left, bottom - top);
-  // right band
   ctx.fillRect(right, top, canvas.width - right, bottom - top);
   ctx.restore();
 }
@@ -366,16 +357,14 @@ function redrawBase(){
     ctx.drawImage(renderedImage,0,0,canvas.width,canvas.height);
     drawExclusionMask();
   }
-  // GCP markers
   gcps.forEach(g=>{
     ctx.fillStyle="rgba(0,120,255,0.9)";
     ctx.beginPath(); ctx.arc(g.x,g.y,4,0,6.28); ctx.fill();
   });
-  // Water overlay
   if(showWaterOverlay) drawWaterOverlay();
 }
 
-/* ---------- Automatic map boundary detection ---------- */
+/* ---------- Refined map boundary detection ---------- */
 function detectMapBoundaryFromCanvas(){
   const w=canvas.width, h=canvas.height;
   if(!w || !h) return;
@@ -385,21 +374,31 @@ function detectMapBoundaryFromCanvas(){
   const rowInk = new Array(h).fill(0);
   const colInk = new Array(w).fill(0);
 
-  // Count "ink" (non-near-white pixels) in each row & column
   for(let y=0;y<h;y++){
     for(let x=0;x<w;x++){
       const idx = (y*w + x)*4;
       const r=d[idx], g=d[idx+1], b=d[idx+2];
       const brightness = 0.299*r + 0.587*g + 0.114*b;
-      if(brightness < 245){ // not pure white background
+      if(brightness < 245){
         rowInk[y]++;
         colInk[x]++;
       }
     }
   }
 
-  const rowThreshold = w * 0.01; // 1% of row has ink
-  const colThreshold = h * 0.01; // 1% of column has ink
+  const maxRowInk = Math.max(...rowInk);
+  const maxColInk = Math.max(...colInk);
+
+  // If image is mostly blank, bail out
+  if(maxRowInk === 0 || maxColInk === 0){
+    console.warn("No ink detected; using full image as boundary.");
+    mapBoundary = null;
+    return;
+  }
+
+  // Adaptive thresholds: only treat rows/cols with strong ink as interior
+  const rowThreshold = maxRowInk * 0.25; // 25% of peak row density
+  const colThreshold = maxColInk * 0.25; // 25% of peak col density
 
   let top=0;
   while(top<h && rowInk[top] < rowThreshold) top++;
@@ -417,22 +416,22 @@ function detectMapBoundaryFromCanvas(){
     return;
   }
 
-  // Slightly shrink inward to avoid borders
-  const padX = Math.round(w * 0.01);
-  const padY = Math.round(h * 0.01);
+  // Slightly shrink inward to avoid borders (stronger padding now)
+  const padX = Math.round(w * 0.02); // 2% padding horizontally
+  const padY = Math.round(h * 0.02); // 2% padding vertically
   left = Math.max(0, left + padX);
   right = Math.min(w, right - padX);
   top = Math.max(0, top + padY);
   bottom = Math.min(h, bottom - padY);
 
   if(top>=bottom || left>=right){
-    mapBoundary=null;
     console.warn("Map boundary collapsed after padding; using full image.");
+    mapBoundary = null;
     return;
   }
 
   mapBoundary = {left, right, top, bottom};
-  console.log("Detected map boundary:", mapBoundary);
+  console.log("Refined map boundary:", mapBoundary);
 }
 
 /* ---------- PDF Loading ---------- */
@@ -450,15 +449,16 @@ fileInput.onchange=async()=>{
   canvas.height=viewport.height;
   await page.render({canvasContext:ctx,viewport}).promise;
 
-  // Detect map boundary based on freshly rendered page
   detectMapBoundaryFromCanvas();
 
-  // Save base map to an image for later re-draws and water analysis
   renderedImage=new Image();
   renderedImage.src=canvas.toDataURL();
   await renderedImage.decode();
 
-  statusEl.textContent="PDF loaded. Map interior detected.";
+  statusEl.textContent = mapBoundary
+    ? "PDF loaded. Map interior detected."
+    : "PDF loaded. Using full page (boundary detection skipped).";
+
   waterPixelPolys=[]; waterFeatures=[]; waterCount.textContent="0";
   redrawBase();
 };
@@ -543,7 +543,6 @@ function getWaterMask(){
     return new Uint8Array(canvas.width*canvas.height);
   }
   const w=canvas.width, h=canvas.height;
-  // Use the pure rendered map, not the overlayed canvas
   const off=document.createElement("canvas");
   off.width=w; off.height=h;
   const octx=off.getContext("2d");
@@ -563,7 +562,6 @@ function getWaterMask(){
     for(let x=0;x<w;x++){
       const idx = y*w + x;
 
-      // Exclude anything outside the detected map interior
       if(x < left || x >= right || y < top || y >= bottom){
         mask[idx]=0;
         continue;
@@ -609,7 +607,7 @@ function extractWaterRegions(mask,width,height){
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
 
   for(let y=0;y<height;y++){
-    for(let x=0;x<width;x++){
+    for(let x=0;x<w;x++){
       const idx=y*width+x;
       if(mask[idx]===1 && !visited[idx]){
         const regionIndices=[];
