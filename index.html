@@ -23,7 +23,7 @@
   td,th { padding:6px; border-bottom:1px solid #f0f2f6; font-size:13px; }
   .small { font-size:13px; color:#666; }
   .status { margin-top:8px; color:#333; }
-  input[type="number"] { width:120px; padding:6px; border-radius:6px; border:1px solid #dbe3ee; }
+  input[type="number"] { width:110px; padding:6px; border-radius:6px; border:1px solid #dbe3ee; }
 </style>
 </head>
 <body>
@@ -50,7 +50,36 @@
     </section>
 
     <aside id="right">
-      <h3 style="margin-top:0">Ground Control Points</h3>
+
+      <!-- 📘 Instructions Panel -->
+      <div id="instructions-section" style="margin-bottom:20px;">
+        <h3 id="instructions-toggle" style="cursor:pointer; margin:0;">
+          📘 Instructions ▼
+        </h3>
+
+        <div id="instructions-content" style="margin-top:10px; font-size:13px; line-height:1.45;">
+          <p><strong>1️⃣ Upload your map</strong><br>
+          Click <em>Select PDF</em> or drag a map to the box.</p>
+
+          <p><strong>2️⃣ Enter Georeference Mode</strong><br>
+          Click <em>“Georeference Mode”</em>, then click the map to add pixel control points.</p>
+
+          <p><strong>3️⃣ Add 3–6 Ground Control Points</strong><br>
+          Each click adds a row in the table. Enter longitude and latitude for each point.</p>
+
+          <p><strong>4️⃣ Compute Transform</strong><br>
+          Click <em>Compute Transform</em>. RMS error shows how good the fit is.</p>
+
+          <p><strong>5️⃣ Extract Water</strong><br>
+          Click <em>Extract Water</em> to detect lakes/rivers.</p>
+
+          <p><strong>6️⃣ Export Water Layer</strong><br>
+          Click <em>Export Water GeoJSON</em> to download the GIS dataset.</p>
+        </div>
+      </div>
+
+      <!-- GCP Section -->
+      <h3>Ground Control Points</h3>
       <div class="small">Click the map in Georeference Mode to add pixel points, then enter lon/lat.</div>
 
       <table id="gcp-table">
@@ -75,10 +104,9 @@
 
       <hr style="margin:20px 0"/>
 
-      <!-- Water Extraction UI Panel -->
+      <!-- Water Extraction Panel -->
       <div>
         <h3>Water Extraction</h3>
-
         <button id="btn-extract-water" class="secondary" style="margin-bottom:6px;">Extract Water</button>
         <button id="btn-clear-water" class="secondary">Clear Water</button>
 
@@ -105,10 +133,29 @@
   pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
 </script>
 
-<!-- SAM stub (not used yet here, but kept for future) -->
+<!-- SAM stub -->
 <script src="./libs/sam.js"></script>
 
 <script>
+/* ---------------------------------------------------
+   INSTRUCTIONS COLLAPSE TOGGLE
+--------------------------------------------------- */
+const instrToggle = document.getElementById("instructions-toggle");
+const instrContent = document.getElementById("instructions-content");
+
+instrToggle.onclick = () => {
+  const isHidden = instrContent.style.display === "none";
+  instrContent.style.display = isHidden ? "block" : "none";
+  instrToggle.textContent = isHidden ? "📘 Instructions ▼" : "📘 Instructions ▲";
+};
+
+
+/* ---------------------------------------------------
+   EVERYTHING BELOW THIS POINT IS YOUR EXISTING LOGIC
+   (georeferencing, water extraction, export, etc.)
+   — unchanged from previous working build —
+--------------------------------------------------- */
+
 /* ---------- Linear Algebra Utilities ---------- */
 function transpose(A){return A[0].map((_,i)=>A.map(r=>r[i]));}
 function matMul(A,B){
@@ -193,8 +240,6 @@ let renderedImage=null;
 let georefMode=false;
 let gcps=[];
 let lastComputed=null;
-
-// water polygons in pixel space: each is [[x,y], [x,y], ...]
 let waterPixelPolys=[];
 let waterFeatures=[];
 let showWaterOverlay=true;
@@ -222,12 +267,10 @@ fileInput.onchange=async()=>{
 
 function redrawBase(){
   if(renderedImage) ctx.drawImage(renderedImage,0,0);
-  // Draw GCPs
   gcps.forEach(g=>{
     ctx.fillStyle="rgba(0,120,255,0.9)";
     ctx.beginPath(); ctx.arc(g.x,g.y,4,0,6.28); ctx.fill();
   });
-  // Draw water polygons if enabled
   if(showWaterOverlay) drawWaterOverlay();
 }
 
@@ -301,7 +344,10 @@ btnCompute.onclick=()=>{
   }catch(err){ alert("Failed: "+err); }
 };
 
-/* ---------- Water Detection: Blue Pixels ---------- */
+/* ---------------------------------------------------
+   Water Extraction Logic (unchanged)
+--------------------------------------------------- */
+
 function isWaterPixel(r,g,b){
   return (b>120 && b>r+25 && b>g+15);
 }
@@ -316,7 +362,6 @@ function getWaterMask(){
   return mask;
 }
 
-/* ---------- Polygon Simplification (Ramer–Douglas–Peucker) ---------- */
 function perpendicularDistance(pt, lineStart, lineEnd){
   const [x,y]=pt;
   const [x1,y1]=lineStart;
@@ -343,7 +388,6 @@ function simplifyRDP(points, epsilon){
   }
 }
 
-/* ---------- Extract Water Regions as Real Polygons ---------- */
 function extractWaterRegions(mask,width,height){
   const visited=new Uint8Array(width*height);
   const regions=[];
@@ -370,56 +414,42 @@ function extractWaterRegions(mask,width,height){
             }
           }
         }
-        // discard tiny specks
+
         if(regionIndices.length < 50) continue;
-
-        // build set for membership test
         const regionSet=new Set(regionIndices);
-
-        // find boundary pixels (those with at least one non-water neighbor)
         const boundary=[];
         for(const i of regionIndices){
           const py=(i/width)|0, px=i%width;
           let isBoundary=false;
           for(const[dx,dy] of dirs){
             const nx=px+dx, ny=py+dy;
-            if(nx<0||ny<0||nx>=width||ny>=height){
-              isBoundary=true; break;
-            }
+            if(nx<0||ny<0||nx>=width||ny>=height){isBoundary=true;break;}
             const ni=ny*width+nx;
-            if(!regionSet.has(ni)){ isBoundary=true; break; }
+            if(!regionSet.has(ni)){isBoundary=true;break;}
           }
           if(isBoundary){
-            // use pixel centers for smoother polygon
             boundary.push({x:px+0.5, y:py+0.5});
           }
         }
 
         if(boundary.length < 3) continue;
 
-        // compute centroid
-        let sumX=0,sumY=0;
+        let sumX=0, sumY=0;
         for(const p of boundary){sumX+=p.x; sumY+=p.y;}
         const cx=sumX/boundary.length, cy=sumY/boundary.length;
 
-        // sort by angle around centroid
         const withAngle=boundary.map(p=>({
           x:p.x, y:p.y,
-          angle:Math.atan2(p.y-cy, p.x-cx)
+          angle:Math.atan2(p.y-cy,p.x-cx)
         }));
         withAngle.sort((a,b)=>a.angle-b.angle);
 
         let poly=withAngle.map(p=>[p.x,p.y]);
+        poly=simplifyRDP(poly,1.5);
 
-        // simplify polygon slightly
-        poly=simplifyRDP(poly, 1.5);
-
-        // close polygon
         if(poly.length>2){
           const first=poly[0], last=poly[poly.length-1];
-          if(first[0]!==last[0] || first[1]!==last[1]){
-            poly.push([first[0],first[1]]);
-          }
+          if(first[0]!==last[0] || first[1]!==last[1]) poly.push([first[0],first[1]]);
           regions.push(poly);
         }
       }
@@ -467,13 +497,13 @@ btnClearWater.onclick=()=>{
   status.textContent="Water cleared.";
 };
 
-/* ---------- Toggle Water Overlay ---------- */
+/* ---------- Toggle Overlay ---------- */
 chkOverlay.onchange = (e)=>{
   showWaterOverlay = e.target.checked;
   redrawBase();
 };
 
-/* ---------- Draw Water Polygons on Canvas ---------- */
+/* ---------- Draw Water Polygons ---------- */
 function drawWaterOverlay(){
   if(!waterPixelPolys.length) return;
   ctx.strokeStyle="rgba(0,120,255,0.9)";
@@ -500,9 +530,7 @@ btnExport.onclick=()=>{
   const blob=new Blob([JSON.stringify(fc,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
-  a.href=url;
-  a.download="water.geojson";
-  a.click();
+  a.href=url; a.download="water.geojson"; a.click();
   URL.revokeObjectURL(url);
 };
 </script>
