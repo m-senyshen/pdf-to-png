@@ -75,7 +75,7 @@
 
       <hr style="margin:20px 0"/>
 
-      <!-- ⭐ NEW WATER EXTRACTION UI PANEL ⭐ -->
+      <!-- Water Extraction UI Panel -->
       <div>
         <h3>Water Extraction</h3>
 
@@ -101,36 +101,58 @@
 
 <!-- PDF.js -->
 <script src="./libs/pdf.js"></script>
-<script> pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js"; </script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
+</script>
 
-<!-- SAM stub file (not yet used for water extraction) -->
+<!-- SAM stub (not used yet here, but kept for future) -->
 <script src="./libs/sam.js"></script>
 
 <script>
-/* ---------- Linear Algebra Utilities (unchanged) ---------- */
+/* ---------- Linear Algebra Utilities ---------- */
 function transpose(A){return A[0].map((_,i)=>A.map(r=>r[i]));}
-function matMul(A,B){const R=Array.from({length:A.length},()=>Array(B[0].length).fill(0));
-  for(let i=0;i<A.length;i++)for(let j=0;j<B[0].length;j++)for(let k=0;k<B.length;k++)R[i][j]+=A[i][k]*B[k][j];
-  return R;}
+function matMul(A,B){
+  const R=Array.from({length:A.length},()=>Array(B[0].length).fill(0));
+  for(let i=0;i<A.length;i++)
+    for(let j=0;j<B[0].length;j++)
+      for(let k=0;k<B.length;k++)
+        R[i][j]+=A[i][k]*B[k][j];
+  return R;
+}
 function matVecMul(A,v){return A.map(r=>r.reduce((s,x,i)=>s+x*v[i],0));}
 function solveLinear(A,b){
   A=A.map(r=>r.slice()); b=b.slice(); const n=A.length;
   for(let i=0;i<n;i++){
-    let max=i; for(let r=i+1;r<n;r++) if(Math.abs(A[r][i])>Math.abs(A[max][i])) max=r;
+    let max=i;
+    for(let r=i+1;r<n;r++) if(Math.abs(A[r][i])>Math.abs(A[max][i])) max=r;
     if(max!==i){[A[i],A[max]]=[A[max],A[i]]; [b[i],b[max]]=[b[max],b[i]];}
-    const pivot=A[i][i]; if(Math.abs(pivot)<1e-12) throw("Singular");
-    for(let j=i;j<n;j++)A[i][j]/=pivot; b[i]/=pivot;
-    for(let r=0;r<n;r++){if(r===i)continue; const f=A[r][i];
-      for(let j=i;j<n;j++)A[r][j]-=f*A[i][j]; b[r]-=f*b[i];}} return b;}
-function leastSquares(M,y){const MT=transpose(M); const MTM=matMul(MT,M); const MTy=matVecMul(MT,y); return solveLinear(MTM,MTy);}
+    const pivot=A[i][i];
+    if(Math.abs(pivot)<1e-12) throw("Singular");
+    for(let j=i;j<n;j++)A[i][j]/=pivot;
+    b[i]/=pivot;
+    for(let r=0;r<n;r++){
+      if(r===i)continue;
+      const f=A[r][i];
+      for(let j=i;j<n;j++)A[r][j]-=f*A[i][j];
+      b[r]-=f*b[i];
+    }
+  }
+  return b;
+}
+function leastSquares(M,y){
+  const MT=transpose(M);
+  const MTM=matMul(MT,M);
+  const MTy=matVecMul(MT,y);
+  return solveLinear(MTM,MTy);
+}
 
-/* ---------- Transform Fit (unchanged) ---------- */
+/* ---------- Transform Fitting ---------- */
 function fitAffine(gcps){
   const M=gcps.map(g=>[1,g.x,g.y]);
   const X=gcps.map(g=>g.X);
   const Y=gcps.map(g=>g.Y);
   const a=leastSquares(M,X), b=leastSquares(M,Y);
-  const mapFn=(p)=>({X:a[0]+a[1]*p.x+a[2]*p.y,Y:b[0]+b[1]*p.x+b[2]*p.y});
+  const mapFn=p=>({X:a[0]+a[1]*p.x+a[2]*p.y, Y:b[0]+b[1]*p.x+b[2]*p.y});
   const rms=Math.sqrt(gcps.reduce((s,g)=>{const p=mapFn(g);return s+(p.X-g.X)**2+(p.Y-g.Y)**2;},0)/gcps.length);
   return {mapFn,rms};
 }
@@ -138,8 +160,13 @@ function fitPoly2(gcps){
   const M=gcps.map(g=>[1,g.x,g.y,g.x*g.x,g.x*g.y,g.y*g.y]);
   const X=gcps.map(g=>g.X), Y=gcps.map(g=>g.Y);
   const a=leastSquares(M,X), b=leastSquares(M,Y);
-  const mapFn=p=>{const v=[1,p.x,p.y,p.x*p.x,p.x*p.y,p.y*p.y];
-    return {X:v.reduce((s,_,i)=>s+v[i]*a[i],0), Y:v.reduce((s,_,i)=>s+v[i]*b[i],0)};};
+  const mapFn=p=>{
+    const v=[1,p.x,p.y,p.x*p.x,p.x*p.y,p.y*p.y];
+    return {
+      X:v.reduce((s,_,i)=>s+v[i]*a[i],0),
+      Y:v.reduce((s,_,i)=>s+v[i]*b[i],0)
+    };
+  };
   const rms=Math.sqrt(gcps.reduce((s,g)=>{const p=mapFn(g);return s+(p.X-g.X)**2+(p.Y-g.Y)**2;},0)/gcps.length);
   return {mapFn,rms};
 }
@@ -167,6 +194,7 @@ let georefMode=false;
 let gcps=[];
 let lastComputed=null;
 
+// water polygons in pixel space: each is [[x,y], [x,y], ...]
 let waterPixelPolys=[];
 let waterFeatures=[];
 let showWaterOverlay=true;
@@ -194,10 +222,12 @@ fileInput.onchange=async()=>{
 
 function redrawBase(){
   if(renderedImage) ctx.drawImage(renderedImage,0,0);
+  // Draw GCPs
   gcps.forEach(g=>{
     ctx.fillStyle="rgba(0,120,255,0.9)";
     ctx.beginPath(); ctx.arc(g.x,g.y,4,0,6.28); ctx.fill();
   });
+  // Draw water polygons if enabled
   if(showWaterOverlay) drawWaterOverlay();
 }
 
@@ -271,64 +301,131 @@ btnCompute.onclick=()=>{
   }catch(err){ alert("Failed: "+err); }
 };
 
-/* ---------- Simple Blue-Pixel Water Detection ---------- */
+/* ---------- Water Detection: Blue Pixels ---------- */
 function isWaterPixel(r,g,b){
   return (b>120 && b>r+25 && b>g+15);
 }
-
 function getWaterMask(){
   const img=ctx.getImageData(0,0,canvas.width,canvas.height);
   const d=img.data;
   const mask=new Uint8Array(canvas.width*canvas.height);
   for(let i=0;i<d.length;i+=4){
-    const r=d[i],g=d[i+1],b=d[i+2];
+    const r=d[i], g=d[i+1], b=d[i+2];
     mask[i/4] = isWaterPixel(r,g,b) ? 1 : 0;
   }
   return mask;
 }
 
-/* ---------- Connected Components (Bounding Boxes) ---------- */
+/* ---------- Polygon Simplification (Ramer–Douglas–Peucker) ---------- */
+function perpendicularDistance(pt, lineStart, lineEnd){
+  const [x,y]=pt;
+  const [x1,y1]=lineStart;
+  const [x2,y2]=lineEnd;
+  const dx=x2-x1, dy=y2-y1;
+  if(dx===0 && dy===0) return Math.hypot(x-x1,y-y1);
+  const t=((x-x1)*dx+(y-y1)*dy)/(dx*dx+dy*dy);
+  const projX=x1+t*dx, projY=y1+t*dy;
+  return Math.hypot(x-projX,y-projY);
+}
+function simplifyRDP(points, epsilon){
+  if(points.length<=2) return points.slice();
+  let maxDist=0, index=-1;
+  for(let i=1;i<points.length-1;i++){
+    const d=perpendicularDistance(points[i], points[0], points[points.length-1]);
+    if(d>maxDist){maxDist=d; index=i;}
+  }
+  if(maxDist>epsilon){
+    const left=simplifyRDP(points.slice(0,index+1),epsilon);
+    const right=simplifyRDP(points.slice(index),epsilon);
+    return left.slice(0,left.length-1).concat(right);
+  }else{
+    return [points[0], points[points.length-1]];
+  }
+}
+
+/* ---------- Extract Water Regions as Real Polygons ---------- */
 function extractWaterRegions(mask,width,height){
   const visited=new Uint8Array(width*height);
-  const polys=[];
+  const regions=[];
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
 
   for(let y=0;y<height;y++){
     for(let x=0;x<width;x++){
       const idx=y*width+x;
       if(mask[idx]===1 && !visited[idx]){
-        let minX=x,maxX=x,minY=y,maxY=y;
+        const regionIndices=[];
         const stack=[idx];
         visited[idx]=1;
-        let count=0;
         while(stack.length){
           const i=stack.pop();
-          const py=Math.floor(i/width), px=i%width;
-          count++;
-          if(px<minX)minX=px; if(px>maxX)maxX=px;
-          if(py<minY)minY=py; if(py>maxY)maxY=py;
+          regionIndices.push(i);
+          const py=(i/width)|0, px=i%width;
           for(const[dx,dy] of dirs){
             const nx=px+dx, ny=py+dy;
-            if(nx<0||ny<0||nx>=width||ny>=height)continue;
+            if(nx<0||ny<0||nx>=width||ny>=height) continue;
             const ni=ny*width+nx;
             if(mask[ni]===1 && !visited[ni]){
-              visited[ni]=1; stack.push(ni);
+              visited[ni]=1;
+              stack.push(ni);
             }
           }
         }
-        if(count>50){
-          polys.push([
-            [minX,minY],
-            [maxX,minY],
-            [maxX,maxY],
-            [minX,maxY],
-            [minX,minY]
-          ]);
+        // discard tiny specks
+        if(regionIndices.length < 50) continue;
+
+        // build set for membership test
+        const regionSet=new Set(regionIndices);
+
+        // find boundary pixels (those with at least one non-water neighbor)
+        const boundary=[];
+        for(const i of regionIndices){
+          const py=(i/width)|0, px=i%width;
+          let isBoundary=false;
+          for(const[dx,dy] of dirs){
+            const nx=px+dx, ny=py+dy;
+            if(nx<0||ny<0||nx>=width||ny>=height){
+              isBoundary=true; break;
+            }
+            const ni=ny*width+nx;
+            if(!regionSet.has(ni)){ isBoundary=true; break; }
+          }
+          if(isBoundary){
+            // use pixel centers for smoother polygon
+            boundary.push({x:px+0.5, y:py+0.5});
+          }
+        }
+
+        if(boundary.length < 3) continue;
+
+        // compute centroid
+        let sumX=0,sumY=0;
+        for(const p of boundary){sumX+=p.x; sumY+=p.y;}
+        const cx=sumX/boundary.length, cy=sumY/boundary.length;
+
+        // sort by angle around centroid
+        const withAngle=boundary.map(p=>({
+          x:p.x, y:p.y,
+          angle:Math.atan2(p.y-cy, p.x-cx)
+        }));
+        withAngle.sort((a,b)=>a.angle-b.angle);
+
+        let poly=withAngle.map(p=>[p.x,p.y]);
+
+        // simplify polygon slightly
+        poly=simplifyRDP(poly, 1.5);
+
+        // close polygon
+        if(poly.length>2){
+          const first=poly[0], last=poly[poly.length-1];
+          if(first[0]!==last[0] || first[1]!==last[1]){
+            poly.push([first[0],first[1]]);
+          }
+          regions.push(poly);
         }
       }
     }
   }
-  return polys;
+  return regions;
 }
 
 function pixelPolyToFeature(poly,mapFn){
@@ -355,11 +452,10 @@ btnExtract.onclick=()=>{
 
   waterPixelPolys = polys;
   waterFeatures = polys.map(p=>pixelPolyToFeature(p,lastComputed.mapFn));
+  waterCount.textContent = polys.length.toString();
 
-  waterCount.textContent = polys.length;
   redrawBase();
-
-  status.textContent = `Water extraction complete (${polys.length} regions).`;
+  status.textContent=`Water extraction complete (${polys.length} regions).`;
 };
 
 /* ---------- Clear Water Button ---------- */
@@ -371,26 +467,29 @@ btnClearWater.onclick=()=>{
   status.textContent="Water cleared.";
 };
 
-/* ---------- Toggle Overlay ---------- */
+/* ---------- Toggle Water Overlay ---------- */
 chkOverlay.onchange = (e)=>{
   showWaterOverlay = e.target.checked;
   redrawBase();
 };
 
-/* ---------- Draw Water Bounding Boxes ---------- */
+/* ---------- Draw Water Polygons on Canvas ---------- */
 function drawWaterOverlay(){
+  if(!waterPixelPolys.length) return;
   ctx.strokeStyle="rgba(0,120,255,0.9)";
-  ctx.fillStyle="rgba(0,120,255,0.15)";
+  ctx.fillStyle="rgba(0,120,255,0.18)";
   ctx.lineWidth=2;
 
   for(const poly of waterPixelPolys){
-    const [p0,p1,p2,p3]=poly;
-    const x=p0[0], y=p0[1];
-    const w=p1[0]-p0[0];
-    const h=p3[1]-p0[1];
-
-    ctx.fillRect(x,y,w,h);
-    ctx.strokeRect(x,y,w,h);
+    if(poly.length<2) continue;
+    ctx.beginPath();
+    ctx.moveTo(poly[0][0], poly[0][1]);
+    for(let i=1;i<poly.length;i++){
+      ctx.lineTo(poly[i][0], poly[i][1]);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   }
 }
 
