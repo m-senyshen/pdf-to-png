@@ -11,6 +11,19 @@
             background: #f7faff;
         }
 
+        /* GIS GRID BACKGROUND (optional, matches landing) */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background-image:
+                linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+        }
+
         /* HEADER */
         .header {
             position: sticky;
@@ -38,35 +51,137 @@
             color: #0077ff;
         }
 
-        /* MAIN APP CONTAINER */
-        .container {
-            max-width: 900px;
+        /* MAIN LAYOUT */
+        .app-wrapper {
+            max-width: 1100px;
             margin: 30px auto;
-            padding: 20px;
+            padding: 0 20px 40px;
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+        }
+
+        /* SIDEBAR INSTRUCTIONS */
+        .sidebar {
+            flex: 0 0 280px;
             background: white;
             border-radius: 12px;
+            padding: 18px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+        .sidebar h2 {
+            font-size: 20px;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .sidebar ol {
+            padding-left: 18px;
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .sidebar li {
+            margin-bottom: 8px;
+        }
+        .sidebar p {
+            font-size: 13px;
+            color: #555;
+            margin-top: 12px;
+        }
+
+        /* MAIN PANEL */
+        .main-panel {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            padding: 18px 18px 24px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.12);
         }
 
-        canvas {
-            width: 100%;
-            display: block;
-            margin: 20px auto;
-            border: 1px solid #ccc;
+        .main-panel h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 22px;
+        }
+        .main-panel p {
+            margin-top: 0;
+            font-size: 14px;
+            color: #555;
         }
 
-        button {
+        /* UPLOAD AREA */
+        .upload-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        #pdf-upload {
+            display: none;
+        }
+
+        .select-btn {
             padding: 10px 20px;
-            margin: 5px;
             background: #0077ff;
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
         }
-        button:hover {
+        .select-btn:hover {
             background: #005fcc;
+        }
+
+        .hint {
+            font-size: 13px;
+            color: #777;
+        }
+
+        /* CANVAS */
+        #map-canvas {
+            width: 100%;
+            max-height: 600px;
+            border: 1px solid #ccc;
+            margin: 16px 0;
+            display: block;
+            background: #fdfdfd;
+        }
+
+        /* ACTION BUTTONS */
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .button-row button {
+            padding: 9px 18px;
+            background: #0077ff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .button-row button:hover {
+            background: #005fcc;
+        }
+
+        .button-row button.secondary {
+            background: #eeeeee;
+            color: #333;
+        }
+        .button-row button.secondary:hover {
+            background: #dddddd;
+        }
+
+        /* STATUS TEXT */
+        .status {
+            font-size: 13px;
+            color: #555;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -81,21 +196,51 @@
     </div>
 </div>
 
-<div class="container">
-    <h2>Upload Map</h2>
+<!-- MAIN APP LAYOUT -->
+<div class="app-wrapper">
 
-    <input type="file" id="pdf-upload" accept="application/pdf" />
-    <button onclick="document.getElementById('pdf-upload').click()">Select PDF</button>
+    <!-- SIDEBAR INSTRUCTIONS -->
+    <aside class="sidebar">
+        <h2>How to Use</h2>
+        <ol>
+            <li>Select a PDF map file from your computer.</li>
+            <li>Wait for the map to render in the preview area.</li>
+            <li>Click <strong>Extract Water</strong> to detect water regions.</li>
+            <li>Review the highlighted water overlay on the map.</li>
+            <li>Click <strong>Download GeoJSON</strong> to export the water features.</li>
+            <li>Open the GeoJSON in QGIS, ArcGIS, or your GIS tool of choice.</li>
+        </ol>
+        <p>
+            Tip: For best results, start with maps where water is clearly drawn
+            in blue and the map image is reasonably high resolution.
+        </p>
+    </aside>
 
-    <canvas id="map-canvas"></canvas>
+    <!-- MAIN PANEL -->
+    <main class="main-panel">
+        <h2>Upload a Map</h2>
+        <p class="hint">PDF processing runs fully in your browser — your files never leave your computer.</p>
 
-    <div>
-        <button id="extract-water">Extract Water</button>
-        <button id="download-geojson">Download GeoJSON</button>
-        <button id="clear-water">Clear Water</button>
-    </div>
+        <div class="upload-row">
+            <button class="select-btn" id="select-pdf">Select PDF</button>
+            <input type="file" id="pdf-upload" accept="application/pdf" />
+            <span class="hint">Choose a map PDF to begin.</span>
+        </div>
+
+        <canvas id="map-canvas"></canvas>
+
+        <div class="button-row">
+            <button id="extract-water">Extract Water</button>
+            <button id="download-geojson">Download GeoJSON</button>
+            <button id="clear-water" class="secondary">Clear Water Overlay</button>
+        </div>
+
+        <div class="status" id="status-text"></div>
+    </main>
+
 </div>
 
+<!-- SCRIPTS -->
 <script src="./libs/pdf.js"></script>
 <script src="./libs/pdf.worker.js"></script>
 <script src="./libs/sam.js"></script>
