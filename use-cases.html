@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Use Cases — Map Extract</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* GIS GRID BACKGROUND */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background-image:
+                linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+        }
+
+        /* HEADER */
+        .header {
+            position: sticky;
+            top: 0;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        .logo {
+            font-size: 22px;
+            font-weight: bold;
+            color: #000000;
+        }
+        .nav a {
+            margin-left: 20px;
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+        .nav a:hover {
+            color: #0077ff;
+        }
+
+        /* HERO SECTION */
+        .hero {
+            text-align: center;
+            padding: 60px 20px 30px;
+        }
+        .hero h1 {
+            font-size: 42px;
+            margin-bottom: 10px;
+        }
+        .hero p {
+            font-size: 20px;
+            max-width: 700px;
+            margin: 0 auto;
+            color: #555;
+        }
+
+        /* USE CASE SECTIONS */
+        .usecase-section {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .usecase-block {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+        }
+        .usecase-block h2 {
+            font-size: 26px;
+            margin-bottom: 10px;
+        }
+        .usecase-block p {
+            font-size: 17px;
+            color: #444;
+        }
+        .icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        /* CTA */
+        .cta-container {
+            text-align: center;
+            padding: 50px 20px;
+        }
+        .cta-btn {
+            padding: 16px 34px;
+            background: #0077ff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .cta-btn:hover {
+            background: #005fcc;
+        }
+
+        /* FOOTER */
+        .footer {
+            text-align: center;
+            padding: 25px;
+            color: #777;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="logo">Map Extract</div>
+    <div class="nav">
+        <a href="use-cases.html">Use Cases</a>
+        <a href="app.html">Launch App</a>
+    </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+    <h1>Who Uses Map Extract?</h1>
+    <p>Map Extract helps professionals convert static, scanned, or PDF maps into clean, GIS-ready data — all directly in the browser.</p>
+</section>
+
+<!-- USE CASES -->
+<div class="usecase-section">
+
+    <div class="usecase-block">
+        <div class="icon">🌿</div>
+        <h2>Environmental Consultants</h2>
+        <p>
+            Extract watercourses, lakes, and shoreline boundaries from legacy PDFs and field maps.
+            Perfect for watershed studies, impact assessments, and environmental permitting.
+        </p>
+    </div>
+
+    <div class="usecase-block">
+        <div class="icon">🗺️</div>
+        <h2>GIS Analysts & Technicians</h2>
+        <p>
+            Convert raster or scanned map features into vector formats instantly.
+            Ideal for integrating older maps into QGIS, ArcGIS, or enterprise GIS databases.
+        </p>
+    </div>
+
+    <div class="usecase-block">
+        <div class="icon">🏗️</div>
+        <h2>Civil Engineering & Planning</h2>
+        <p>
+            Quickly extract hydrological features from planning maps, site drawings, and surveys.
+            Reduce manual tracing time on pre-design and feasibility studies.
+        </p>
+    </div>
+
+    <div class="usecase-block">
+        <div class="icon">🐟</div>
+        <h2>Conservation & Ecology</h2>
+        <p>
+            Generate water layers for habitat mapping, conservation planning, fisheries assessments, and landscape analysis.
+        </p>
+    </div>
+
+    <div class="usecase-block">
+        <div class="icon">🎓</div>
+        <h2>Academics & Researchers</h2>
+        <p>
+            Easily digitize historical maps into modern datasets for geography, hydrology, or environmental research projects.
+        </p>
+    </div>
+
+    <div class="usecase-block">
+        <div class="icon">🥾</div>
+        <h2>Outdoor, Recreation & Trail Mapping</h2>
+        <p>
+            Extract lakes, rivers, portages, and canoe routes from park maps for custom GPS navigation.
+        </p>
+    </div>
+
+</div>
+
+<!-- CTA -->
+<div class="cta-container">
+    <button class="cta-btn" onclick="window.location='app.html'">Start Extracting</button>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    © 2025 Map Extract — All rights reserved.
+</div>
+
+</body>
+</html>
