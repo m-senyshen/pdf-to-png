@@ -1,717 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>Map Extract — App</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<style>
-  :root { --accent:#0077ff; }
-  body {
-    margin:0;
-    font-family:-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-    background:#f6f7fb;
-    color:#222;
-    line-height:1.6;
-  }
-  nav {
-    position: sticky;
-    top: 0;
-    z-index: 999;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid #eee;
-    padding: 14px 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-  }
-  nav h1 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-    color: #222;
-  }
-  nav a {
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 15px;
-    margin-left: 20px;
-  }
-  .back-link { color:#000; }
+    <meta charset="UTF-8" />
+    <title>Map Extract — App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            color: #333;
+            background: #f7faff;
+        }
 
-  .container {
-    max-width:1200px;
-    margin:24px auto;
-    background:#fff;
-    border-radius:10px;
-    padding:18px;
-    box-shadow:0 6px 30px rgba(10,20,40,0.06);
-  }
-  header {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-  }
-  header h2 {
-    margin:0;
-    font-size:20px;
-    color:#06345a;
-  }
-  .controls {
-    display:flex;
-    gap:8px;
-    align-items:center;
-    flex-wrap:wrap;
-  }
-  button {
-    background:var(--accent);
-    color:#fff;
-    border:none;
-    padding:8px 12px;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:600;
-  }
-  .muted-btn { background:#eef4ff; color:#06345a; border:1px solid #dbeafe; }
-  .secondary { background:#f2f6fb; color:#06345a; border:1px solid #dbeafe; }
-  .danger { background:#ffe9ec; color:#7a1220; border:1px solid #e9b5be; }
+        /* HEADER */
+        .header {
+            position: sticky;
+            top: 0;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        .logo {
+            font-size: 22px;
+            font-weight: bold;
+            color: #000000;
+        }
+        .nav a {
+            margin-left: 20px;
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+        .nav a:hover {
+            color: #0077ff;
+        }
 
-  main {
-    display:grid;
-    grid-template-columns:1fr 360px;
-    gap:18px;
-    margin-top:16px;
-  }
+        /* MAIN APP CONTAINER */
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
 
-  .upload-box {
-    border:2px dashed var(--accent);
-    padding:16px;
-    border-radius:10px;
-    text-align:center;
-    background:#f8fbff;
-    max-width:400px;
-    margin:0 auto 8px;
-  }
+        canvas {
+            width: 100%;
+            display: block;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+        }
 
-  canvas {
-    display:block;
-    max-width:100%;
-    height:auto;
-    border:1px solid #e6e9ef;
-    background:#fff;
-  }
-
-  table { width:100%; border-collapse:collapse; margin-top:8px; }
-  td,th { padding:6px; border-bottom:1px solid #f0f2f6; font-size:13px; }
-  .small { font-size:13px; color:#666; }
-  .status { margin-top:8px; color:#333; }
-  input[type="number"] {
-    width:110px;
-    padding:6px;
-    border-radius:6px;
-    border:1px solid #dbe3ee;
-  }
-</style>
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #0077ff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #005fcc;
+        }
+    </style>
 </head>
 <body>
 
-<nav>
-  <h1>Map Extract</h1>
-  <div>
-    <a href="landing.html" class="back-link">← Back to Home</a>
-  </div>
-</nav>
+<!-- HEADER -->
+<div class="header">
+    <div class="logo">Map Extract</div>
+    <div class="nav">
+        <a href="use-cases.html">Use Cases</a>
+        <a href="app.html">Launch App</a>
+    </div>
+</div>
 
 <div class="container">
-  <header>
-    <h2>Water Extraction & Georeferencing</h2>
-    <div class="controls">
-      <button id="btn-georef" class="muted-btn">Georeference Mode</button>
-      <button id="btn-clear-gcps" class="secondary">Clear GCPs</button>
-      <button id="btn-compute" class="secondary">Compute Transform</button>
-      <button id="btn-export-geojson" class="secondary">Export Water GeoJSON</button>
+    <h2>Upload Map</h2>
+
+    <input type="file" id="pdf-upload" accept="application/pdf" />
+    <button onclick="document.getElementById('pdf-upload').click()">Select PDF</button>
+
+    <canvas id="map-canvas"></canvas>
+
+    <div>
+        <button id="extract-water">Extract Water</button>
+        <button id="download-geojson">Download GeoJSON</button>
+        <button id="clear-water">Clear Water</button>
     </div>
-  </header>
-
-  <main>
-    <section id="left">
-      <div class="upload-box">
-        <button id="select-pdf">Select PDF</button>
-        <input type="file" id="file-input" accept="application/pdf" style="display:none" />
-      </div>
-
-      <canvas id="pdf-canvas"></canvas>
-      <div class="status" id="status">Status: idle</div>
-    </section>
-
-    <aside id="right">
-      <div id="instructions-section" style="margin-bottom:20px;">
-        <h3 id="instructions-toggle" style="cursor:pointer; margin:0;">
-          📘 Instructions ▼
-        </h3>
-
-        <div id="instructions-content" style="margin-top:10px; font-size:13px; line-height:1.45;">
-          <p><strong>1️⃣ Upload your map</strong><br>Click “Select PDF”.</p>
-          <p><strong>2️⃣ Georeference</strong><br>Toggle Georeference Mode, click points on the map, and enter lon/lat.</p>
-          <p><strong>3️⃣ Compute transform</strong><br>Choose affine or polynomial, then click Compute Transform.</p>
-          <p><strong>4️⃣ Extract water</strong><br>Click Extract Water to detect water bodies inside the map area.</p>
-          <p><strong>5️⃣ Export</strong><br>Export water polygons as GeoJSON for GIS tools.</p>
-        </div>
-      </div>
-
-      <h3>Ground Control Points</h3>
-      <table id="gcp-table">
-        <thead>
-          <tr><th>px X</th><th>px Y</th><th>lon</th><th>lat</th><th></th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-
-      <div style="margin-top:10px">
-        <label class="small">Transform Model:</label><br>
-        <select id="model-select">
-          <option value="affine">Affine (3+ points)</option>
-          <option value="poly2">2nd-degree Polynomial (6+ points)</option>
-        </select>
-      </div>
-
-      <div style="margin-top:12px">
-        <div class="small">RMS error:</div>
-        <div id="rms" style="font-weight:700;margin-top:4px">—</div>
-      </div>
-
-      <hr style="margin:20px 0"/>
-
-      <div>
-        <h3>Water Extraction</h3>
-        <button id="btn-extract-water" class="secondary" style="margin-bottom:6px;">Extract Water</button>
-        <button id="btn-clear-water" class="secondary">Clear Water</button>
-
-        <div style="margin-top:12px;">
-          <label>
-            <input type="checkbox" id="chk-water-overlay" checked />
-            Show Water Overlay
-          </label>
-        </div>
-
-        <div class="small" style="margin-top:8px;">
-          Water features detected:
-          <span id="water-count" style="font-weight:bold;">0</span>
-        </div>
-      </div>
-
-    </aside>
-  </main>
 </div>
 
 <script src="./libs/pdf.js"></script>
-<script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
-</script>
+<script src="./libs/pdf.worker.js"></script>
+<script src="./libs/sam.js"></script>
+<script src="./script.js"></script>
 
-<script>
-/* ---------- Instructions Toggle ---------- */
-const instrToggle = document.getElementById("instructions-toggle");
-const instrContent = document.getElementById("instructions-content");
-instrToggle.onclick = () => {
-  const hidden = instrContent.style.display === "none";
-  instrContent.style.display = hidden ? "block" : "none";
-  instrToggle.textContent = hidden ? "📘 Instructions ▼" : "📘 Instructions ▲";
-};
-
-/* ---------- Math Helpers ---------- */
-function transpose(A){return A[0].map((_,i)=>A.map(r=>r[i]));}
-function matMul(A,B){const R=Array.from({length:A.length},()=>Array(B[0].length).fill(0));
-  for(let i=0;i<A.length;i++)for(let j=0;j<B[0].length;j++)for(let k=0;k<B.length;k++)R[i][j]+=A[i][k]*B[k][j];return R;}
-function matVecMul(A,v){return A.map(r=>r.reduce((s,x,i)=>s+x*v[i],0));}
-function solveLinear(A,b){
-  A=A.map(r=>r.slice()); b=b.slice(); const n=A.length;
-  for(let i=0;i<n;i++){
-    let max=i;
-    for(let r=i+1;r<n;r++) if(Math.abs(A[r][i])>Math.abs(A[max][i])) max=r;
-    if(max!==i){[A[i],A[max]]=[A[max],A[i]]; [b[i],b[max]]=[b[max],b[i]];}
-    const pivot=A[i][i]; if(Math.abs(pivot)<1e-12) throw("Singular");
-    for(let j=i;j<n;j++)A[i][j]/=pivot; b[i]/=pivot;
-    for(let r=0;r<n;r++){
-      if(r===i)continue;
-      const f=A[r][i];
-      for(let j=i;j<n;j++)A[r][j]-=f*A[i][j];
-      b[r]-=f*b[i];
-    }
-  }
-  return b;
-}
-function leastSquares(M,y){
-  const MT=transpose(M);
-  const MTM=matMul(MT,M);
-  const MTy=matVecMul(MT,y);
-  return solveLinear(MTM,MTy);
-}
-
-/* ---------- Transform Functions ---------- */
-function fitAffine(gcps){
-  const M=gcps.map(g=>[1,g.x,g.y]);
-  const X=gcps.map(g=>g.X), Y=gcps.map(g=>g.Y);
-  const a=leastSquares(M,X), b=leastSquares(M,Y);
-  const mapFn=p=>({X:a[0]+a[1]*p.x+a[2]*p.y, Y:b[0]+b[1]*p.x+b[2]*p.y});
-  const rms=Math.sqrt(gcps.reduce((s,g)=>{const p=mapFn(g);return s+(p.X-g.X)**2+(p.Y-g.Y)**2;},0)/gcps.length);
-  return {mapFn,rms};
-}
-function fitPoly2(gcps){
-  const M=gcps.map(g=>[1,g.x,g.y,g.x*g.x,g.x*g.y,g.y*g.y]);
-  const X=gcps.map(g=>g.X), Y=gcps.map(g=>g.Y);
-  const a=leastSquares(M,X), b=leastSquares(M,Y);
-  const mapFn=p=>{
-    const v=[1,p.x,p.y,p.x*p.x,p.x*p.y,p.y*p.y];
-    return {
-      X:v.reduce((s,_,i)=>s+v[i]*a[i],0),
-      Y:v.reduce((s,_,i)=>s+v[i]*b[i],0)
-    };
-  };
-  const rms=Math.sqrt(gcps.reduce((s,g)=>{const p=mapFn(g);return s+(p.X-g.X)**2+(p.Y-g.Y)**2;},0)/gcps.length);
-  return {mapFn,rms};
-}
-
-/* ---------- State ---------- */
-const canvas=document.getElementById("pdf-canvas");
-const ctx=canvas.getContext("2d");
-const fileInput=document.getElementById("file-input");
-const selectPdf=document.getElementById("select-pdf");
-const btnGeoref=document.getElementById("btn-georef");
-const btnClear=document.getElementById("btn-clear-gcps");
-const btnCompute=document.getElementById("btn-compute");
-const btnExtract=document.getElementById("btn-extract-water");
-const btnClearWater=document.getElementById("btn-clear-water");
-const btnExport=document.getElementById("btn-export-geojson");
-const chkOverlay=document.getElementById("chk-water-overlay");
-const waterCount=document.getElementById("water-count");
-const statusEl=document.getElementById("status");
-const gcpTable=document.querySelector("#gcp-table tbody");
-const rmsEl=document.getElementById("rms");
-const modelSelect=document.getElementById("model-select");
-
-let renderedImage=null;
-let georefMode=false;
-let gcps=[];
-let lastComputed=null;
-let waterPixelPolys=[];
-let waterFeatures=[];
-let showWaterOverlay=true;
-let mapBoundary=null; // {left,right,top,bottom}
-
-/* ---------- Drawing ---------- */
-function drawExclusionMask(){
-  if(!mapBoundary) return;
-  const {left,right,top,bottom}=mapBoundary;
-  ctx.save();
-  ctx.fillStyle="rgba(0,0,0,0.35)";
-  ctx.fillRect(0,0,canvas.width,top);
-  ctx.fillRect(0,bottom,canvas.width,canvas.height-bottom);
-  ctx.fillRect(0,top,left, bottom-top);
-  ctx.fillRect(right,top,canvas.width-right, bottom-top);
-  ctx.restore();
-}
-function drawWaterOverlay(){
-  if(!waterPixelPolys.length) return;
-  ctx.strokeStyle="rgba(0,120,255,0.9)";
-  ctx.fillStyle="rgba(0,120,255,0.18)";
-  ctx.lineWidth=2;
-  for(const poly of waterPixelPolys){
-    ctx.beginPath();
-    ctx.moveTo(poly[0][0], poly[0][1]);
-    for(let i=1;i<poly.length;i++) ctx.lineTo(poly[i][0], poly[i][1]);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-  }
-}
-function redrawBase(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(renderedImage) ctx.drawImage(renderedImage,0,0,canvas.width,canvas.height);
-  drawExclusionMask();
-  gcps.forEach(g=>{
-    ctx.fillStyle="rgba(0,120,255,0.9)";
-    ctx.beginPath(); ctx.arc(g.x,g.y,4,0,6.28); ctx.fill();
-  });
-  if(showWaterOverlay) drawWaterOverlay();
-}
-
-/* ---------- NEW: Connected Component Map Detection ---------- */
-function detectMapBoundaryFromCanvas(){
-  const w = canvas.width, h = canvas.height;
-  if (!w || !h) return;
-
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-
-  // 1. Build ink mask
-  const inkMask = new Uint8Array(w * h);
-  for (let i = 0; i < w * h; i++) {
-    const di = i * 4;
-    const r = d[di], g = d[di+1], b = d[di+2];
-    const bright = 0.299*r + 0.587*g + 0.114*b;
-    inkMask[i] = (bright < 245) ? 1 : 0;
-  }
-
-  // 2. Connected components
-  const visited = new Uint8Array(w * h);
-  let bestSize = 0, bestMinX=0, bestMinY=0, bestMaxX=0, bestMaxY=0;
-  const stack = [];
-  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const idx = y * w + x;
-      if (!inkMask[idx] || visited[idx]) continue;
-
-      let size = 0;
-      let minX = x, maxX = x, minY = y, maxY = y;
-
-      stack.push(idx);
-      visited[idx] = 1;
-
-      while (stack.length) {
-        const i = stack.pop();
-        const py = (i / w) | 0;
-        const px = i % w;
-        size++;
-
-        if (px < minX) minX = px;
-        if (px > maxX) maxX = px;
-        if (py < minY) minY = py;
-        if (py > maxY) maxY = py;
-
-        for (const [dx,dy] of dirs) {
-          const nx = px + dx, ny = py + dy;
-          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-          const ni = ny * w + nx;
-          if (inkMask[ni] && !visited[ni]) {
-            visited[ni] = 1;
-            stack.push(ni);
-          }
-        }
-      }
-
-      if (size > bestSize) {
-        bestSize = size;
-        bestMinX = minX; bestMaxX = maxX;
-        bestMinY = minY; bestMaxY = maxY;
-      }
-    }
-  }
-
-  if (bestSize === 0) {
-    console.warn("No ink regions found; using full image.");
-    mapBoundary = null;
-    return;
-  }
-
-  // 3. Convert to bounding box
-  let left   = bestMinX;
-  let right  = bestMaxX + 1;
-  let top    = bestMinY;
-  let bottom = bestMaxY + 1;
-
-  // 4. Shrink inward slightly (Option 2)
-  const shrinkX = Math.max(3, Math.round((right-left) * 0.005));
-  const shrinkY = Math.max(3, Math.round((bottom-top) * 0.005));
-
-  left   = Math.min(Math.max(0, left   + shrinkX), w);
-  right  = Math.max(Math.min(w, right  - shrinkX), 0);
-  top    = Math.min(Math.max(0, top    + shrinkY), h);
-  bottom = Math.max(Math.min(h, bottom - shrinkY), 0);
-
-  if (left >= right || top >= bottom) {
-    console.warn("Boundary collapsed; using full image.");
-    mapBoundary = null;
-    return;
-  }
-
-  mapBoundary = {left, right, top, bottom};
-  console.log("Final map interior boundary:", mapBoundary);
-}
-
-/* ---------- PDF Loading ---------- */
-selectPdf.onclick=()=>fileInput.click();
-
-fileInput.onchange=async()=>{
-  const f=fileInput.files[0];
-  if(!f) return;
-
-  statusEl.textContent="Loading PDF…";
-  waterPixelPolys=[]; waterFeatures=[]; waterCount.textContent="0";
-
-  const ab=await f.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
-  const page=await pdf.getPage(1);
-  const viewport=page.getViewport({scale:2});
-  canvas.width=viewport.width;
-  canvas.height=viewport.height;
-
-  await page.render({canvasContext:ctx,viewport}).promise;
-
-  detectMapBoundaryFromCanvas();
-
-  renderedImage=new Image();
-  renderedImage.src=canvas.toDataURL();
-  await renderedImage.decode();
-
-  statusEl.textContent="PDF loaded.";
-  redrawBase();
-};
-
-/* ---------- GCPs ---------- */
-btnGeoref.onclick=()=>{
-  georefMode=!georefMode;
-  btnGeoref.textContent=georefMode?"Exit Georeference Mode":"Georeference Mode";
-  btnGeoref.className=georefMode?"danger":"muted-btn";
-  redrawBase();
-};
-
-canvas.addEventListener("click",e=>{
-  if(!georefMode || !renderedImage) return;
-  const r=canvas.getBoundingClientRect();
-  const x=(e.clientX-r.left)*(canvas.width/r.width);
-  const y=(e.clientY-r.top)*(canvas.height/r.height);
-  gcps.push({x,y,X:null,Y:null});
-  refreshTable(); redrawBase();
-});
-
-function refreshTable(){
-  gcpTable.innerHTML="";
-  gcps.forEach((g,i)=>{
-    const tr=document.createElement("tr");
-
-    const t1=document.createElement("td"); t1.textContent=g.x.toFixed(1);
-    const t2=document.createElement("td"); t2.textContent=g.y.toFixed(1);
-
-    const lonTD=document.createElement("td");
-    const lon=document.createElement("input");
-    lon.type="number"; lon.step="any"; lon.value=g.X ?? "";
-    lon.onchange=()=>g.X=parseFloat(lon.value);
-    lonTD.appendChild(lon);
-
-    const latTD=document.createElement("td");
-    const lat=document.createElement("input");
-    lat.type="number"; lat.step="any"; lat.value=g.Y ?? "";
-    lat.onchange=()=>g.Y=parseFloat(lat.value);
-    latTD.appendChild(lat);
-
-    const del=document.createElement("td");
-    const btn=document.createElement("button");
-    btn.textContent="X"; btn.className="secondary";
-    btn.onclick=()=>{gcps.splice(i,1); refreshTable(); redrawBase();};
-    del.appendChild(btn);
-
-    tr.appendChild(t1); tr.appendChild(t2);
-    tr.appendChild(lonTD); tr.appendChild(latTD);
-    tr.appendChild(del);
-
-    gcpTable.appendChild(tr);
-  });
-}
-
-/* ---------- Compute Transform ---------- */
-btnCompute.onclick=()=>{
-  const valid=gcps.filter(g=>typeof g.X==="number" && typeof g.Y==="number");
-  if(modelSelect.value==="affine" && valid.length<3) return alert("Affine requires ≥3 GCPs");
-  if(modelSelect.value==="poly2" && valid.length<6) return alert("Poly2 requires ≥6 GCPs");
-
-  try{
-    lastComputed=modelSelect.value==="affine" ? 
-      fitAffine(valid) : fitPoly2(valid);
-
-    rmsEl.textContent=lastComputed.rms.toFixed(3);
-    statusEl.textContent="Transform computed.";
-    redrawBase();
-  }catch(err){
-    alert("Failed: "+err);
-  }
-};
-
-/* ---------- Water Extraction ---------- */
-function isWaterPixel(r,g,b){
-  return (b > 120 && b > r+25 && b > g+15);
-}
-
-function getWaterMask(){
-  if(!renderedImage){
-    return new Uint8Array(canvas.width*canvas.height);
-  }
-  const w=canvas.width, h=canvas.height;
-
-  const off=document.createElement("canvas");
-  off.width=w; off.height=h;
-  const octx=off.getContext("2d");
-  octx.drawImage(renderedImage,0,0,w,h);
-
-  const img=octx.getImageData(0,0,w,h);
-  const d=img.data;
-  const mask=new Uint8Array(w*h);
-
-  const useBoundary=!!mapBoundary;
-  const left  = useBoundary? mapBoundary.left   : 0;
-  const right = useBoundary? mapBoundary.right  : w;
-  const top   = useBoundary? mapBoundary.top    : 0;
-  const bottom= useBoundary? mapBoundary.bottom : h;
-
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
-      const idx=y*w+x;
-
-      // outside map interior → no water
-      if(x < left || x >= right || y < top || y >= bottom){
-        mask[idx]=0; continue;
-      }
-
-      const di=idx*4;
-      const r=d[di], g=d[di+1], b=d[di+2];
-      mask[idx] = isWaterPixel(r,g,b) ? 1 : 0;
-    }
-  }
-  return mask;
-}
-
-function perpendicularDistance(pt, lineStart, lineEnd){
-  const [x,y]=pt;
-  const [x1,y1]=lineStart;
-  const [x2,y2]=lineEnd;
-  const dx=x2-x1, dy=y2-y1;
-  if(dx===0 && dy===0) return Math.hypot(x-x1,y-y1);
-  const t=((x-x1)*dx+(y-y1)*dy)/(dx*dx+dy*dy);
-  const projX=x1+t*dx, projY=y1+t*dy;
-  return Math.hypot(x-projX,y-projY);
-}
-function simplifyRDP(points,epsilon){
-  if(points.length<=2) return points.slice();
-  let maxDist=0, index=-1;
-  for(let i=1;i<points.length-1;i++){
-    const d=perpendicularDistance(points[i],
-      points[0], points[points.length-1]);
-    if(d>maxDist){maxDist=d; index=i;}
-  }
-  if(maxDist>epsilon){
-    const left=simplifyRDP(points.slice(0,index+1),epsilon);
-    const right=simplifyRDP(points.slice(index),epsilon);
-    return left.slice(0,left.length-1).concat(right);
-  }
-  return [points[0], points[points.length-1]];
-}
-
-function extractWaterRegions(mask,w,h){
-  const visited=new Uint8Array(w*h);
-  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
-  const regions=[];
-
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
-      const idx=y*w+x;
-      if(mask[idx]===1 && !visited[idx]){
-        const stack=[idx];
-        visited[idx]=1;
-        const region=[];
-        while(stack.length){
-          const i=stack.pop();
-          region.push(i);
-          const py=(i/w)|0, px=i%w;
-          for(const[dx,dy] of dirs){
-            const nx=px+dx, ny=py+dy;
-            if(nx<0||ny<0||nx>=w||ny>=h) continue;
-            const ni=ny*w+nx;
-            if(mask[ni]===1 && !visited[ni]){
-              visited[ni]=1; stack.push(ni);
-            }
-          }
-        }
-
-        if(region.length < 50) continue;
-        const set=new Set(region);
-        const boundary=[];
-        for(const i of region){
-          const py=(i/w)|0, px=i%w;
-          let isB=false;
-          for(const[dx,dy] of dirs){
-            const nx=px+dx, ny=py+dy;
-            if(nx<0||ny<0||nx>=w||ny>=h){isB=true; break;}
-            if(!set.has(ny*w+nx)){isB=true; break;}
-          }
-          if(isB) boundary.push([px+0.5,py+0.5]);
-        }
-        if(boundary.length < 3) continue;
-
-        let cx=0,cy=0;
-        for(const p of boundary){cx+=p[0];cy+=p[1];}
-        cx/=boundary.length; cy/=boundary.length;
-
-        boundary.sort((a,b)=>{
-          const aa=Math.atan2(a[1]-cy,a[0]-cx);
-          const bb=Math.atan2(b[1]-cy,b[0]-cx);
-          return aa-bb;
-        });
-
-        let simple=simplifyRDP(boundary,1.5);
-        if(simple.length>2){
-          const f=simple[0], l=simple[simple.length-1];
-          if(f[0]!==l[0] || f[1]!==l[1]) simple.push([f[0],f[1]]);
-          regions.push(simple);
-        }
-      }
-    }
-  }
-  return regions;
-}
-
-function pixelPolyToFeature(poly,mapFn){
-  const coords=poly.map(([x,y])=>{
-    const g=mapFn({x,y});
-    return [g.X,g.Y];
-  });
-  return {
-    type:"Feature",
-    properties:{type:"water"},
-    geometry:{type:"Polygon",coordinates:[coords]}
-  };
-}
-
-btnExtract.onclick=()=>{
-  if(!renderedImage) return alert("Load a PDF first.");
-  if(!lastComputed) return alert("Compute transform first.");
-
-  statusEl.textContent="Extracting water…";
-
-  const mask=getWaterMask();
-  const polys=extractWaterRegions(mask,canvas.width,canvas.height);
-
-  waterPixelPolys = polys;
-  waterFeatures = polys.map(p=>pixelPolyToFeature(p,lastComputed.mapFn));
-  waterCount.textContent = polys.length.toString();
-
-  redrawBase();
-  statusEl.textContent=`Water extraction complete (${polys.length} regions).`;
-};
-
-btnClearWater.onclick=()=>{
-  waterPixelPolys=[];
-  waterFeatures=[];
-  waterCount.textContent="0";
-  redrawBase();
-  statusEl.textContent="Water cleared.";
-};
-
-chkOverlay.onchange=e=>{
-  showWaterOverlay=e.target.checked;
-  redrawBase();
-};
-
-btnExport.onclick=()=>{
-  if(waterFeatures.length===0) return alert("No water features.");
-  const fc={type:"FeatureCollection",features:waterFeatures};
-  const blob=new Blob([JSON.stringify(fc,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url; a.download="water.geojson"; a.click();
-  URL.revokeObjectURL(url);
-};
-</script>
 </body>
 </html>
