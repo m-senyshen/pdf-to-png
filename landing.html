@@ -84,30 +84,17 @@
             margin-bottom: 20px;
         }
 
-        /* BEFORE / AFTER SECTION */
-        .example-grid {
-            max-width: 1100px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 25px;
-            padding: 20px;
-        }
-
-        .example-card {
-            background: white;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        /* Example Image */
+        .example-image {
+            max-width: 1200px;
+            margin: 40px auto;
             text-align: center;
         }
-        .example-card img {
+        .example-image img {
             width: 100%;
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-        .example-card h3 {
-            margin: 10px 0 5px;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
         }
 
         /* WORKFLOW DIAGRAM */
@@ -183,7 +170,7 @@
 <div class="header">
     <div class="logo">Map Extract</div>
     <div class="nav">
-        <a href="landing.html">Home</a>
+        <a href="use-cases.html">Use Cases</a>
         <a href="app.html">Launch App</a>
     </div>
 </div>
@@ -195,39 +182,11 @@
     <button class="cta-btn" onclick="window.location='app.html'">Launch App</button>
 </section>
 
-<!-- BEFORE / AFTER SECTION -->
-<h2 class="section-title">Before & After</h2>
-
-<div class="example-grid">
-
-    <div class="example-card">
-        <img src="https://via.placeholder.com/300x200?text=Original+Map" />
-        <h3>Original Map</h3>
-        <p>Uploaded PDF map including legends, borders, and additional information.</p>
-    </div>
-
-    <div class="example-card">
-        <img src="https://via.placeholder.com/300x200?text=Detected+Water+Mask" />
-        <h3>Detected Water Mask</h3>
-        <p>Automatic boundary detection isolates only the true map content.</p>
-    </div>
-
-    <div class="example-card">
-        <img src="https://via.placeholder.com/300x200?text=GIS+Shapes" />
-        <h3>GIS-Ready Output</h3>
-        <p>Export GeoJSON or SHP for seamless use in QGIS or ArcGIS.</p>
-    </div>
-
-</div>
-
-<!-- EXAMPLE IMAGE SECTION -->
-<h2 class="section-title">Example Output</h2>
-
-<section style="max-width:900px; margin:40px auto; text-align:center;">
+<!-- FULL-WIDTH REAL EXAMPLE IMAGE -->
+<section class="example-image">
     <img 
-        src="./assets/map-examples.png" 
-        alt="Map Extract example output"
-        style="width:100%; height:auto; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.12);"
+        src="./assets/map-examples.png"
+        alt="Map Extract Example Output"
     >
 </section>
 
