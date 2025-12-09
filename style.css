@@ -116,16 +116,13 @@ button:hover {
   text-decoration: none;
   color: #000000;
 }
-.header .logo a {
+.header .logo a,
+.header .logo a:visited,
+.header .logo a:hover,
+.header .logo a:active,
+.header .logo a:focus {
     color: #000 !important;
-    text-decoration: none;
+    text-decoration: none !important;
 }
 
-.header .logo a:visited {
-    color: #000 !important;   /* prevent purple visited color */
-}
-
-.header .logo a:hover {
-    color: #0077ff;           /* optional hover color */
-}
 
