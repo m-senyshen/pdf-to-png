@@ -363,6 +363,74 @@ function detectLegendSymbols(ocrResults, imageData, w, h) {
     console.log("Legend entries detected:", legendEntries);
 }
 
+/* ---------- STEP C: CLASSIFY LEGEND SYMBOLS ---------- */
+function classifyLegendEntries(legendEntries, imageData, w, h) {
+
+    function normalizeText(t) {
+        t = t.toLowerCase().trim();
+        t = t.replace(/[^a-z0-9 ]/g, "");
+        return t;
+    }
+
+    function classifyTextOnly(t) {
+        if (t.includes("lake") || t.includes("river") || t.includes("water") || t.includes("pond"))
+            return "water";
+
+        if (t.includes("road") || t.includes("highway") || t.includes("rd"))
+            return "road";
+
+        if (t.includes("trail") || t.includes("path") || t.includes("route"))
+            return "trail";
+
+        if (t.includes("boundary") || t.includes("border"))
+            return "boundary";
+
+        return "unknown";
+    }
+
+    function classifyFromPixelData(box) {
+        const { x, y, width, height } = box;
+
+        let total = 0;
+        let blueCount = 0;
+        let darkCount = 0;
+
+        for (let py = y; py < y + height; py++) {
+            for (let px = x; px < x + width; px++) {
+                const idx = (py * w + px) * 4;
+                const r = imageData[idx], g = imageData[idx+1], b = imageData[idx+2];
+
+                total++;
+
+                if (b > r + 20 && b > g + 20) blueCount++;
+
+                const brightness = 0.299*r + 0.587*g + 0.114*b;
+                if (brightness < 100) darkCount++;
+            }
+        }
+
+        const blueRatio = blueCount / total;
+        const darkRatio = darkCount / total;
+
+        if (blueRatio > 0.25) return "water";
+        if (darkRatio > 0.35) return "road";
+
+        return "unknown";
+    }
+
+    legendEntries.forEach(entry => {
+        const norm = normalizeText(entry.text);
+        let type = classifyTextOnly(norm);
+
+        if (type === "unknown" && entry.symbolBox) {
+            type = classifyFromPixelData(entry.symbolBox);
+        }
+
+        entry.type = type;
+    });
+
+    console.log("Classified legend entries:", legendEntries);
+}
 
 </script>
 
@@ -460,7 +528,7 @@ btnOCRTest.onclick = async () => {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
-
+    classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
     redrawBase(); // redraw to include symbol boxes
 };
 
@@ -515,9 +583,20 @@ function redrawBase(){
     ctx.save();
   ctx.strokeStyle = "yellow";
   ctx.lineWidth = 2;
-  legendSymbolBoxes.forEach(b => {
-      ctx.strokeRect(b.x, b.y, b.width, b.height);
-  });
+  legendEntries.forEach(entry => {
+    const b = entry.symbolBox;
+    if (!b) return;
+
+    let color = "yellow";
+    if (entry.type === "water") color = "rgba(0,150,255,0.9)";
+    if (entry.type === "road") color = "rgba(0,0,0,0.9)";
+    if (entry.type === "trail") color = "rgba(0,180,0,0.9)";
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(b.x, b.y, b.width, b.height);
+});
+
   ctx.restore();
 }
 
