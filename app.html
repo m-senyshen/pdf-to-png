@@ -140,6 +140,7 @@
     border:1px solid #dbe3ee;
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -163,6 +164,7 @@
       <button id="btn-clear-gcps" class="secondary">Clear GCPs</button>
       <button id="btn-compute" class="secondary">Compute Transform</button>
       <button id="btn-export-geojson" class="secondary">Export Water GeoJSON</button>
+      <button id="btn-ocr-test" class="secondary">Run OCR Test</button>
     </div>
   </header>
 
@@ -240,6 +242,42 @@
 <script src="./libs/pdf.js"></script>
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
+  /* ---------- OCR: Extract Text Bounding Boxes ---------- */
+async function extractTextBoxes() {
+    statusEl.textContent = "Detecting text… (OCR)";
+
+    const dataUrl = canvas.toDataURL("image/png");
+
+    const result = await Tesseract.recognize(dataUrl, 'eng', {
+        logger: m => console.log(m)
+    });
+
+    const boxes = result.data.words.map(w => ({
+        x: w.bbox.x0,
+        y: w.bbox.y0,
+        w: w.bbox.x1 - w.bbox.x0,
+        h: w.bbox.y1 - w.bbox.y0,
+        text: w.text,
+        conf: w.conf
+    }));
+
+    console.log("OCR boxes:", boxes);
+    statusEl.textContent = "OCR complete.";
+
+    return boxes;
+}
+function drawOCRBoxes(boxes) {
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,0,0,0.7)";
+    ctx.lineWidth = 2;
+
+    boxes.forEach(b => {
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+    });
+
+    ctx.restore();
+}
+
 </script>
 
 <script>
@@ -323,6 +361,16 @@ const gcpTable=document.querySelector("#gcp-table tbody");
 const rmsEl=document.getElementById("rms");
 const modelSelect=document.getElementById("model-select");
 
+const btnOCRTest = document.getElementById("btn-ocr-test");
+
+btnOCRTest.onclick = async () => {
+    if (!renderedImage) return alert("Load a PDF first.");
+
+    const boxes = await extractTextBoxes();
+    drawOCRBoxes(boxes);
+};
+
+  
 let renderedImage=null;
 let georefMode=false;
 let gcps=[];
