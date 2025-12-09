@@ -112,3 +112,8 @@ button:hover {
 .nav a:hover {
   color: #0077ff;
 }
+.logo a {
+  text-decoration: none;
+  color: #000000;
+}
+
