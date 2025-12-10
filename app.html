@@ -542,6 +542,12 @@ let waterPixelPolys=[];
 let waterFeatures=[];
 let showWaterOverlay=true;
 let mapBoundary=null; // {left,right,top,bottom}
+// generic extracted geometry holders
+let extractedPolygons = [];   // polygon features from any extraction
+let extractedLines = [];      // line features (future)
+let extractedPoints = [];     // point features (future)
+let nextFeatureId = 1;        // auto increment ID
+
 // ---------- LEGEND DETECTION STATE ----------
 let legendEntries = [];      // { text, textBox, symbolBox }
 let legendSymbolBoxes = [];  // boxes we draw on canvas
@@ -936,7 +942,15 @@ function pixelPolyToFeature(poly,mapFn){
     geometry:{type:"Polygon",coordinates:[coords]}
   };
 }
-
+function createFeatureRecord(type, geometry) {
+    return {
+        id: nextFeatureId++,
+        type,     // "polygon", "line", or "point"
+        geometry, // raw pixel coordinates OR georeferenced later
+        name: null  // user will rename later
+    };
+}
+  
 btnExtract.onclick=()=>{
   if(!renderedImage) return alert("Load a PDF first.");
   if(!lastComputed) return alert("Compute transform first.");
@@ -949,10 +963,12 @@ btnExtract.onclick=()=>{
   waterPixelPolys = polys;
   waterFeatures = polys.map(p=>pixelPolyToFeature(p,lastComputed.mapFn));
   waterCount.textContent = polys.length.toString();
-
-  redrawBase();
-  statusEl.textContent=`Water extraction complete (${polys.length} regions).`;
-};
+  
+  polys.forEach(poly => {
+    extractedPolygons.push(
+        createFeatureRecord("polygon", poly)
+    );
+});
 
 btnClearWater.onclick=()=>{
   waterPixelPolys=[];
