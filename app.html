@@ -951,24 +951,30 @@ function createFeatureRecord(type, geometry) {
     };
 }
   
-btnExtract.onclick=()=>{
-  if(!renderedImage) return alert("Load a PDF first.");
-  if(!lastComputed) return alert("Compute transform first.");
+btnExtract.onclick = () => {
+  if (!renderedImage) return alert("Load a PDF first.");
+  if (!lastComputed) return alert("Compute transform first.");
 
-  statusEl.textContent="Extracting water…";
+  statusEl.textContent = "Extracting water…";
 
-  const mask=getWaterMask();
-  const polys=extractWaterRegions(mask,canvas.width,canvas.height);
+  const mask = getWaterMask();
+  const polys = extractWaterRegions(mask, canvas.width, canvas.height);
 
   waterPixelPolys = polys;
-  waterFeatures = polys.map(p=>pixelPolyToFeature(p,lastComputed.mapFn));
+  waterFeatures = polys.map(p => pixelPolyToFeature(p, lastComputed.mapFn));
   waterCount.textContent = polys.length.toString();
-  
+
+  // NEW: store polygons generically
   polys.forEach(poly => {
     extractedPolygons.push(
-        createFeatureRecord("polygon", poly)
+      createFeatureRecord("polygon", poly)
     );
-});
+  });
+
+  redrawBase();
+  statusEl.textContent = `Water extraction complete (${polys.length} regions).`;
+};
+
 
 btnClearWater.onclick=()=>{
   waterPixelPolys=[];
