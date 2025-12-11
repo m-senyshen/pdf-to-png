@@ -285,7 +285,10 @@ async function extractTextBoxes() {
    Compute symbol color/shape signature
 ----------------------------------------------------- */
 function computeSymbolSignature(box, imageData, w, h) {
-    const { x, y, width, height } = box;
+    const x = box.x;
+    const y = box.y;
+    const width = box.width ?? box.w;
+    const height = box.height ?? box.h;
 
     let total = 0;
     let sumR = 0, sumG = 0, sumB = 0;
