@@ -566,7 +566,6 @@ btnOCRTest.onclick = async () => {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
-    classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
     redrawBase(); // redraw to include symbol boxes
 };
 
