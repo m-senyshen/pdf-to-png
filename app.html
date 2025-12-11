@@ -311,7 +311,7 @@ function detectLegendSymbols(ocrResults, imageData, w, h) {
                 y2: Math.min(h, t.y + t.height + padY)
             }
         ];
-
+        symbolBox.signature = computeSymbolSignature(symbolBox, imageData, w, h);
         for (const region of searchRegions) {
 
             let minX = Infinity, maxX = -Infinity;
