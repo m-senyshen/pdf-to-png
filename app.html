@@ -649,15 +649,29 @@ function redrawBase() {
         const b = entry.symbolBox;
         if (!b) return;
 
-        let color = "yellow";
-        if (entry.type === "water") color = "rgba(0,150,255,0.9)";
-        if (entry.type === "road") color = "rgba(0,0,0,0.9)";
-        if (entry.type === "trail") color = "rgba(0,180,0,0.9)";
+        let color;
+
+        // Geometry classifier colors
+        switch (entry.type) {
+            case "point":
+                color = "rgba(180, 0, 255, 0.9)";  // purple
+                break;
+            case "line":
+                color = "rgba(0, 200, 0, 0.9)";    // green
+                break;
+            case "polygon":
+                color = "rgba(0, 150, 255, 0.9)";  // blue
+                break;
+            default:
+                color = "yellow";                 // unknown
+                break;
+        }
 
         ctx.strokeStyle = color;
         ctx.lineWidth = 3;
         ctx.strokeRect(b.x, b.y, b.width, b.height);
-    });
+});
+
 
     ctx.restore();
 }
