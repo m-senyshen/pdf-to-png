@@ -369,14 +369,48 @@ function detectLegendSymbols(ocrResults, image, w, h) {
         let symbol = null;
 
         // Improved color filter
-        function isInkPixel(r, g, b) {
-            const brightness = 0.299*r + 0.587*g + 0.114*b;
-            const blueish  = b > r + 35 && b > g + 35;
-            const reddish  = r > g + 35 && r > b + 35;
-            const greenish = g > r + 35 && g > b + 35;
-            const dark     = brightness < 160;
-            return blueish || reddish || greenish || dark;
+function isInkPixel(r, g, b, x, y) {
+    const brightness = 0.299*r + 0.587*g + 0.114*b;
+
+    // --- Detect light / pastel blue water symbol ---
+    const pastelBlue =
+        b > g + 10 && b > r + 10 &&   // still blue-ish
+        brightness > 140 && brightness < 230; // not dark, not white
+
+    // --- Detect hollow road symbols (white interior + dark border) ---
+    const dark = brightness < 140;
+    let borderHit = false;
+
+    if (!dark) {
+        // Check neighbors for a "dark border" pattern
+        // (no bounds check needed; caller loop is inside bounds)
+        const idxN = (y - 1) * w + x;
+        const idxS = (y + 1) * w + x;
+        const idxE = y * w + (x + 1);
+        const idxW = y * w + (x - 1);
+
+        function darkByIndex(i) {
+            const di = i * 4;
+            const br = 0.299*image[di] + 0.587*image[di+1] + 0.114*image[di+2];
+            return br < 140;
         }
+
+        // If any neighbor is dark → likely border pixel even if this pixel is white
+        if (darkByIndex(idxN) || darkByIndex(idxS) ||
+            darkByIndex(idxE) || darkByIndex(idxW)) {
+            borderHit = true;
+        }
+    }
+
+    const isDarkInk = dark;
+    const isColoredStrong =
+        (b > r + 35 && b > g + 35) ||     // strong blue
+        (r > g + 35 && r > b + 35) ||     // strong red
+        (g > r + 35 && g > b + 35);       // strong green
+
+    return isDarkInk || isColoredStrong || pastelBlue || borderHit;
+}
+
 
         for (const region of searchRegions) {
 
