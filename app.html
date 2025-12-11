@@ -240,9 +240,13 @@
 </div>
 
 <script src="./libs/pdf.js"></script>
+
 <script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
-  /* ---------- OCR: Extract Text Bounding Boxes ---------- */
+pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
+
+/* -----------------------------------------------------
+   OCR — Extract text bounding boxes
+----------------------------------------------------- */
 async function extractTextBoxes() {
     statusEl.textContent = "Detecting text… (OCR)";
 
@@ -267,209 +271,15 @@ async function extractTextBoxes() {
     return boxes;
 }
 
-/* ---------- LEGEND SYMBOL DETECTION ---------- */
-function detectLegendSymbols(ocrResults, imageData, w, h) {
-
-    legendEntries = [];
-    legendSymbolBoxes = [];
-
-    for (const item of ocrResults) {
-        if (mapBoundary) {
-    const cx = item.x + item.w / 2;
-    const cy = item.y + item.h / 2;
-
-    if (
-        cx > mapBoundary.left &&
-        cx < mapBoundary.right &&
-        cy > mapBoundary.top &&
-        cy < mapBoundary.bottom
-    ) {
-        continue; // skip it entirely
-    }
-}
-        const t = {
-            x: item.x,
-            y: item.y,
-            width: item.w,
-            height: item.h
-        };
-
-        const textStr = item.text;
-
-        const padY = Math.round(t.height * 0.5);
-        const padX = Math.round(t.width * 1.5);
-
-// Tighter vertical alignment: symbol must line up with the text label
-const textMidY = t.y + t.height / 2;
-const vertPad = Math.round(t.height * 0.30);
-
-const searchRegions = [
-    {
-        // LEFT side, tightly aligned vertically
-        x1: Math.max(0, t.x - padX),
-        x2: t.x,
-        y1: Math.max(0, textMidY - vertPad),
-        y2: Math.min(h, textMidY + vertPad)
-    },
-    {
-        // RIGHT side, tightly aligned vertically
-        x1: t.x + t.width,
-        x2: Math.min(w, t.x + t.width + padX),
-        y1: Math.max(0, textMidY - vertPad),
-        y2: Math.min(h, textMidY + vertPad)
-    }
-];
-
-let foundSymbol = null;
-
-for (const region of searchRegions) {
-
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    let pixelCount = 0;
-
-    for (let y = region.y1; y < region.y2; y++) {
-        for (let x = region.x1; x < region.x2; x++) {
-
-            // Skip if point is inside map interior
-            if (mapBoundary) {
-                if (x > mapBoundary.left &&
-                    x < mapBoundary.right &&
-                    y > mapBoundary.top &&
-                    y < mapBoundary.bottom) {
-                    continue;
-                }
-            }
-
-            const idx = (y * w + x) * 4;
-            const r = imageData[idx];
-            const g = imageData[idx + 1];
-            const b = imageData[idx + 2];
-
-            const brightness = 0.299*r + 0.587*g + 0.114*b;
-            const colorVar = Math.max(r,g,b) - Math.min(r,g,b);
-
-            // legend symbols are dark OR strongly colored
-            if (brightness < 200 || colorVar > 25) {
-                pixelCount++;
-                minX = Math.min(minX, x);
-                maxX = Math.max(maxX, x);
-                minY = Math.min(minY, y);
-                maxY = Math.max(maxY, y);
-            }
-        }
-    }
-
-    if (pixelCount < 20) continue; // reject noise
-
-    const width = maxX - minX;
-    const height = maxY - minY;
-
-    // Size must be reasonable relative to text height
-    if (height > t.height * 1.3) continue;
-    if (height < t.height * 0.25) continue;
-
-    foundSymbol = { x: minX, y: minY, width, height };
-    break;
-}
-
-if (foundSymbol) {
-
-    const signature = computeSymbolSignature(foundSymbol, imageData, w, h);
-
-    legendSymbolBoxes.push(foundSymbol);
-
-    legendEntries.push({
-        text: textStr,
-        textBox: t,
-        symbolBox: foundSymbol,
-        signature
-    });
-
-} else {
-    // No symbol found → UNKNOWN (yellow)
-    legendEntries.push({
-        text: textStr,
-        textBox: t,
-        symbolBox: null,
-        type: "unknown"
-    });
-}
-}
-}
-
-
-
-
-
-
-
-  
-/* ---------- STEP C: CLASSIFY LEGEND SYMBOLS ---------- */
-/* ---------- STEP C: GEOMETRIC CLASSIFICATION OF LEGEND SYMBOLS ---------- */
-function classifyLegendEntries(legendEntries, imageData, w, h) {
-
-    function classifyGeometry(box) {
-        const { x, y, width, height } = box;
-
-        // 1. Compute aspect ratio
-        const aspect = width > height ? width / height : height / width;
-
-        // 2. Compute total pixel count + dark/ink pixels
-        let total = 0;
-        let ink = 0;
-
-        for (let py = y; py < y + height; py++) {
-            for (let px = x; px < x + width; px++) {
-                const idx = (py * w + px) * 4;
-                const r = imageData[idx], g = imageData[idx + 1], b = imageData[idx + 2];
-
-                total++;
-                const brightness = 0.299*r + 0.587*g + 0.114*b;
-                if (brightness < 200) ink++;  // dark or colored pixel
-            }
-        }
-
-        const fillRatio = ink / total;
-
-        /* ---------- POINT detection ---------- */
-        if (width < 25 && height < 25 && aspect < 1.8) {
-            return "point";
-        }
-
-        /* ---------- LINE detection ---------- */
-        if (aspect > 3 && (width < 60 || height < 60)) {
-            return "line";
-        }
-
-        /* ---------- POLYGON detection ---------- */
-        if (fillRatio > 0.15) {
-            return "polygon";
-        }
-
-        return "unknown";
-    }
-
-    legendEntries.forEach(entry => {
-        if (!entry.symbolBox) {
-            entry.type = "unknown";
-            return;
-        }
-
-        entry.type = classifyGeometry(entry.symbolBox);
-    });
-
-    console.log("GEOMETRIC classification result:", legendEntries);
-}
-
+/* -----------------------------------------------------
+   Compute symbol color/shape signature
+----------------------------------------------------- */
 function computeSymbolSignature(box, imageData, w, h) {
     const { x, y, width, height } = box;
 
     let total = 0;
     let sumR = 0, sumG = 0, sumB = 0;
     let darkPix = 0;
-
-    const samples = [];
 
     for (let py = y; py < y + height; py++) {
         for (let px = x; px < x + width; px++) {
@@ -483,22 +293,172 @@ function computeSymbolSignature(box, imageData, w, h) {
 
             const brightness = 0.299*r + 0.587*g + 0.114*b;
             if (brightness < 120) darkPix++;
-
-            samples.push([r, g, b]);
         }
     }
 
-    const avg = [sumR / total, sumG / total, sumB / total];
-    const darkness = darkPix / total;
-
     return {
-        avgColor: avg,
-        darkness,
+        avgColor: [sumR / total, sumG / total, sumB / total],
+        darkness: darkPix / total,
         sampleCount: total
     };
 }
 
+/* -----------------------------------------------------
+   Detect legend symbols located near OCR text labels
+----------------------------------------------------- */
+function detectLegendSymbols(ocrResults, image, w, h) {
+
+    legendEntries = [];
+    legendSymbolBoxes = [];
+
+    for (const item of ocrResults) {
+
+        // Skip text inside map interior
+        if (mapBoundary) {
+            const cx = item.x + item.w / 2;
+            const cy = item.y + item.h / 2;
+
+            if (cx > mapBoundary.left &&
+                cx < mapBoundary.right &&
+                cy > mapBoundary.top &&
+                cy < mapBoundary.bottom) {
+                continue;
+            }
+        }
+
+        const t = {
+            x: item.x,
+            y: item.y,
+            width: item.w,
+            height: item.h
+        };
+
+        const midY = t.y + t.height / 2;
+        const vertPad = Math.round(t.height * 0.30);
+        const padX = Math.round(t.width * 1.5);
+
+        // Search LEFT + RIGHT of text
+        const searchRegions = [
+            { x1: Math.max(0, t.x - padX), x2: t.x,
+              y1: Math.max(0, midY - vertPad), y2: Math.min(h, midY + vertPad) },
+            { x1: t.x + t.width, x2: Math.min(w, t.x + t.width + padX),
+              y1: Math.max(0, midY - vertPad), y2: Math.min(h, midY + vertPad) }
+        ];
+
+        let symbol = null;
+
+        for (const region of searchRegions) {
+
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+            let count = 0;
+
+            for (let y = region.y1; y < region.y2; y++) {
+                for (let x = region.x1; x < region.x2; x++) {
+
+                    // Never classify inside map interior
+                    if (mapBoundary &&
+                        x > mapBoundary.left &&
+                        x < mapBoundary.right &&
+                        y > mapBoundary.top &&
+                        y < mapBoundary.bottom) continue;
+
+                    const idx = (y * w + x) * 4;
+                    const r = image[idx], g = image[idx+1], b = image[idx+2];
+
+                    const brightness = 0.299*r + 0.587*g + 0.114*b;
+                    const colorVar = Math.max(r,g,b) - Math.min(r,g,b);
+
+                    if (brightness < 200 || colorVar > 25) {
+                        count++;
+                        minX = Math.min(minX, x);
+                        maxX = Math.max(maxX, x);
+                        minY = Math.min(minY, y);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+            }
+
+            if (count < 20) continue;
+
+            const width = maxX - minX;
+            const height = maxY - minY;
+
+            if (height > t.height * 1.3) continue;
+            if (height < t.height * 0.25) continue;
+
+            symbol = { x: minX, y: minY, width, height };
+            break;
+        }
+
+        if (symbol) {
+            const sig = computeSymbolSignature(symbol, image, w, h);
+
+            legendSymbolBoxes.push(symbol);
+            legendEntries.push({
+                text: item.text,
+                textBox: t,
+                symbolBox: symbol,
+                signature: sig,
+                type: "unknown"
+            });
+
+        } else {
+            legendEntries.push({
+                text: item.text,
+                textBox: t,
+                symbolBox: null,
+                type: "unknown"
+            });
+        }
+    }
+}
+
+/* -----------------------------------------------------
+   STEP C — Geometric classification of legend symbols
+----------------------------------------------------- */
+function classifyLegendEntries(entries, image, w, h) {
+
+    function classify(box) {
+        const { x, y, width, height } = box;
+
+        const aspect = width > height ? width/height : height/width;
+
+        let total = 0;
+        let ink = 0;
+
+        for (let py = y; py < y + height; py++) {
+            for (let px = x; px < x + width; px++) {
+                const idx = (py * w + px) * 4;
+                const r = image[idx], g = image[idx+1], b = image[idx+2];
+
+                total++;
+                const bright = 0.299*r + 0.587*g + 0.114*b;
+                if (bright < 200) ink++;
+            }
+        }
+
+        const fill = ink / total;
+
+        if (width < 25 && height < 25 && aspect < 1.8) return "point";
+        if (aspect > 3 && (width < 60 || height < 60)) return "line";
+        if (fill > 0.15) return "polygon";
+
+        return "unknown";
+    }
+
+    entries.forEach(e => {
+        if (!e.symbolBox) e.type = "unknown";
+        else e.type = classify(e.symbolBox);
+    });
+}
+
+</script>
+
 <script>
+/* ------------------------------------------------------------------------------------------------
+
+----------------------------------------------------- */
 /* ---------- Instructions Toggle ---------- */
 const instrToggle = document.getElementById("instructions-toggle");
 const instrContent = document.getElementById("instructions-content");
