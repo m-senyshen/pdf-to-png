@@ -284,7 +284,19 @@ function detectLegendSymbols(ocrResults, imageData, w, h) {
     legendSymbolBoxes = [];
 
     for (const item of ocrResults) {
+        if (mapBoundary) {
+    const cx = item.x + item.w / 2;
+    const cy = item.y + item.h / 2;
 
+    if (
+        cx > mapBoundary.left &&
+        cx < mapBoundary.right &&
+        cy > mapBoundary.top &&
+        cy < mapBoundary.bottom
+    ) {
+        continue; // skip it entirely
+    }
+}
         const t = {
             x: item.x,
             y: item.y,
@@ -339,7 +351,7 @@ function detectLegendSymbols(ocrResults, imageData, w, h) {
                 }
             }
 
-            if (pixelCount < 30) continue;
+            if (pixelCount < 120) continue;
 
             const symbolBox = {
                 x: minX,
@@ -349,7 +361,12 @@ function detectLegendSymbols(ocrResults, imageData, w, h) {
             };
 
             const signature = computeSymbolSignature(symbolBox, imageData, w, h);
-
+            if (symbolBox.width > 80 || symbolBox.height > 80) {
+              continue;
+            }
+            if (symbolBox.width < 4 && symbolBox.height < 4) {
+              continue;
+            }
             legendSymbolBoxes.push(symbolBox);
 
             legendEntries.push({
@@ -540,7 +557,7 @@ function fitPoly2(gcps){
 
 /* ---------- State ---------- */
 const canvas=document.getElementById("pdf-canvas");
-const ctx=canvas.getContext("2d");
+const ctx = canvas.getContext("2d", { willReadFrequently: true });
 const fileInput=document.getElementById("file-input");
 const selectPdf=document.getElementById("select-pdf");
 const btnGeoref=document.getElementById("btn-georef");
