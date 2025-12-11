@@ -576,9 +576,9 @@ btnOCRTest.onclick = async () => {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
-
-    // Redraw everything including OCR + legend boxes
+    classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
     redrawBase();
+
 };
 
 
