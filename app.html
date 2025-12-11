@@ -421,7 +421,6 @@ function classifyLegendEntries(legendEntries, imageData, w, h) {
 
         return "unknown";
     }
-    entry.signature = computeSymbolSignature(symbolBox, imageData, w, h);
 
     legendEntries.forEach(entry => {
         const norm = normalizeText(entry.text);
