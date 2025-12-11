@@ -417,6 +417,7 @@ function classifyLegendEntries(legendEntries, imageData, w, h) {
 
         return "unknown";
     }
+    entry.signature = computeSymbolSignature(symbolBox, imageData, w, h);
 
     legendEntries.forEach(entry => {
         const norm = normalizeText(entry.text);
@@ -431,6 +432,43 @@ function classifyLegendEntries(legendEntries, imageData, w, h) {
 
     console.log("Classified legend entries:", legendEntries);
 }
+
+function computeSymbolSignature(box, imageData, w, h) {
+    const { x, y, width, height } = box;
+
+    let total = 0;
+    let sumR = 0, sumG = 0, sumB = 0;
+    let darkPix = 0;
+
+    const samples = [];
+
+    for (let py = y; py < y + height; py++) {
+        for (let px = x; px < x + width; px++) {
+            const idx = (py * w + px) * 4;
+            const r = imageData[idx];
+            const g = imageData[idx + 1];
+            const b = imageData[idx + 2];
+
+            total++;
+            sumR += r; sumG += g; sumB += b;
+
+            const brightness = 0.299*r + 0.587*g + 0.114*b;
+            if (brightness < 120) darkPix++;
+
+            samples.push([r, g, b]);
+        }
+    }
+
+    const avg = [sumR / total, sumG / total, sumB / total];
+    const darkness = darkPix / total;
+
+    return {
+        avgColor: avg,
+        darkness,
+        sampleCount: total
+    };
+}
+
 
 </script>
 
