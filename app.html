@@ -375,72 +375,60 @@ function detectLegendSymbols(ocrResults, imageData, w, h) {
 
 
 /* ---------- STEP C: CLASSIFY LEGEND SYMBOLS ---------- */
+/* ---------- STEP C: GEOMETRIC CLASSIFICATION OF LEGEND SYMBOLS ---------- */
 function classifyLegendEntries(legendEntries, imageData, w, h) {
 
-    function normalizeText(t) {
-        t = t.toLowerCase().trim();
-        t = t.replace(/[^a-z0-9 ]/g, "");
-        return t;
-    }
-
-    function classifyTextOnly(t) {
-        if (t.includes("lake") || t.includes("river") || t.includes("water") || t.includes("pond"))
-            return "water";
-
-        if (t.includes("road") || t.includes("highway") || t.includes("rd"))
-            return "road";
-
-        if (t.includes("trail") || t.includes("path") || t.includes("route"))
-            return "trail";
-
-        if (t.includes("boundary") || t.includes("border"))
-            return "boundary";
-
-        return "unknown";
-    }
-
-    function classifyFromPixelData(box) {
+    function classifyGeometry(box) {
         const { x, y, width, height } = box;
 
+        // 1. Compute aspect ratio
+        const aspect = width > height ? width / height : height / width;
+
+        // 2. Compute total pixel count + dark/ink pixels
         let total = 0;
-        let blueCount = 0;
-        let darkCount = 0;
+        let ink = 0;
 
         for (let py = y; py < y + height; py++) {
             for (let px = x; px < x + width; px++) {
                 const idx = (py * w + px) * 4;
-                const r = imageData[idx], g = imageData[idx+1], b = imageData[idx+2];
+                const r = imageData[idx], g = imageData[idx + 1], b = imageData[idx + 2];
 
                 total++;
-
-                if (b > r + 20 && b > g + 20) blueCount++;
-
                 const brightness = 0.299*r + 0.587*g + 0.114*b;
-                if (brightness < 100) darkCount++;
+                if (brightness < 200) ink++;  // dark or colored pixel
             }
         }
 
-        const blueRatio = blueCount / total;
-        const darkRatio = darkCount / total;
+        const fillRatio = ink / total;
 
-        if (blueRatio > 0.25) return "water";
-        if (darkRatio > 0.35) return "road";
+        /* ---------- POINT detection ---------- */
+        if (width < 25 && height < 25 && aspect < 1.8) {
+            return "point";
+        }
+
+        /* ---------- LINE detection ---------- */
+        if (aspect > 3 && (width < 60 || height < 60)) {
+            return "line";
+        }
+
+        /* ---------- POLYGON detection ---------- */
+        if (fillRatio > 0.15) {
+            return "polygon";
+        }
 
         return "unknown";
     }
 
     legendEntries.forEach(entry => {
-        const norm = normalizeText(entry.text);
-        let type = classifyTextOnly(norm);
-
-        if (type === "unknown" && entry.symbolBox) {
-            type = classifyFromPixelData(entry.symbolBox);
+        if (!entry.symbolBox) {
+            entry.type = "unknown";
+            return;
         }
 
-        entry.type = type;
+        entry.type = classifyGeometry(entry.symbolBox);
     });
 
-    console.log("Classified legend entries:", legendEntries);
+    console.log("GEOMETRIC classification result:", legendEntries);
 }
 
 function computeSymbolSignature(box, imageData, w, h) {
