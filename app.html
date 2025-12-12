@@ -647,10 +647,10 @@ function detectLegendRegionFromSymbols(legendEntries, w, h) {
     // Keep only entries that ACTUALLY have symbols
     const candidates = legendEntries.filter(e => e.symbolBox);
 
-    if (candidates.length ===0)
-      console.warn("🟣 Legend detection failed — not enough symbol entries");
-
-      return null;
+    if (candidates.length === 0) {
+        console.warn("🟣 Legend detection failed — not enough symbol entries");
+        return null;
+    }
 
     // Build bounding box ONLY from symbol-text pairs
     const xs = [];
