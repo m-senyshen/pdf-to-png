@@ -257,46 +257,123 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
 /* -----------------------------------------------------
    STEP C1 — Detect Legend Region (boxed OR unboxed)
 ----------------------------------------------------- */
+/* -----------------------------------------------------
+   STEP C2A — Improved Legend Region Detection
+   Using clustering of OCR text to isolate true legend.
+----------------------------------------------------- */
 function detectLegendRegion(ocrBoxes, mapBoundary, w, h) {
 
-    // 1. Collect all OCR boxes outside the map interior
-    const outside = ocrBoxes.filter(b => {
-        const cx = b.x + b.w / 2;
-        const cy = b.y + b.h / 2;
+    // 1. Keep only OCR outside the map interior
+    let outside = ocrBoxes.filter(b => {
+        const cx = b.x + b.w/2;
+        const cy = b.y + b.h/2;
         if (!mapBoundary) return true;
-        return !(cx > mapBoundary.left &&
-                 cx < mapBoundary.right &&
-                 cy > mapBoundary.top &&
-                 cy < mapBoundary.bottom);
+        return !(
+            cx > mapBoundary.left &&
+            cx < mapBoundary.right &&
+            cy > mapBoundary.top &&
+            cy < mapBoundary.bottom
+        );
     });
 
     if (outside.length === 0) return null;
 
-    // 2. Compute bounding box of all legend text candidates
-    let minX = Infinity, minY = Infinity;
-    let maxX = -Infinity, maxY = -Infinity;
+    // 2. Compute mean text height to detect large titles
+    const meanTextHeight = outside.reduce((s,b)=>s+b.h,0) / outside.length;
 
-    outside.forEach(b => {
-        minX = Math.min(minX, b.x);
-        minY = Math.min(minY, b.y);
-        maxX = Math.max(maxX, b.x + b.w);
-        maxY = Math.max(maxY, b.y + b.h);
-    });
+    // 3. Remove oversized text (titles / metadata headers)
+    outside = outside.filter(b => b.h < meanTextHeight * 1.8);
 
-    // Expand region slightly
-    const pad = 18;
-    minX = Math.max(0, minX - pad);
-    minY = Math.max(0, minY - pad);
-    maxX = Math.min(w, maxX + pad);
-    maxY = Math.min(h, maxY + pad);
+    if (outside.length === 0) return null;
+
+    // 4. Cluster OCR boxes spatially (DBSCAN-like)
+    const clusters = [];
+    const visited = new Set();
+
+    function dist(a, b) {
+        const ax = a.x + a.w/2, ay = a.y + a.h/2;
+        const bx = b.x + b.w/2, by = b.y + b.h/2;
+        return Math.hypot(ax - bx, ay - by);
+    }
+
+    const radius = 120;  // distance threshold
+    const minClusterSize = 3;
+
+    for (let i = 0; i < outside.length; i++) {
+        if (visited.has(i)) continue;
+
+        const cluster = [];
+        const stack = [i];
+        visited.add(i);
+
+        while (stack.length) {
+            const idx = stack.pop();
+            cluster.push(outside[idx]);
+
+            for (let j = 0; j < outside.length; j++) {
+                if (!visited.has(j) && dist(outside[idx], outside[j]) < radius) {
+                    visited.add(j);
+                    stack.push(j);
+                }
+            }
+        }
+
+        if (cluster.length >= minClusterSize)
+            clusters.push(cluster);
+    }
+
+    if (clusters.length === 0) return null;
+
+    // 5. Select cluster most likely to be the legend
+    let bestCluster = null;
+    let bestScore = -Infinity;
+
+    for (const cluster of clusters) {
+
+        const count = cluster.length;
+
+        // Compute bounding box
+        const xs = cluster.map(b => b.x);
+        const ys = cluster.map(b => b.y);
+        const xe = cluster.map(b => b.x + b.w);
+        const ye = cluster.map(b => b.y + b.h);
+
+        const width = Math.max(...xe) - Math.min(...xs);
+        const height = Math.max(...ye) - Math.min(...ys);
+
+        const aspect = width / (height || 1);
+
+        // score: legend clusters tend to:
+        // - have several entries (count)
+        // - have moderate aspect ratio
+        // - be compact
+        const score =
+            count * 2 +
+            (aspect > 0.4 && aspect < 4 ? 4 : 0) +
+            (1 / (width * height + 1)) * 20000;
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestCluster = cluster;
+        }
+    }
+
+    if (!bestCluster) return null;
+
+    // Compute final bounding box
+    const xs = bestCluster.map(b => b.x);
+    const ys = bestCluster.map(b => b.y);
+    const xe = bestCluster.map(b => b.x + b.w);
+    const ye = bestCluster.map(b => b.y + b.h);
 
     return {
-        left: minX,
-        top: minY,
-        right: maxX,
-        bottom: maxY
+        left: Math.max(0, Math.min(...xs) - 20),
+        top: Math.max(0, Math.min(...ys) - 20),
+        right: Math.min(w, Math.max(...xe) + 20),
+        bottom: Math.min(h, Math.max(...ye) + 20)
     };
 }
+
 
 /* -----------------------------------------------------
    OCR — Extract text bounding boxes
