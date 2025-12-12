@@ -469,8 +469,8 @@ function detectLegendSymbols(ocrResults, image, w, h) {
 
         // MUCH tighter search windows
         const midY = t.y + t.height / 2;
-        const vertPad = Math.round(t.height * 0.2);
-        const padX = 25;  // was t.width * 1.5 (too big)
+        const vertPad = Math.round(t.height * 0.8);
+        const padX = Math.round(t.height * 2.5);  // was t.width * 1.5 (too big)
 
         const searchRegions = [
             {
