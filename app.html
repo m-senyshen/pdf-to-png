@@ -379,100 +379,6 @@ function detectLegendRegion(ocrBoxes, mapBoundary, w, h) {
    OCR — Extract text bounding boxes
 ----------------------------------------------------- */
 async function extractTextBoxes() {
-    /* -----------------------------------------------------
-   STEP C1 — Legend Row Detection (symbol-agnostic)
------------------------------------------------------ */
-function detectLegendRowCandidates(ocrBoxes, image, w, h) {
-
-    const rows = [];
-
-    function inkCount(x1, y1, x2, y2) {
-        let c = 0;
-        for (let y = y1; y < y2; y++) {
-            for (let x = x1; x < x2; x++) {
-                if (x < 0 || y < 0 || x >= w || y >= h) continue;
-                const i = (y * w + x) * 4;
-                const r = image[i], g = image[i+1], b = image[i+2];
-                const br = 0.299*r + 0.587*g + 0.114*b;
-                if (br < 210) c++;
-            }
-        }
-        return c;
-    }
-
-    for (const b of ocrBoxes) {
-
-        const midY = b.y + b.h / 2;
-        const midX = b.x + b.w / 2;
-
-        const padX = 36;
-        const padY = Math.round(b.h * 0.5);
-
-        const regions = [
-            { dir:"left",   x1:b.x-padX, x2:b.x,        y1:midY-padY, y2:midY+padY },
-            { dir:"right",  x1:b.x+b.w,  x2:b.x+b.w+padX, y1:midY-padY, y2:midY+padY },
-            { dir:"top",    x1:midX-padY, x2:midX+padY, y1:b.y-padX,  y2:b.y },
-            { dir:"bottom", x1:midX-padY, x2:midX+padY, y1:b.y+b.h,   y2:b.y+b.h+padX }
-        ];
-
-        let best = 0;
-
-        for (const r of regions) {
-            best = Math.max(best, inkCount(
-                Math.floor(r.x1), Math.floor(r.y1),
-                Math.ceil(r.x2),  Math.ceil(r.y2)
-            ));
-        }
-
-        if (best > 30) {
-            rows.push({ textBox: b });
-        }
-    }
-
-    console.log("🟣 Legend row candidates:", rows.length);
-    return rows;
-}
-
-function detectLegendRegionFromRows(rows, w, h) {
-
-    if (!rows || rows.length < 3) {
-        console.warn("🟣 Legend detection failed — not enough row candidates");
-        return null;
-    }
-
-    rows.sort((a,b)=>a.textBox.y - b.textBox.y);
-
-    const clusters = [];
-    let current = [rows[0]];
-
-    for (let i=1;i<rows.length;i++){
-        const dy = rows[i].textBox.y - rows[i-1].textBox.y;
-        if (dy < rows[i].textBox.h * 2.5) current.push(rows[i]);
-        else {
-            if (current.length >= 3) clusters.push(current);
-            current = [rows[i]];
-        }
-    }
-    if (current.length >= 3) clusters.push(current);
-
-    if (!clusters.length) return null;
-
-    const best = clusters.sort((a,b)=>b.length-a.length)[0];
-
-    const xs=[], ys=[], xe=[], ye=[];
-    best.forEach(r=>{
-        const t=r.textBox;
-        xs.push(t.x); ys.push(t.y);
-        xe.push(t.x+t.w); ye.push(t.y+t.h);
-    });
-
-    return {
-        left: Math.max(0, Math.min(...xs)-40),
-        top: Math.max(0, Math.min(...ys)-20),
-        right: Math.min(w, Math.max(...xe)+40),
-        bottom: Math.min(h, Math.max(...ye)+20)
-    };
-}
 
     statusEl.textContent = "Detecting text… (OCR)";
 
@@ -989,48 +895,33 @@ const modelSelect=document.getElementById("model-select");
 const btnOCRTest = document.getElementById("btn-ocr-test");
 
 btnOCRTest.onclick = async () => {
-    if (!renderedImage) return alert("Load a PDF first.");
+  if (!renderedImage) return alert("Load a PDF first.");
 
-    const boxes = await extractTextBoxes();
-    ocrBoxesGlobal = boxes;
+  const boxes = await extractTextBoxes();
+  ocrBoxesGlobal = boxes;
 
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
-    console.log("🟣 legendEntries total:", legendEntries.length);
-    console.log("🟣 legendEntries with symbolBox:",
-      legendEntries.filter(e => e.symbolBox).length
-    );
-    
-    const rowCandidates = detectLegendRowCandidates(
-        boxes,
-        imgData.data,
-        canvas.width,
-        canvas.height
-    );
-    
-// STEP C1 — legend region FIRST (symbol-agnostic)
-const rowCandidates = detectLegendRowCandidates(
+  // STEP C1 — legend region FIRST (symbol-agnostic)
+  const rowCandidates = detectLegendRowCandidates(
     boxes,
     imgData.data,
     canvas.width,
     canvas.height
-);
+  );
 
-    legendRegion = detectLegendRegionFromRows(
-        rowCandidates,
-        canvas.width,
-        canvas.height
-    );
-    
-    // STEP C2 — symbols & classification (secondary)
-    detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
-    classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
-    
-    console.log("🟣 Legend region:", legendRegion);
+  legendRegion = detectLegendRegionFromRows(
+    rowCandidates,
+    canvas.width,
+    canvas.height
+  );
 
+  // STEP C2 — symbols & classification (secondary)
+  detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
+  classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
 
-    redrawBase();
+  console.log("🟣 Legend region:", legendRegion);
+  redrawBase();
 };
 
 
