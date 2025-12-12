@@ -254,6 +254,30 @@
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
 
+/* ---------- State ---------- */
+const canvas=document.getElementById("pdf-canvas");
+const ctx = canvas.getContext("2d", { willReadFrequently: true });
+const fileInput=document.getElementById("file-input");
+const selectPdf=document.getElementById("select-pdf");
+const btnGeoref=document.getElementById("btn-georef");
+const btnClear=document.getElementById("btn-clear-gcps");
+const btnCompute=document.getElementById("btn-compute");
+const btnExtract=document.getElementById("btn-extract-water");
+const btnClearWater=document.getElementById("btn-clear-water");
+const btnExport=document.getElementById("btn-export-geojson");
+const chkOverlay=document.getElementById("chk-water-overlay");
+const waterCount=document.getElementById("water-count");
+const statusEl=document.getElementById("status");
+const gcpTable=document.querySelector("#gcp-table tbody");
+const rmsEl=document.getElementById("rms");
+const modelSelect=document.getElementById("model-select");
+
+const btnOCRTest = document.getElementById("btn-ocr-test");
+
+selectPdf.onclick = () => {
+  console.log("Select PDF clicked");
+  fileInput.click();
+};
 /* -----------------------------------------------------
    STEP C1 — Detect Legend Region (boxed OR unboxed)
 ----------------------------------------------------- */
@@ -874,25 +898,7 @@ function fitPoly2(gcps){
   return {mapFn,rms};
 }
 
-/* ---------- State ---------- */
-const canvas=document.getElementById("pdf-canvas");
-const ctx = canvas.getContext("2d", { willReadFrequently: true });
-const fileInput=document.getElementById("file-input");
-const selectPdf=document.getElementById("select-pdf");
-const btnGeoref=document.getElementById("btn-georef");
-const btnClear=document.getElementById("btn-clear-gcps");
-const btnCompute=document.getElementById("btn-compute");
-const btnExtract=document.getElementById("btn-extract-water");
-const btnClearWater=document.getElementById("btn-clear-water");
-const btnExport=document.getElementById("btn-export-geojson");
-const chkOverlay=document.getElementById("chk-water-overlay");
-const waterCount=document.getElementById("water-count");
-const statusEl=document.getElementById("status");
-const gcpTable=document.querySelector("#gcp-table tbody");
-const rmsEl=document.getElementById("rms");
-const modelSelect=document.getElementById("model-select");
 
-const btnOCRTest = document.getElementById("btn-ocr-test");
 
 btnOCRTest.onclick = async () => {
   if (!renderedImage) return alert("Load a PDF first.");
