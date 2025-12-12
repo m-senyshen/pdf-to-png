@@ -436,7 +436,130 @@ function computeSymbolSignature(box, imageData, w, h) {
         sampleCount: total
     };
 }
+function detectLegendRowCandidates(ocrBoxes, image, w, h) {
 
+    const candidates = [];
+
+    function countInk(x1, y1, x2, y2) {
+        let count = 0;
+        for (let y = y1; y < y2; y++) {
+            for (let x = x1; x < x2; x++) {
+                if (x < 0 || y < 0 || x >= w || y >= h) continue;
+                const i = (y * w + x) * 4;
+                const r = image[i], g = image[i+1], b = image[i+2];
+                const br = 0.299*r + 0.587*g + 0.114*b;
+                if (br < 210) count++;
+            }
+        }
+        return count;
+    }
+
+    for (const item of ocrBoxes) {
+
+        const t = {
+            x: item.x,
+            y: item.y,
+            w: item.w,
+            h: item.h
+        };
+
+        const midY = t.y + t.h / 2;
+        const midX = t.x + t.w / 2;
+
+        const padX = 32;
+        const padY = Math.round(t.h * 0.4);
+
+        // Search regions (priority ordered)
+        const regions = [
+            { dir: "left",   x1: t.x - padX, x2: t.x,           y1: midY - padY, y2: midY + padY },
+            { dir: "right",  x1: t.x + t.w,  x2: t.x + t.w + padX, y1: midY - padY, y2: midY + padY },
+            { dir: "top",    x1: midX - padY, x2: midX + padY, y1: t.y - padX, y2: t.y },
+            { dir: "bottom", x1: midX - padY, x2: midX + padY, y1: t.y + t.h, y2: t.y + t.h + padX }
+        ];
+
+        let bestInk = 0;
+        let bestDir = null;
+
+        for (const r of regions) {
+            const ink = countInk(
+                Math.floor(r.x1),
+                Math.floor(r.y1),
+                Math.ceil(r.x2),
+                Math.ceil(r.y2)
+            );
+
+            if (ink > bestInk) {
+                bestInk = ink;
+                bestDir = r.dir;
+            }
+        }
+
+        // Threshold tuned for legend symbols
+        if (bestInk > 25) {
+            candidates.push({
+                textBox: t,
+                direction: bestDir
+            });
+        }
+    }
+
+    return candidates;
+}
+function detectLegendRegionFromRows(rows, w, h) {
+
+    if (!rows || rows.length < 3) {
+        console.warn("Legend detection failed — not enough row candidates");
+        return null;
+    }
+
+    // Sort top to bottom
+    rows.sort((a, b) => a.textBox.y - b.textBox.y);
+
+    // Cluster rows by vertical spacing
+    const clusters = [];
+    let current = [rows[0]];
+
+    for (let i = 1; i < rows.length; i++) {
+        const prev = rows[i-1].textBox;
+        const curr = rows[i].textBox;
+
+        const dy = Math.abs(curr.y - prev.y);
+
+        if (dy < prev.h * 2.5) {
+            current.push(rows[i]);
+        } else {
+            if (current.length >= 3) clusters.push(current);
+            current = [rows[i]];
+        }
+    }
+    if (current.length >= 3) clusters.push(current);
+
+    if (clusters.length === 0) return null;
+
+    // Choose cluster with most consistent layout
+    const best = clusters.sort((a,b)=>b.length-a.length)[0];
+
+    const xs = [];
+    const ys = [];
+    const xe = [];
+    const ye = [];
+
+    best.forEach(r => {
+        const t = r.textBox;
+        xs.push(t.x);
+        ys.push(t.y);
+        xe.push(t.x + t.w);
+        ye.push(t.y + t.h);
+    });
+
+    return {
+        left: Math.max(0, Math.min(...xs) - 40),
+        top: Math.max(0, Math.min(...ys) - 20),
+        right: Math.min(w, Math.max(...xe) + 40),
+        bottom: Math.min(h, Math.max(...ye) + 20)
+    };
+}
+  
 /* -----------------------------------------------------
    Detect legend symbols located near OCR text labels
 ----------------------------------------------------- */
@@ -784,13 +907,23 @@ btnOCRTest.onclick = async () => {
       legendEntries.filter(e => e.symbolBox).length
     );
     
-    classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
-    
-    legendRegion = detectLegendRegionFromSymbols(
-        legendEntries,
+    const rowCandidates = detectLegendRowCandidates(
+        boxes,
+        imgData.data,
         canvas.width,
         canvas.height
     );
+    
+    legendRegion = detectLegendRegionFromRows(
+        rowCandidates,
+        canvas.width,
+        canvas.height
+    );
+    
+    // Symbol detection & classification stay for later steps
+    detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
+    classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
+
 
     console.log("🟣 Legend region:", legendRegion);
 
