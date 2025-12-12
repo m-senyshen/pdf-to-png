@@ -767,16 +767,23 @@ btnOCRTest.onclick = async () => {
     ocrBoxesGlobal = boxes;
 
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    // 1️⃣ Detect legend symbols FIRST
+    detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
+
+    // 2️⃣ Classify legend symbols
+    classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
+
+    // 3️⃣ NOW compute legend region from symbol+text pairs
     legendRegion = detectLegendRegionFromSymbols(
         legendEntries,
         canvas.width,
         canvas.height
     );
-    detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
-    classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
-    redrawBase();
 
+    redrawBase();
 };
+
 
 
 
