@@ -767,9 +767,8 @@ btnOCRTest.onclick = async () => {
     ocrBoxesGlobal = boxes;
 
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    legendRegion = detectLegendRegion(
-        boxes,
-        mapBoundary,
+    legendRegion = detectLegendRegionFromSymbols(
+        legendEntries,
         canvas.width,
         canvas.height
     );
