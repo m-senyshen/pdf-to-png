@@ -561,7 +561,7 @@ function isInkPixel(r, g, b, x, y) {
                 }
             }
 
-            if (count < 10) continue; // was 20; smaller windows → need smaller threshold
+            if (count < 6) continue; // was 20; smaller windows → need smaller threshold
 
             const width = maxX - minX;
             const height = maxY - minY;
