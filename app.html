@@ -594,6 +594,13 @@ function isInkPixel(r, g, b, x, y) {
             });
         }
     }
+  console.log(
+  "Symbol detection results:",
+  legendEntries.filter(e => e.symbolBox).length,
+  "symbols found out of",
+  legendEntries.length,
+  "OCR labels"
+);
 }
 
 
