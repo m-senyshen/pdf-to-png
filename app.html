@@ -636,6 +636,39 @@ function classifyLegendEntries(entries, image, w, h) {
         else e.type = classify(e.symbolBox);
     });
 }
+/* -----------------------------------------------------
+   STEP C2B — Symbol-Anchored Legend Region Detection
+----------------------------------------------------- */
+function detectLegendRegionFromSymbols(legendEntries, w, h) {
+
+    // Keep only entries that ACTUALLY have symbols
+    const candidates = legendEntries.filter(e => e.symbolBox);
+
+    if (candidates.length < 2) return null;
+
+    // Build bounding box ONLY from symbol-text pairs
+    const xs = [];
+    const ys = [];
+    const xe = [];
+    const ye = [];
+
+    candidates.forEach(e => {
+        const t = e.textBox;
+        const s = e.symbolBox;
+
+        xs.push(t.x, s.x);
+        ys.push(t.y, s.y);
+        xe.push(t.x + t.width, s.x + s.width);
+        ye.push(t.y + t.height, s.y + s.height);
+    });
+
+    return {
+        left: Math.max(0, Math.min(...xs) - 15),
+        top: Math.max(0, Math.min(...ys) - 15),
+        right: Math.min(w, Math.max(...xe) + 15),
+        bottom: Math.min(h, Math.max(...ye) + 15)
+    };
+}
 
 </script>
 
