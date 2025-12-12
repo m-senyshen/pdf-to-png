@@ -255,6 +255,50 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
 
 /* -----------------------------------------------------
+   STEP C1 — Detect Legend Region (boxed OR unboxed)
+----------------------------------------------------- */
+function detectLegendRegion(ocrBoxes, mapBoundary, w, h) {
+
+    // 1. Collect all OCR boxes outside the map interior
+    const outside = ocrBoxes.filter(b => {
+        const cx = b.x + b.w / 2;
+        const cy = b.y + b.h / 2;
+        if (!mapBoundary) return true;
+        return !(cx > mapBoundary.left &&
+                 cx < mapBoundary.right &&
+                 cy > mapBoundary.top &&
+                 cy < mapBoundary.bottom);
+    });
+
+    if (outside.length === 0) return null;
+
+    // 2. Compute bounding box of all legend text candidates
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+
+    outside.forEach(b => {
+        minX = Math.min(minX, b.x);
+        minY = Math.min(minY, b.y);
+        maxX = Math.max(maxX, b.x + b.w);
+        maxY = Math.max(maxY, b.y + b.h);
+    });
+
+    // Expand region slightly
+    const pad = 18;
+    minX = Math.max(0, minX - pad);
+    minY = Math.max(0, minY - pad);
+    maxX = Math.min(w, maxX + pad);
+    maxY = Math.min(h, maxY + pad);
+
+    return {
+        left: minX,
+        top: minY,
+        right: maxX,
+        bottom: maxY
+    };
+}
+
+/* -----------------------------------------------------
    OCR — Extract text bounding boxes
 ----------------------------------------------------- */
 async function extractTextBoxes() {
@@ -613,7 +657,12 @@ btnOCRTest.onclick = async () => {
     ocrBoxesGlobal = boxes;
 
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
+    legendRegion = detectLegendRegion(
+        boxes,
+        mapBoundary,
+        canvas.width,
+        canvas.height
+    );
     detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
     classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
     redrawBase();
@@ -641,6 +690,7 @@ let nextFeatureId = 1;        // auto increment ID
 let legendEntries = [];      // { text, textBox, symbolBox }
 let legendSymbolBoxes = [];  // boxes we draw on canvas
 let ocrBoxesGlobal = [];   // <-- store OCR rectangles so redrawBase() can show them
+let legendRegion = null;     // <-- bounding box of legend
 
 
 /* ---------- Drawing ---------- */
@@ -694,7 +744,16 @@ function redrawBase() {
     ocrBoxesGlobal.forEach(b => {
         ctx.strokeRect(b.x, b.y, b.w, b.h);
     });
-
+    if (legendRegion) {
+        ctx.strokeStyle = "rgba(180, 0, 255, 0.6)";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(
+            legendRegion.left,
+            legendRegion.top,
+            legendRegion.right - legendRegion.left,
+            legendRegion.bottom - legendRegion.top
+        );
+    }
     // 2️⃣ Draw legend symbol boxes
     legendEntries.forEach(entry => {
         const b = entry.symbolBox;
