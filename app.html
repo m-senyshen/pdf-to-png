@@ -640,11 +640,17 @@ function classifyLegendEntries(entries, image, w, h) {
    STEP C2B — Symbol-Anchored Legend Region Detection
 ----------------------------------------------------- */
 function detectLegendRegionFromSymbols(legendEntries, w, h) {
-
+    console.log(
+      "🟣 detectLegendRegionFromSymbols called — entries:",
+      legendEntries.length
+    );
     // Keep only entries that ACTUALLY have symbols
     const candidates = legendEntries.filter(e => e.symbolBox);
 
-    if (candidates.length < 2) return null;
+    if (candidates.length < 2)
+      console.warn("🟣 Legend detection failed — not enough symbol entries");
+
+      return null;
 
     // Build bounding box ONLY from symbol-text pairs
     const xs = [];
