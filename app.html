@@ -647,7 +647,7 @@ function detectLegendRegionFromSymbols(legendEntries, w, h) {
     // Keep only entries that ACTUALLY have symbols
     const candidates = legendEntries.filter(e => e.symbolBox);
 
-    if (candidates.length < 2)
+    if (candidates.length ===0)
       console.warn("🟣 Legend detection failed — not enough symbol entries");
 
       return null;
@@ -768,27 +768,24 @@ btnOCRTest.onclick = async () => {
     if (!renderedImage) return alert("Load a PDF first.");
 
     const boxes = await extractTextBoxes();
-
-    // Store boxes globally so redrawBase() can draw them
     ocrBoxesGlobal = boxes;
 
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    // 1️⃣ Detect legend symbols FIRST
     detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
-
-    // 2️⃣ Classify legend symbols
     classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
 
-    // 3️⃣ NOW compute legend region from symbol+text pairs
     legendRegion = detectLegendRegionFromSymbols(
         legendEntries,
         canvas.width,
         canvas.height
     );
 
+    console.log("🟣 Legend region:", legendRegion);
+
     redrawBase();
 };
+
 
 
 
@@ -869,6 +866,7 @@ function redrawBase() {
     if (legendRegion) {
         ctx.strokeStyle = "rgba(180, 0, 255, 0.6)";
         ctx.lineWidth = 3;
+        ctx.setLineDash([8, 4]);
         ctx.strokeRect(
             legendRegion.left,
             legendRegion.top,
@@ -902,6 +900,8 @@ function redrawBase() {
         ctx.strokeStyle = color;
         ctx.lineWidth = 3;
         ctx.strokeRect(b.x, b.y, b.width, b.height);
+        ctx.setLineDash([]);
+
 });
 
 
