@@ -505,23 +505,22 @@ function isInkPixel(r, g, b, x, y) {
     if (!dark) {
         // Check neighbors for a "dark border" pattern
         // (no bounds check needed; caller loop is inside bounds)
-        const idxN = (y - 1) * w + x;
-        const idxS = (y + 1) * w + x;
-        const idxE = y * w + (x + 1);
-        const idxW = y * w + (x - 1);
-
-        function darkByIndex(i) {
-            const di = i * 4;
-            const br = 0.299*image[di] + 0.587*image[di+1] + 0.114*image[di+2];
-            return br < 140;
-        }
-
-        // If any neighbor is dark → likely border pixel even if this pixel is white
-        if (darkByIndex(idxN) || darkByIndex(idxS) ||
-            darkByIndex(idxE) || darkByIndex(idxW)) {
-            borderHit = true;
-        }
-    }
+        function darkAt(nx, ny) {
+              if (nx < 0 || ny < 0 || nx >= w || ny >= h) return false;
+              const i = ny * w + nx;
+              const di = i * 4;
+              const br = 0.299*image[di] + 0.587*image[di+1] + 0.114*image[di+2];
+              return br < 140;
+          }
+          
+          if (
+              darkAt(x, y - 1) ||
+              darkAt(x, y + 1) ||
+              darkAt(x + 1, y) ||
+              darkAt(x - 1, y)
+          ) {
+              borderHit = true;
+          }
 
     const isDarkInk = dark;
     const isColoredStrong =
@@ -552,7 +551,7 @@ function isInkPixel(r, g, b, x, y) {
                     const idx = (y * w + x) * 4;
                     const r = image[idx], g = image[idx+1], b = image[idx+2];
 
-                    if (isInkPixel(r, g, b)) {
+                    if (isInkPixel(r, g, b, x, y)) {
                         count++;
                         minX = Math.min(minX, x);
                         maxX = Math.max(maxX, x);
@@ -773,8 +772,13 @@ btnOCRTest.onclick = async () => {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
+    console.log("🟣 legendEntries total:", legendEntries.length);
+    console.log("🟣 legendEntries with symbolBox:",
+      legendEntries.filter(e => e.symbolBox).length
+    );
+    
     classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
-
+    
     legendRegion = detectLegendRegionFromSymbols(
         legendEntries,
         canvas.width,
