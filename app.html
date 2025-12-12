@@ -1009,18 +1009,26 @@ btnOCRTest.onclick = async () => {
         canvas.height
     );
     
+// STEP C1 — legend region FIRST (symbol-agnostic)
+const rowCandidates = detectLegendRowCandidates(
+    boxes,
+    imgData.data,
+    canvas.width,
+    canvas.height
+);
+
     legendRegion = detectLegendRegionFromRows(
         rowCandidates,
         canvas.width,
         canvas.height
     );
     
-    // Symbol detection & classification stay for later steps
+    // STEP C2 — symbols & classification (secondary)
     detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
     classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
-
-
+    
     console.log("🟣 Legend region:", legendRegion);
+
 
     redrawBase();
 };
