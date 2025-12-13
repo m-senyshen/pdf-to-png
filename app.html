@@ -462,107 +462,88 @@ function computeSymbolSignature(box, imageData, w, h) {
     };
 }
 function detectLegendRowCandidates(ocrBoxes, image, w, h) {
+  const candidates = [];
 
-    const candidates = [];
-    
-    function detectCompactInkBox(x1, y1, x2, y2) {
-        let minX = Infinity, minY = Infinity;
-        let maxX = -Infinity, maxY = -Infinity;
-        let count = 0;
-    
-        for (let y = y1; y < y2; y++) {
-            for (let x = x1; x < x2; x++) {
-                if (x < 0 || y < 0 || x >= w || y >= h) continue;
-                const i = (y * w + x) * 4;
-                const r = image[i], g = image[i+1], b = image[i+2];
-                const br = 0.299*r + 0.587*g + 0.114*b;
-    
-                if (br < 200) {
-                    count++;
-                    minX = Math.min(minX, x);
-                    minY = Math.min(minY, y);
-                    maxX = Math.max(maxX, x);
-                    maxY = Math.max(maxY, y);
-                }
-            }
+  function detectCompactInkBox(x1, y1, x2, y2) {
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+    let count = 0;
+
+    for (let y = y1; y < y2; y++) {
+      for (let x = x1; x < x2; x++) {
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const i = (y * w + x) * 4;
+        const r = image[i], g = image[i+1], b = image[i+2];
+        const br = 0.299*r + 0.587*g + 0.114*b;
+
+        if (br < 200) {
+          count++;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
         }
-    
-        if (count < 10) return null;
-    
-        const bw = maxX - minX;
-        const bh = maxY - minY;
-    
-        // Symbol-like constraints
-        if (bw < 4 || bh < 4) return null;
-        if (bw > 40 || bh > 40) return null;
-    
-        return { x: minX, y: minY, w: bw, h: bh };
+      }
     }
 
+    if (count < 10) return null;
 
-    for (const item of ocrBoxes) {
-    
-        // Skip text inside map interior
-        if (mapBoundary) {
-            const cx = item.x + item.w / 2;
-            const cy = item.y + item.h / 2;
-    
-            if (
-                cx > mapBoundary.left &&
-                cx < mapBoundary.right &&
-                cy > mapBoundary.top &&
-                cy < mapBoundary.bottom
-            ) {
-                continue;
-            }
-        }
-    
-        //
-        const t = {
-            x: item.x,
-            y: item.y,
-            w: item.w,
-            h: item.h
-        };
-    
-        const midY = t.y + t.h / 2;
-        const midX = t.x + t.w / 2;
-    
-        const padX = 32;
-        const padY = Math.round(t.h * 0.4);
+    const bw = maxX - minX;
+    const bh = maxY - minY;
 
+    if (bw < 4 || bh < 4) return null;
+    if (bw > 40 || bh > 40) return null;
 
-        // Search regions (priority ordered)
-        const regions = [
-            { dir: "left",   x1: t.x - padX, x2: t.x,           y1: midY - padY, y2: midY + padY },
-            { dir: "right",  x1: t.x + t.w,  x2: t.x + t.w + padX, y1: midY - padY, y2: midY + padY },
-            { dir: "top",    x1: midX - padY, x2: midX + padY, y1: t.y - padX, y2: t.y },
-            { dir: "bottom", x1: midX - padY, x2: midX + padY, y1: t.y + t.h, y2: t.y + t.h + padX }
-        ];
+    return { x: minX, y: minY, w: bw, h: bh };
+  }
 
-        let bestInk = 0;
-        let bestDir = null;
-
-        for (const r of regions) {
-          const box = detectCompactInkBox(
-              Math.floor(r.x1),
-              Math.floor(r.y1),
-              Math.ceil(r.x2),
-              Math.ceil(r.y2)
-          );
-          
-          if (box) {
-              candidates.push({
-                  textBox: t,
-                  direction: r.dir,
-                  symbolBox: box
-              });
-          }
-
+  for (const item of ocrBoxes) {
+    // Skip text inside map interior
+    if (mapBoundary) {
+      const cx = item.x + item.w / 2;
+      const cy = item.y + item.h / 2;
+      if (cx > mapBoundary.left && cx < mapBoundary.right &&
+          cy > mapBoundary.top  && cy < mapBoundary.bottom) {
+        continue;
+      }
     }
 
-    return candidates;
+    const t = { x: item.x, y: item.y, w: item.w, h: item.h };
+    const midY = t.y + t.h / 2;
+    const midX = t.x + t.w / 2;
+
+    const padX = 32;
+    const padY = Math.round(t.h * 0.4);
+
+    const regions = [
+      { dir: "left",   x1: t.x - padX,     x2: t.x,             y1: midY - padY, y2: midY + padY },
+      { dir: "right",  x1: t.x + t.w,      x2: t.x + t.w + padX,y1: midY - padY, y2: midY + padY },
+      { dir: "top",    x1: midX - padY,    x2: midX + padY,     y1: t.y - padX,  y2: t.y },
+      { dir: "bottom", x1: midX - padY,    x2: midX + padY,     y1: t.y + t.h,   y2: t.y + t.h + padX }
+    ];
+
+    for (const r of regions) {
+      const box = detectCompactInkBox(
+        Math.floor(r.x1),
+        Math.floor(r.y1),
+        Math.ceil(r.x2),
+        Math.ceil(r.y2)
+      );
+
+      if (box) {
+        candidates.push({
+          textBox: t,
+          direction: r.dir,
+          symbolBox: box
+        });
+        break; // important: one candidate per text box
+      }
+    }
+  }
+
+  return candidates;
 }
+
 function detectLegendRegionFromRows(rows, w, h) {
 
     if (!rows || rows.length < 3) {
@@ -858,55 +839,40 @@ function classifyLegendEntries(entries, image, w, h) {
    STEP C2B — Symbol-Anchored Legend Region Detection
 ----------------------------------------------------- */
 function detectLegendRegionFromSymbols(legendEntries, w, h) {
-    console.log(
-      "🟣 detectLegendRegionFromSymbols called — entries:",
-      legendEntries.length
-    );
-        // Filter rows by symbol size consistency
-    const symbolAreas = rows
-        .filter(r => r.symbolBox)
-        .map(r => r.symbolBox.w * r.symbolBox.h);
-    
-    const meanArea =
-        symbolAreas.reduce((s,a)=>s+a,0) / symbolAreas.length;
-    
-    rows = rows.filter(r => {
-        if (!r.symbolBox) return false;
-        const area = r.symbolBox.w * r.symbolBox.h;
-        return area > meanArea * 0.4 && area < meanArea * 2.5;
-    });
+  console.log("🟣 detectLegendRegionFromSymbols called — entries:", legendEntries.length);
 
-    // Keep only entries that ACTUALLY have symbols
-    const candidates = legendEntries.filter(e => e.symbolBox);
+  // Keep only entries that ACTUALLY have symbols
+  const candidates = legendEntries.filter(e => e.symbolBox);
 
-    if (candidates.length === 0) {
-        console.warn("🟣 Legend detection failed — not enough symbol entries");
-        return null;
-    }
+  if (candidates.length === 0) {
+    console.warn("🟣 Legend detection failed — not enough symbol entries");
+    return null;
+  }
 
-    // Build bounding box ONLY from symbol-text pairs
-    const xs = [];
-    const ys = [];
-    const xe = [];
-    const ye = [];
+  // Build bounding box ONLY from symbol-text pairs
+  const xs = [];
+  const ys = [];
+  const xe = [];
+  const ye = [];
 
-    candidates.forEach(e => {
-        const t = e.textBox;
-        const s = e.symbolBox;
+  candidates.forEach(e => {
+    const t = e.textBox;
+    const s = e.symbolBox;
 
-        xs.push(t.x, s.x);
-        ys.push(t.y, s.y);
-        xe.push(t.x + t.width, s.x + s.width);
-        ye.push(t.y + t.height, s.y + s.height);
-    });
+    xs.push(t.x, s.x);
+    ys.push(t.y, s.y);
+    xe.push(t.x + t.width, s.x + s.width);
+    ye.push(t.y + t.height, s.y + s.height);
+  });
 
-    return {
-        left: Math.max(0, Math.min(...xs) - 15),
-        top: Math.max(0, Math.min(...ys) - 15),
-        right: Math.min(w, Math.max(...xe) + 15),
-        bottom: Math.min(h, Math.max(...ye) + 15)
-    };
+  return {
+    left: Math.max(0, Math.min(...xs) - 15),
+    top: Math.max(0, Math.min(...ys) - 15),
+    right: Math.min(w, Math.max(...xe) + 15),
+    bottom: Math.min(h, Math.max(...ye) + 15)
+  };
 }
+
 
 </script>
 
