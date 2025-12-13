@@ -543,6 +543,34 @@ function detectLegendRowCandidates(ocrBoxes, image, w, h) {
 
   return candidates;
 }
+function detectLegendRegionFromLegendRows(rows, w, h) {
+  if (!rows || rows.length < 2) {
+    console.warn("Legend detection failed — not enough symbol rows");
+    return null;
+  }
+
+  const xs = [];
+  const ys = [];
+  const xe = [];
+  const ye = [];
+
+  rows.forEach(r => {
+    const t = r.textBox;
+    const s = r.symbolBox;
+
+    xs.push(t.x, s.x);
+    ys.push(t.y, s.y);
+    xe.push(t.x + t.w, s.x + s.w);
+    ye.push(t.y + t.h, s.y + s.h);
+  });
+
+  return {
+    left: Math.max(0, Math.min(...xs) - 20),
+    top: Math.max(0, Math.min(...ys) - 20),
+    right: Math.min(w, Math.max(...xe) + 20),
+    bottom: Math.min(h, Math.max(...ye) + 20)
+  };
+}
 
 function detectLegendRegionFromRows(rows, w, h) {
 
@@ -965,7 +993,7 @@ btnOCRTest.onclick = async () => {
     rowCandidates
   );
 
-  legendRegion = detectLegendRegionFromRows(
+  legendRegion = detectLegendRegionFromLegendRows(
     rowCandidates,
     canvas.width,
     canvas.height
