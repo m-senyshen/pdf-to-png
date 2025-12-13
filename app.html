@@ -556,7 +556,20 @@ function detectLegendRegionFromRows(rows, w, h) {
 
     // Sort top to bottom
     rows.sort((a, b) => a.textBox.y - b.textBox.y);
-
+    const meanHeight =
+      rows.reduce((s, r) => s + r.textBox.h, 0) / rows.length;
+    
+    rows = rows.filter(r =>
+      r.textBox.h < meanHeight * 1.6 &&
+      r.textBox.h > meanHeight * 0.5
+    );
+    
+    if (rows.length < 3) {
+      console.warn("Legend detection failed — rows filtered too aggressively");
+      return null;
+    }
+    
+    rows.sort((a, b) => a.textBox.y - b.textBox.y);
     // Cluster rows by vertical spacing
     const clusters = [];
     let current = [rows[0]];
@@ -577,7 +590,25 @@ function detectLegendRegionFromRows(rows, w, h) {
     if (current.length >= 3) clusters.push(current);
 
     if (clusters.length === 0) return null;
-
+    function verticalOverlap(a, b) {
+      const aTop = Math.min(...a.map(r => r.textBox.y));
+      const aBot = Math.max(...a.map(r => r.textBox.y + r.textBox.h));
+      const bTop = Math.min(...b.map(r => r.textBox.y));
+      const bBot = Math.max(...b.map(r => r.textBox.y + r.textBox.h));
+      return Math.min(aBot, bBot) - Math.max(aTop, bTop);
+    }
+    
+    let merged = [...clusters];
+    
+    for (let i = 0; i < merged.length; i++) {
+      for (let j = i + 1; j < merged.length; j++) {
+        if (verticalOverlap(merged[i], merged[j]) > 20) {
+          merged[i] = merged[i].concat(merged[j]);
+          merged.splice(j, 1);
+          j--;
+        }
+      }
+    }
     // Choose cluster with most consistent layout
     const best = clusters.sort((a,b)=>b.length-a.length)[0];
 
@@ -595,10 +626,10 @@ function detectLegendRegionFromRows(rows, w, h) {
     });
 
     return {
-        left: Math.max(0, Math.min(...xs) - 40),
-        top: Math.max(0, Math.min(...ys) - 20),
-        right: Math.min(w, Math.max(...xe) + 40),
-        bottom: Math.min(h, Math.max(...ye) + 20)
+      left: Math.max(0, Math.min(...xs) - 60),
+      top: Math.max(0, Math.min(...ys) - 30),
+      right: Math.min(w, Math.max(...xe) + 60),
+      bottom: Math.min(h, Math.max(...ye) + 30)
     };
 }
   
