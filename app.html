@@ -495,12 +495,21 @@ function detectLegendRowCandidates(ocrBoxes, image, w, h) {
                 continue;
             }
         }
-
+    
+        //
+        const t = {
+            x: item.x,
+            y: item.y,
+            w: item.w,
+            h: item.h
+        };
+    
         const midY = t.y + t.h / 2;
         const midX = t.x + t.w / 2;
-
+    
         const padX = 32;
         const padY = Math.round(t.h * 0.4);
+
 
         // Search regions (priority ordered)
         const regions = [
