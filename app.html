@@ -464,20 +464,41 @@ function computeSymbolSignature(box, imageData, w, h) {
 function detectLegendRowCandidates(ocrBoxes, image, w, h) {
 
     const candidates = [];
-
-    function countInk(x1, y1, x2, y2) {
+    
+    function detectCompactInkBox(x1, y1, x2, y2) {
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
         let count = 0;
+    
         for (let y = y1; y < y2; y++) {
             for (let x = x1; x < x2; x++) {
                 if (x < 0 || y < 0 || x >= w || y >= h) continue;
                 const i = (y * w + x) * 4;
                 const r = image[i], g = image[i+1], b = image[i+2];
                 const br = 0.299*r + 0.587*g + 0.114*b;
-                if (br < 210) count++;
+    
+                if (br < 200) {
+                    count++;
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    maxX = Math.max(maxX, x);
+                    maxY = Math.max(maxY, y);
+                }
             }
         }
-        return count;
+    
+        if (count < 10) return null;
+    
+        const bw = maxX - minX;
+        const bh = maxY - minY;
+    
+        // Symbol-like constraints
+        if (bw < 4 || bh < 4) return null;
+        if (bw > 40 || bh > 40) return null;
+    
+        return { x: minX, y: minY, w: bw, h: bh };
     }
+
 
     for (const item of ocrBoxes) {
     
@@ -523,26 +544,21 @@ function detectLegendRowCandidates(ocrBoxes, image, w, h) {
         let bestDir = null;
 
         for (const r of regions) {
-            const ink = countInk(
-                Math.floor(r.x1),
-                Math.floor(r.y1),
-                Math.ceil(r.x2),
-                Math.ceil(r.y2)
-            );
+          const box = detectCompactInkBox(
+              Math.floor(r.x1),
+              Math.floor(r.y1),
+              Math.ceil(r.x2),
+              Math.ceil(r.y2)
+          );
+          
+          if (box) {
+              candidates.push({
+                  textBox: t,
+                  direction: r.dir,
+                  symbolBox: box
+              });
+          }
 
-            if (ink > bestInk) {
-                bestInk = ink;
-                bestDir = r.dir;
-            }
-        }
-
-        // Threshold tuned for legend symbols
-        if (bestInk > 25) {
-            candidates.push({
-                textBox: t,
-                direction: bestDir
-            });
-        }
     }
 
     return candidates;
@@ -846,6 +862,20 @@ function detectLegendRegionFromSymbols(legendEntries, w, h) {
       "🟣 detectLegendRegionFromSymbols called — entries:",
       legendEntries.length
     );
+        // Filter rows by symbol size consistency
+    const symbolAreas = rows
+        .filter(r => r.symbolBox)
+        .map(r => r.symbolBox.w * r.symbolBox.h);
+    
+    const meanArea =
+        symbolAreas.reduce((s,a)=>s+a,0) / symbolAreas.length;
+    
+    rows = rows.filter(r => {
+        if (!r.symbolBox) return false;
+        const area = r.symbolBox.w * r.symbolBox.h;
+        return area > meanArea * 0.4 && area < meanArea * 2.5;
+    });
+
     // Keep only entries that ACTUALLY have symbols
     const candidates = legendEntries.filter(e => e.symbolBox);
 
