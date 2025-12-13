@@ -480,13 +480,21 @@ function detectLegendRowCandidates(ocrBoxes, image, w, h) {
     }
 
     for (const item of ocrBoxes) {
-
-        const t = {
-            x: item.x,
-            y: item.y,
-            w: item.w,
-            h: item.h
-        };
+    
+        // Skip text inside map interior
+        if (mapBoundary) {
+            const cx = item.x + item.w / 2;
+            const cy = item.y + item.h / 2;
+    
+            if (
+                cx > mapBoundary.left &&
+                cx < mapBoundary.right &&
+                cy > mapBoundary.top &&
+                cy < mapBoundary.bottom
+            ) {
+                continue;
+            }
+        }
 
         const midY = t.y + t.h / 2;
         const midX = t.x + t.w / 2;
@@ -915,12 +923,19 @@ btnOCRTest.onclick = async () => {
     canvas.width,
     canvas.height
   );
+  console.log(
+    "🟣 Legend row candidates:",
+    rowCandidates.length,
+    rowCandidates
+  );
 
   legendRegion = detectLegendRegionFromRows(
     rowCandidates,
     canvas.width,
     canvas.height
   );
+  console.log("🟣 Legend region:", legendRegion);
+
 
   // STEP C2 — symbols & classification (secondary)
   detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
