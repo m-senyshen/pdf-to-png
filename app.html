@@ -657,7 +657,21 @@ function detectLegendRegionFromRows(rows, w, h) {
       bottom: Math.min(h, Math.max(...ye) + 30)
     };
 }
-  
+function filterLegendRowsBySymbolConsistency(rows) {
+  const withSymbols = rows.filter(r => r.symbolBox);
+  if (withSymbols.length < 3) return [];
+
+  const areas = withSymbols.map(r => r.symbolBox.w * r.symbolBox.h);
+  areas.sort((a, b) => a - b);
+
+  const median = areas[Math.floor(areas.length / 2)];
+
+  return withSymbols.filter(r => {
+    const area = r.symbolBox.w * r.symbolBox.h;
+    return area > median * 0.5 && area < median * 2.0;
+  });
+}
+
 /* -----------------------------------------------------
    Detect legend symbols located near OCR text labels
 ----------------------------------------------------- */
@@ -993,11 +1007,20 @@ btnOCRTest.onclick = async () => {
     rowCandidates
   );
 
-  legendRegion = detectLegendRegionFromLegendRows(
-    rowCandidates,
-    canvas.width,
-    canvas.height
-  );
+    const consistentRows =
+      filterLegendRowsBySymbolConsistency(rowCandidates);
+    
+    console.log(
+      "🟣 Legend rows after consistency filter:",
+      consistentRows.length
+    );
+    
+    legendRegion = detectLegendRegionFromLegendRows(
+      consistentRows,
+      canvas.width,
+      canvas.height
+    );
+
   console.log("🟣 Legend region:", legendRegion);
 
 
