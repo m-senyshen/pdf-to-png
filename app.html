@@ -1092,20 +1092,36 @@ if (symbolClusters.length === 0) {
 // 4️⃣ Choose dominant repeating symbol cluster
 const bestCluster = symbolClusters.sort((a,b)=>b.length-a.length)[0];
 
-// 5️⃣ Enforce row alignment (legend rows repeat vertically)
-bestCluster.sort((a, b) => a.textBox.y - b.textBox.y);
+// 5️⃣ Filter by symbol size consistency (kills scale bars / arrows)
+const symbolAreas = bestCluster
+  .map(e => e.symbolBox.width * e.symbolBox.height)
+  .sort((a,b)=>a-b);
 
-const rowYs = bestCluster.map(e => e.textBox.y);
-const rowHeights = bestCluster.map(e => e.textBox.height);
+const medianArea =
+  symbolAreas[Math.floor(symbolAreas.length / 2)];
 
+let filtered = bestCluster.filter(e => {
+  const area = e.symbolBox.width * e.symbolBox.height;
+  return area > medianArea * 0.6 && area < medianArea * 1.6;
+});
+
+if (filtered.length < 3) {
+  console.warn("Legend rejected — symbol sizes inconsistent");
+  legendRegion = null;
+  redrawBase();
+  return;
+}
+
+// 6️⃣ Enforce vertical legend rhythm (row spacing consistency)
+filtered.sort((a, b) => a.textBox.y - b.textBox.y);
+
+const rowHeights = filtered.map(e => e.textBox.height).sort((a,b)=>a-b);
 const medianHeight =
-  rowHeights.sort((a,b)=>a-b)[Math.floor(rowHeights.length / 2)];
+  rowHeights[Math.floor(rowHeights.length / 2)];
 
-// 6️⃣ Keep rows that match legend rhythm
-const filtered = bestCluster.filter((e, i) => {
-  if (i === 0 || i === bestCluster.length - 1) return true;
-
-  const dyPrev = e.textBox.y - bestCluster[i-1].textBox.y;
+filtered = filtered.filter((e, i) => {
+  if (i === 0 || i === filtered.length - 1) return true;
+  const dyPrev = e.textBox.y - filtered[i-1].textBox.y;
   return dyPrev < medianHeight * 3;
 });
 
@@ -1137,11 +1153,8 @@ legendRegion = {
 };
 
 console.log("🟣 Tight legend region:", legendRegion);
-
-
-console.log("🟣 Legend region (symbol repetition):", legendRegion);
-
 redrawBase();
+
 };
 
 
