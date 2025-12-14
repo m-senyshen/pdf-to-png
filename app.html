@@ -838,6 +838,32 @@ function isInkPixel(r, g, b, x, y) {
 );
 }
 
+function filterRowsByVerticalRhythm(rows) {
+  if (rows.length < 4) return [];
+
+  rows.sort((a, b) => a.textBox.y - b.textBox.y);
+
+  const gaps = [];
+  for (let i = 1; i < rows.length; i++) {
+    gaps.push(rows[i].textBox.y - rows[i - 1].textBox.y);
+  }
+
+  gaps.sort((a, b) => a - b);
+  const medianGap = gaps[Math.floor(gaps.length / 2)];
+
+  // Keep rows that align to the dominant rhythm
+  return rows.filter((r, i) => {
+    if (i === 0 || i === rows.length - 1) return true;
+
+    const prevGap = r.textBox.y - rows[i - 1].textBox.y;
+    const nextGap = rows[i + 1].textBox.y - r.textBox.y;
+
+    return (
+      Math.abs(prevGap - medianGap) < medianGap * 0.6 ||
+      Math.abs(nextGap - medianGap) < medianGap * 0.6
+    );
+  });
+}
 
 /* -----------------------------------------------------
    STEP C — Geometric classification of legend symbols
@@ -995,31 +1021,29 @@ btnOCRTest.onclick = async () => {
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
   // STEP C1 — legend region FIRST (symbol-agnostic)
-  const rowCandidates = detectLegendRowCandidates(
-    boxes,
-    imgData.data,
-    canvas.width,
-    canvas.height
-  );
-  console.log(
-    "🟣 Legend row candidates:",
-    rowCandidates.length,
-    rowCandidates
-  );
-
-    const consistentRows =
-      filterLegendRowsBySymbolConsistency(rowCandidates);
-    
-    console.log(
-      "🟣 Legend rows after consistency filter:",
-      consistentRows.length
-    );
-    
-    legendRegion = detectLegendRegionFromLegendRows(
-      consistentRows,
+    const rowCandidates = detectLegendRowCandidates(
+      boxes,
+      imgData.data,
       canvas.width,
       canvas.height
     );
+    
+    // 1️⃣ Enforce symbol consistency
+    const sizeFiltered =
+      filterLegendRowsBySymbolConsistency(rowCandidates);
+    
+    // 2️⃣ Enforce vertical rhythm
+    const rhythmFiltered =
+      filterRowsByVerticalRhythm(sizeFiltered);
+    
+    console.log("🟣 Legend rows after rhythm filter:", rhythmFiltered.length);
+    
+    legendRegion = detectLegendRegionFromLegendRows(
+      rhythmFiltered,
+      canvas.width,
+      canvas.height
+    );
+
 
   console.log("🟣 Legend region:", legendRegion);
 
