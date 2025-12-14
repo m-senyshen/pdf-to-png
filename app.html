@@ -1089,13 +1089,37 @@ if (symbolClusters.length === 0) {
   return;
 }
 
-// 4️⃣ Choose dominant cluster
+// 4️⃣ Choose dominant repeating symbol cluster
 const bestCluster = symbolClusters.sort((a,b)=>b.length-a.length)[0];
 
-// 5️⃣ Build legend bounding box
+// 5️⃣ Enforce row alignment (legend rows repeat vertically)
+bestCluster.sort((a, b) => a.textBox.y - b.textBox.y);
+
+const rowYs = bestCluster.map(e => e.textBox.y);
+const rowHeights = bestCluster.map(e => e.textBox.height);
+
+const medianHeight =
+  rowHeights.sort((a,b)=>a-b)[Math.floor(rowHeights.length / 2)];
+
+// 6️⃣ Keep rows that match legend rhythm
+const filtered = bestCluster.filter((e, i) => {
+  if (i === 0 || i === bestCluster.length - 1) return true;
+
+  const dyPrev = e.textBox.y - bestCluster[i-1].textBox.y;
+  return dyPrev < medianHeight * 3;
+});
+
+if (filtered.length < 3) {
+  console.warn("Legend rejected — rows not consistent");
+  legendRegion = null;
+  redrawBase();
+  return;
+}
+
+// 7️⃣ Build FINAL tight legend bounding box
 const xs = [], ys = [], xe = [], ye = [];
 
-bestCluster.forEach(e => {
+filtered.forEach(e => {
   const s = e.symbolBox;
   const t = e.textBox;
 
@@ -1106,11 +1130,14 @@ bestCluster.forEach(e => {
 });
 
 legendRegion = {
-  left: Math.max(0, Math.min(...xs) - 20),
-  top: Math.max(0, Math.min(...ys) - 20),
-  right: Math.min(canvas.width, Math.max(...xe) + 20),
-  bottom: Math.min(canvas.height, Math.max(...ye) + 20)
+  left: Math.max(0, Math.min(...xs) - 10),
+  top: Math.max(0, Math.min(...ys) - 10),
+  right: Math.min(canvas.width, Math.max(...xe) + 10),
+  bottom: Math.min(canvas.height, Math.max(...ye) + 10)
 };
+
+console.log("🟣 Tight legend region:", legendRegion);
+
 
 console.log("🟣 Legend region (symbol repetition):", legendRegion);
 
