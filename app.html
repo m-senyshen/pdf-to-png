@@ -572,6 +572,41 @@ function detectLegendRegionFromLegendRows(rows, w, h) {
   };
 }
 
+function clusterSymbolsByShape(entries) {
+  const clusters = [];
+
+  function similar(a, b) {
+    const areaA = a.width * a.height;
+    const areaB = b.width * b.height;
+    const areaRatio = Math.min(areaA, areaB) / Math.max(areaA, areaB);
+
+    const aspectA = a.width / a.height;
+    const aspectB = b.width / b.height;
+    const aspectDiff = Math.abs(aspectA - aspectB);
+
+    return areaRatio > 0.55 && aspectDiff < 0.6;
+  }
+
+  entries.forEach(e => {
+    if (!e.symbolBox) return;
+
+    let placed = false;
+
+    for (const c of clusters) {
+      if (similar(e.symbolBox, c[0].symbolBox)) {
+        c.push(e);
+        placed = true;
+        break;
+      }
+    }
+
+    if (!placed) clusters.push([e]);
+  });
+
+  return clusters.filter(c => c.length >= 3);
+}
+
+  
 function detectLegendRegionFromRows(rows, w, h) {
 
     if (!rows || rows.length < 3) {
@@ -1038,11 +1073,41 @@ btnOCRTest.onclick = async () => {
     
     console.log("🟣 Legend rows after rhythm filter:", rhythmFiltered.length);
     
-    legendRegion = detectLegendRegionFromLegendRows(
-      rhythmFiltered,
-      canvas.width,
-      canvas.height
-    );
+    const symbolClusters = clusterSymbolsByShape(legendEntries);
+    
+    if (symbolClusters.length === 0) {
+      console.warn("Legend detection failed — no repeating symbol clusters");
+      legendRegion = null;
+      return;
+    }
+    
+    // Choose the largest repeating cluster
+    const bestCluster = symbolClusters.sort((a,b)=>b.length-a.length)[0];
+    
+    const xs = [];
+    const ys = [];
+    const xe = [];
+    const ye = [];
+    
+    bestCluster.forEach(e => {
+      const s = e.symbolBox;
+      const t = e.textBox;
+    
+      xs.push(s.x, t.x);
+      ys.push(s.y, t.y);
+      xe.push(s.x + s.width, t.x + t.width);
+      ye.push(s.y + s.height, t.y + t.height);
+    });
+    
+    legendRegion = {
+      left: Math.max(0, Math.min(...xs) - 20),
+      top: Math.max(0, Math.min(...ys) - 20),
+      right: Math.min(canvas.width, Math.max(...xe) + 20),
+      bottom: Math.min(canvas.height, Math.max(...ye) + 20)
+    };
+    
+    console.log("🟣 Legend region (symbol repetition):", legendRegion);
+
 
 
   console.log("🟣 Legend region:", legendRegion);
