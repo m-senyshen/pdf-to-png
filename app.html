@@ -1056,70 +1056,65 @@ btnOCRTest.onclick = async () => {
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
   // STEP C1 — legend region FIRST (symbol-agnostic)
-    const rowCandidates = detectLegendRowCandidates(
-      boxes,
-      imgData.data,
-      canvas.width,
-      canvas.height
-    );
-    
-    // 1️⃣ Enforce symbol consistency
-    const sizeFiltered =
-      filterLegendRowsBySymbolConsistency(rowCandidates);
-    
-    // 2️⃣ Enforce vertical rhythm
-    const rhythmFiltered =
-      filterRowsByVerticalRhythm(sizeFiltered);
-    
-    console.log("🟣 Legend rows after rhythm filter:", rhythmFiltered.length);
-    
-    const symbolClusters = clusterSymbolsByShape(legendEntries);
-    
-    if (symbolClusters.length === 0) {
-      console.warn("Legend detection failed — no repeating symbol clusters");
-      legendRegion = null;
-      return;
-    }
-    
-    // Choose the largest repeating cluster
-    const bestCluster = symbolClusters.sort((a,b)=>b.length-a.length)[0];
-    
-    const xs = [];
-    const ys = [];
-    const xe = [];
-    const ye = [];
-    
-    bestCluster.forEach(e => {
-      const s = e.symbolBox;
-      const t = e.textBox;
-    
-      xs.push(s.x, t.x);
-      ys.push(s.y, t.y);
-      xe.push(s.x + s.width, t.x + t.width);
-      ye.push(s.y + s.height, t.y + t.height);
-    });
-    
-    legendRegion = {
-      left: Math.max(0, Math.min(...xs) - 20),
-      top: Math.max(0, Math.min(...ys) - 20),
-      right: Math.min(canvas.width, Math.max(...xe) + 20),
-      bottom: Math.min(canvas.height, Math.max(...ye) + 20)
-    };
-    
-    console.log("🟣 Legend region (symbol repetition):", legendRegion);
+const rowCandidates = detectLegendRowCandidates(
+  boxes,
+  imgData.data,
+  canvas.width,
+  canvas.height
+);
 
+// 1️⃣ Detect symbols FIRST
+detectLegendSymbols(
+  boxes,
+  imgData.data,
+  canvas.width,
+  canvas.height
+);
 
+// 2️⃣ Classify symbols
+classifyLegendEntries(
+  legendEntries,
+  imgData.data,
+  canvas.width,
+  canvas.height
+);
 
-  console.log("🟣 Legend region:", legendRegion);
+// 3️⃣ NOW cluster repeating symbols
+const symbolClusters = clusterSymbolsByShape(legendEntries);
 
+if (symbolClusters.length === 0) {
+  console.warn("Legend detection failed — no repeating symbol clusters");
+  legendRegion = null;
+  redrawBase(); // still draw OCR boxes
+  return;
+}
 
-  // STEP C2 — symbols & classification (secondary)
-  detectLegendSymbols(boxes, imgData.data, canvas.width, canvas.height);
-  classifyLegendEntries(legendEntries, imgData.data, canvas.width, canvas.height);
+// 4️⃣ Choose dominant cluster
+const bestCluster = symbolClusters.sort((a,b)=>b.length-a.length)[0];
 
-  console.log("🟣 Legend region:", legendRegion);
-  redrawBase();
+// 5️⃣ Build legend bounding box
+const xs = [], ys = [], xe = [], ye = [];
+
+bestCluster.forEach(e => {
+  const s = e.symbolBox;
+  const t = e.textBox;
+
+  xs.push(s.x, t.x);
+  ys.push(s.y, t.y);
+  xe.push(s.x + s.width, t.x + t.width);
+  ye.push(s.y + s.height, t.y + t.height);
+});
+
+legendRegion = {
+  left: Math.max(0, Math.min(...xs) - 20),
+  top: Math.max(0, Math.min(...ys) - 20),
+  right: Math.min(canvas.width, Math.max(...xe) + 20),
+  bottom: Math.min(canvas.height, Math.max(...ye) + 20)
 };
+
+console.log("🟣 Legend region (symbol repetition):", legendRegion);
+
+redrawBase();
 
 
 
