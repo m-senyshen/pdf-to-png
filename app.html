@@ -900,9 +900,46 @@ function filterRowsByVerticalRhythm(rows) {
   });
 }
 
+
+/* -----------------------------------------------------
+   STEP C — Legend Cluster Scoring (NEW)
+----------------------------------------------------- */
+function scoreLegendCluster(cluster) {
+
+  // 1️⃣ Text uniqueness — legends have mostly unique labels
+  const texts = cluster
+    .map(e => (e.text || "").trim().toLowerCase())
+    .filter(t => t.length > 0);
+
+  const uniqueTextRatio =
+    texts.length === 0 ? 0 :
+    new Set(texts).size / texts.length;
+
+  // 2️⃣ Symbol shape consistency — legends reuse same symbol
+  const areas = cluster.map(e =>
+    e.symbolBox.width * e.symbolBox.height
+  );
+
+  areas.sort((a,b)=>a-b);
+  const medianArea = areas[Math.floor(areas.length / 2)];
+
+  const consistentSymbols =
+    areas.filter(a =>
+      a > medianArea * 0.7 &&
+      a < medianArea * 1.4
+    ).length / areas.length;
+
+  // 3️⃣ Final weighted score
+  return (
+    uniqueTextRatio * 3 +       // legends win here
+    consistentSymbols * 4 +     // legends win here
+    cluster.length * 0.2        // size matters, but less
+  );
+}
 /* -----------------------------------------------------
    STEP C — Geometric classification of legend symbols
 ----------------------------------------------------- */
+  
 function classifyLegendEntries(entries, image, w, h) {
 
     function classify(box) {
@@ -1089,8 +1126,24 @@ if (symbolClusters.length === 0) {
   return;
 }
 
-// 4️⃣ Choose dominant repeating symbol cluster
-const bestCluster = symbolClusters.sort((a,b)=>b.length-a.length)[0];
+let bestCluster = null;
+let bestScore = -Infinity;
+
+for (const cluster of symbolClusters) {
+  const score = scoreLegendCluster(cluster);
+  if (score > bestScore) {
+    bestScore = score;
+    bestCluster = cluster;
+  }
+}
+
+if (!bestCluster) {
+  console.warn("Legend detection failed — no suitable cluster");
+  legendRegion = null;
+  redrawBase();
+  return;
+}
+
 
 // 5️⃣ Filter by symbol size consistency (kills scale bars / arrows)
 const symbolAreas = bestCluster
