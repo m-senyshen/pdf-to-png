@@ -1117,7 +1117,30 @@ classifyLegendEntries(
 );
 
 // 3️⃣ NOW cluster repeating symbols
-const symbolClusters = clusterSymbolsByShape(legendEntries);
+// 3️⃣ ONLY keep entries that truly look like legend rows
+const legendRowCandidates = legendEntries.filter(e => {
+  if (!e.symbolBox) return false;
+
+  const sym = e.symbolBox;
+  const txt = e.textBox;
+
+  // Symbol must be close horizontally to text
+  const dxLeft  = Math.abs(sym.x + sym.width - txt.x);
+  const dxRight = Math.abs(txt.x + txt.width - sym.x);
+  const minDx = Math.min(dxLeft, dxRight);
+
+  // Reject far-away symbols (scale bars, arrows, logos)
+  if (minDx > txt.height * 3) return false;
+
+  // Symbol must be small (reject arrows, logos)
+  if (sym.width > txt.height * 2.2) return false;
+  if (sym.height > txt.height * 2.2) return false;
+
+  return true;
+});
+
+// 4️⃣ Cluster ONLY these candidates
+const symbolClusters = clusterSymbolsByShape(legendRowCandidates);
 
 if (symbolClusters.length === 0) {
   console.warn("Legend detection failed — no repeating symbol clusters");
