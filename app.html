@@ -1315,11 +1315,12 @@ rhythmRows.forEach(e => {
 });
 
 legendRegion = {
-  left: Math.max(0, Math.min(...xs) - 10),
-  top: Math.max(0, Math.min(...ys) - 10),
-  right: Math.min(canvas.width, Math.max(...xe) + 10),
-  bottom: Math.min(canvas.height, Math.max(...ye) + 10)
+  left: Math.max(0, Math.min(...xs) - 8),
+  top: Math.max(0, Math.min(...ys) - 8),
+  right: Math.min(canvas.width, Math.max(...xe) + 8),
+  bottom: Math.min(canvas.height, Math.max(...ye) + 8)
 };
+
 
 console.log("🟣 Tight legend region:", legendRegion);
 redrawBase();
