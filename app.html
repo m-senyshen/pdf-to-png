@@ -1110,14 +1110,6 @@ btnOCRTest.onclick = async () => {
 
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-  // STEP C1 — legend region FIRST (symbol-agnostic)
-const rowCandidates = detectLegendRowCandidates(
-  boxes,
-  imgData.data,
-  canvas.width,
-  canvas.height
-);
-
 // 1️⃣ Detect symbols FIRST
 detectLegendSymbols(
   boxes,
@@ -1299,9 +1291,10 @@ if (filtered.length < 3) {
 }
 
 // 7️⃣ Build FINAL tight legend bounding box
+// ✅ FINAL: build legend box ONLY from repeated symbol rows
 const xs = [], ys = [], xe = [], ye = [];
 
-rhythmRows.forEach(e => {
+filtered.forEach(e => {
   const s = e.symbolBox;
   const t = e.textBox;
 
@@ -1310,6 +1303,14 @@ rhythmRows.forEach(e => {
   xe.push(s.x + s.width, t.x + t.width);
   ye.push(s.y + s.height, t.y + t.height);
 });
+
+legendRegion = {
+  left: Math.max(0, Math.min(...xs) - 6),
+  top: Math.max(0, Math.min(...ys) - 6),
+  right: Math.min(canvas.width, Math.max(...xe) + 6),
+  bottom: Math.min(canvas.height, Math.max(...ye) + 6)
+};
+
 
 legendRegion = {
   left: Math.max(0, Math.min(...xs) - 8),
