@@ -588,6 +588,16 @@ function clusterSymbolsByShape(entries) {
   }
 
   entries.forEach(e => {
+      entries.forEach(e => {
+    if (!e.symbolBox) return;
+  
+    const w = e.symbolBox.width;
+    const h = e.symbolBox.height;
+  
+    // ❌ Reject scale bars, arrows, logos
+    if (w > 80 || h > 80) return;          // too large
+    if (Math.max(w, h) / Math.min(w, h) > 6) return; // too elongated
+
     if (!e.symbolBox) return;
 
     let placed = false;
@@ -841,6 +851,13 @@ function isInkPixel(r, g, b, x, y) {
 
             symbol = { x: minX, y: minY, width, height };
             break;
+        }
+        const dx = Math.abs((symbol.x + symbol.width/2) - (t.x + t.width/2));
+        const dy = Math.abs((symbol.y + symbol.height/2) - (t.y + t.height/2));
+        
+        // ❌ Reject loose associations (titles, metadata)
+        if (dx > t.height * 3 || dy > t.height * 1.5) {
+          symbol = null;
         }
 
         if (symbol) {
