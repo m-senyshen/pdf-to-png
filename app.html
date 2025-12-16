@@ -1118,12 +1118,12 @@ classifyLegendEntries(
 // 🔁 STEP C1.5 — Row-based legend detection (shape-agnostic)
 
 // 1️⃣ Keep only entries that have BOTH text + symbol
-let rowCandidates = legendEntries.filter(e => e.symbolBox);
+let symbolRowCandidates  = legendEntries.filter(e => e.symbolBox);
 
 // 2️⃣ Sort top-to-bottom
-rowCandidates.sort((a, b) => a.textBox.y - b.textBox.y);
+symbolRowCandidates.sort((a, b) => a.textBox.y - b.textBox.y);
 
-if (rowCandidates.length < 3) {
+if (symbolRowCandidates.length < 3) {
   console.warn("Legend detection failed — not enough symbol rows");
   legendRegion = null;
   redrawBase();
@@ -1132,10 +1132,10 @@ if (rowCandidates.length < 3) {
 
 // 3️⃣ Compute dominant row spacing (legend rows repeat vertically)
 const gaps = [];
-for (let i = 1; i < rowCandidates.length; i++) {
+for (let i = 1; i < symbolRowCandidates.length; i++) {
   gaps.push(
-    rowCandidates[i].textBox.y -
-    rowCandidates[i - 1].textBox.y
+    symbolRowCandidates[i].textBox.y -
+    symbolRowCandidates[i - 1].textBox.y
   );
 }
 
@@ -1143,11 +1143,11 @@ gaps.sort((a, b) => a - b);
 const medianGap = gaps[Math.floor(gaps.length / 2)];
 
 // 4️⃣ Keep rows that follow the vertical rhythm
-const rhythmRows = rowCandidates.filter((row, i) => {
-  if (i === 0 || i === rowCandidates.length - 1) return true;
+const rhythmRows = symbolRowCandidates.filter((row, i) => {
+  if (i === 0 || i === symbolRowCandidates.length - 1) return true;
 
   const prevGap =
-    row.textBox.y - rowCandidates[i - 1].textBox.y;
+    row.textBox.y - symbolRowCandidates[i - 1].textBox.y;
 
   return Math.abs(prevGap - medianGap) < medianGap * 0.8;
 });
