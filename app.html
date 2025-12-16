@@ -584,21 +584,18 @@ function clusterSymbolsByShape(entries) {
     const aspectB = b.width / b.height;
     const aspectDiff = Math.abs(aspectA - aspectB);
 
-    return areaRatio > 0.35 && aspectDiff < 1.2;
+    return areaRatio > 0.3 && aspectDiff < 1.8; // looser for triangles vs squares
   }
 
   entries.forEach(e => {
-      entries.forEach(e => {
     if (!e.symbolBox) return;
-  
+
     const w = e.symbolBox.width;
     const h = e.symbolBox.height;
-  
-    // ❌ Reject scale bars, arrows, logos
-    if (w > 80 || h > 80) return;          // too large
-    if (Math.max(w, h) / Math.min(w, h) > 6) return; // too elongated
 
-    if (!e.symbolBox) return;
+    // Reject obvious non-legend junk
+    if (w > 90 || h > 90) return;                 // logos, arrows
+    if (Math.max(w, h) / Math.min(w, h) > 7) return; // scale bars
 
     let placed = false;
 
@@ -613,7 +610,7 @@ function clusterSymbolsByShape(entries) {
     if (!placed) clusters.push([e]);
   });
 
-  return clusters.filter(c => c.length >= 3);
+  return clusters.filter(c => c.length >= 2); // was 3 → looser
 }
 
   
