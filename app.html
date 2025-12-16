@@ -746,6 +746,10 @@ function detectLegendSymbols(ocrResults, image, w, h) {
             width: item.w,
             height: item.h
         };
+        // ❌ Reject long labels (titles, metadata, scale descriptions)
+        if (item.text.length > 30) {
+          continue;
+        }
 
         // MUCH tighter search windows
         const midY = t.y + t.height / 2;
