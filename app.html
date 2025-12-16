@@ -584,7 +584,7 @@ function clusterSymbolsByShape(entries) {
     const aspectB = b.width / b.height;
     const aspectDiff = Math.abs(aspectA - aspectB);
 
-    return areaRatio > 0.55 && aspectDiff < 0.6;
+    return areaRatio > 0.35 && aspectDiff < 1.2;
   }
 
   entries.forEach(e => {
@@ -1115,6 +1115,16 @@ classifyLegendEntries(
   canvas.width,
   canvas.height
 );
+// 3️⃣ Cluster symbols by approximate shape / size (LOOSE)
+const symbolClusters = clusterSymbolsByShape(legendEntries);
+
+if (!symbolClusters || symbolClusters.length === 0) {
+  console.warn("Legend detection failed — no symbol clusters");
+  legendRegion = null;
+  redrawBase();
+  return;
+}
+
 // 🔁 STEP C1.5 — Row-based legend detection (shape-agnostic)
 
 // 1️⃣ Keep only entries that have BOTH text + symbol
