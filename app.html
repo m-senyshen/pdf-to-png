@@ -1115,7 +1115,51 @@ classifyLegendEntries(
   canvas.width,
   canvas.height
 );
+// 🔁 STEP C1.5 — Row-based legend detection (shape-agnostic)
 
+// 1️⃣ Keep only entries that have BOTH text + symbol
+let rowCandidates = legendEntries.filter(e => e.symbolBox);
+
+// 2️⃣ Sort top-to-bottom
+rowCandidates.sort((a, b) => a.textBox.y - b.textBox.y);
+
+if (rowCandidates.length < 3) {
+  console.warn("Legend detection failed — not enough symbol rows");
+  legendRegion = null;
+  redrawBase();
+  return;
+}
+
+// 3️⃣ Compute dominant row spacing (legend rows repeat vertically)
+const gaps = [];
+for (let i = 1; i < rowCandidates.length; i++) {
+  gaps.push(
+    rowCandidates[i].textBox.y -
+    rowCandidates[i - 1].textBox.y
+  );
+}
+
+gaps.sort((a, b) => a - b);
+const medianGap = gaps[Math.floor(gaps.length / 2)];
+
+// 4️⃣ Keep rows that follow the vertical rhythm
+const rhythmRows = rowCandidates.filter((row, i) => {
+  if (i === 0 || i === rowCandidates.length - 1) return true;
+
+  const prevGap =
+    row.textBox.y - rowCandidates[i - 1].textBox.y;
+
+  return Math.abs(prevGap - medianGap) < medianGap * 0.8;
+});
+
+if (rhythmRows.length < 3) {
+  console.warn("Legend detection failed — row rhythm inconsistent");
+  legendRegion = null;
+  redrawBase();
+  return;
+}
+
+  
 // 3️⃣ NOW cluster repeating symbols
 // 3️⃣ ONLY keep entries that truly look like legend rows
 const legendRowCandidates = legendEntries.filter(e => {
@@ -1166,14 +1210,6 @@ const legendCandidatesFinal = repeatedRows;
 
 
 // 4️⃣ Cluster ONLY these candidates
-const symbolClusters = clusterSymbolsByShape(legendCandidatesFinal);
-
-if (symbolClusters.length === 0) {
-  console.warn("Legend detection failed — no repeating symbol clusters");
-  legendRegion = null;
-  redrawBase(); // still draw OCR boxes
-  return;
-}
 
 let bestCluster = null;
 let bestScore = -Infinity;
@@ -1237,7 +1273,7 @@ if (filtered.length < 3) {
 // 7️⃣ Build FINAL tight legend bounding box
 const xs = [], ys = [], xe = [], ye = [];
 
-filtered.forEach(e => {
+rhythmRows.forEach(e => {
   const s = e.symbolBox;
   const t = e.textBox;
 
