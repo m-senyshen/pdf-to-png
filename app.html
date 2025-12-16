@@ -1130,7 +1130,7 @@ const legendRowCandidates = legendEntries.filter(e => {
   const minDx = Math.min(dxLeft, dxRight);
 
   // Reject far-away symbols (scale bars, arrows, logos)
-  if (minDx > txt.height * 3) return false;
+  if (minDx > txt.height * 6) return false;
 
   // Symbol must be small (reject arrows, logos)
   if (sym.width > txt.height * 2.2) return false;
@@ -1138,9 +1138,35 @@ const legendRowCandidates = legendEntries.filter(e => {
 
   return true;
 });
+// 🔁 Enforce vertical repetition (legends repeat, scale bars do not)
+legendRowCandidates.sort((a, b) => a.textBox.y - b.textBox.y);
+
+const repeatedRows = [];
+const yTolerance = legendRowCandidates[0]?.textBox.height * 2 || 20;
+
+for (let i = 0; i < legendRowCandidates.length; i++) {
+  let count = 1;
+
+  for (let j = i + 1; j < legendRowCandidates.length; j++) {
+    const dy = Math.abs(
+      legendRowCandidates[j].textBox.y -
+      legendRowCandidates[i].textBox.y
+    );
+
+    if (dy < yTolerance) count++;
+  }
+
+  if (count >= 3) {
+    repeatedRows.push(legendRowCandidates[i]);
+  }
+}
+
+// Use repeated rows only
+const legendCandidatesFinal = repeatedRows;
+
 
 // 4️⃣ Cluster ONLY these candidates
-const symbolClusters = clusterSymbolsByShape(legendRowCandidates);
+const symbolClusters = clusterSymbolsByShape(legendCandidatesFinal);
 
 if (symbolClusters.length === 0) {
   console.warn("Legend detection failed — no repeating symbol clusters");
