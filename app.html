@@ -852,14 +852,23 @@ function isInkPixel(r, g, b, x, y) {
 
             symbol = { x: minX, y: minY, width, height };
             break;
-        }
-        const dx = Math.abs((symbol.x + symbol.width/2) - (t.x + t.width/2));
-        const dy = Math.abs((symbol.y + symbol.height/2) - (t.y + t.height/2));
-        
-        // ❌ Reject loose associations (titles, metadata)
-        if (dx > t.height * 3 || dy > t.height * 1.5) {
-          symbol = null;
-        }
+                  }
+            if (symbol) {
+              const dx = Math.abs(
+                (symbol.x + symbol.width / 2) -
+                (t.x + t.width / 2)
+              );
+              const dy = Math.abs(
+                (symbol.y + symbol.height / 2) -
+                (t.y + t.height / 2)
+              );
+            
+              // Reject loose associations (titles, metadata, scale labels)
+              if (dx > t.height * 3 || dy > t.height * 1.5) {
+                symbol = null;
+              }
+            }
+
 
         if (symbol) {
             const sig = computeSymbolSignature(symbol, image, w, h);
