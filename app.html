@@ -714,6 +714,33 @@ function filterLegendRowsBySymbolConsistency(rows) {
   });
 }
 
+function isValidLegendRow(entry) {
+  if (!entry.symbolBox || !entry.textBox) return false;
+
+  const s = entry.symbolBox;
+  const t = entry.textBox;
+
+  // 1️⃣ Symbol must be SMALL (reject arrows, logos, scale bars)
+  if (s.width > t.height * 2.5) return false;
+  if (s.height > t.height * 2.5) return false;
+
+  // 2️⃣ Symbol must be horizontally adjacent to text
+  const dxLeft  = Math.abs((s.x + s.width) - t.x);
+  const dxRight = Math.abs((t.x + t.width) - s.x);
+  const minDx = Math.min(dxLeft, dxRight);
+
+  if (minDx > t.height * 3.5) return false;
+
+  // 3️⃣ Vertical alignment must overlap
+  const vOverlap =
+    Math.min(s.y + s.height, t.y + t.height) -
+    Math.max(s.y, t.y);
+
+  if (vOverlap < t.height * 0.4) return false;
+
+  return true;
+}
+
 /* -----------------------------------------------------
    Detect legend symbols located near OCR text labels
 ----------------------------------------------------- */
@@ -1172,9 +1199,17 @@ classifyLegendEntries(
   canvas.width,
   canvas.height
 );
-// 3️⃣ Cluster symbols by approximate shape / size (LOOSE)
-const symbolClusters = clusterSymbolsByShape(legendEntries);
-console.log(
+// 3️⃣ STRICT legend row candidates (symbol + text only)
+const legendRows = legendEntries.filter(isValidLegendRow);
+
+console.log("🧪 legendRows:", legendRows.length);
+
+if (legendRows.length < 3) {
+  console.warn("Legend rejected — not enough valid legend rows");
+  legendRegion = null;
+  redrawBase();
+  return;
+}console.log(
   "🧪 symbolClusters sizes:",
   symbolClusters.map(c => c.length)
 );
