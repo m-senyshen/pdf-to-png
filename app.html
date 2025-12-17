@@ -978,6 +978,29 @@ function scoreLegendCluster(cluster) {
     cluster.length * 0.2        // size matters, but less
   );
 }
+
+function filterByRepeatedSymbolSize(entries) {
+  if (!entries || entries.length < 3) return [];
+
+  const byArea = {};
+
+  entries.forEach(e => {
+    if (!e.symbolBox) return;
+    const area = Math.round(e.symbolBox.width * e.symbolBox.height / 10) * 10;
+    if (!byArea[area]) byArea[area] = [];
+    byArea[area].push(e);
+  });
+
+  // Keep only symbol sizes that repeat ≥ 3 times
+  const repeatingGroups = Object.values(byArea)
+    .filter(group => group.length >= 3);
+
+  if (repeatingGroups.length === 0) return [];
+
+  // Return the largest repeating group
+  return repeatingGroups.sort((a,b)=>b.length-a.length)[0];
+}
+
 /* -----------------------------------------------------
    STEP C — Geometric classification of legend symbols
 ----------------------------------------------------- */
@@ -1274,18 +1297,16 @@ if (!bestCluster) {
 }
 
 
-// 5️⃣ Filter by symbol size consistency (kills scale bars / arrows)
-const symbolAreas = bestCluster
-  .map(e => e.symbolBox.width * e.symbolBox.height)
-  .sort((a,b)=>a-b);
+// 5️⃣ STRICT legend rule: symbol size must REPEAT across rows
+let filtered = filterByRepeatedSymbolSize(bestCluster);
 
-const medianArea =
-  symbolAreas[Math.floor(symbolAreas.length / 2)];
+if (!filtered || filtered.length < 3) {
+  console.warn("Legend rejected — no repeating symbol size");
+  legendRegion = null;
+  redrawBase();
+  return;
+}
 
-let filtered = bestCluster.filter(e => {
-  const area = e.symbolBox.width * e.symbolBox.height;
-  return area > medianArea * 0.6 && area < medianArea * 1.6;
-});
 
 if (filtered.length < 3) {
   console.warn("Legend rejected — symbol sizes inconsistent");
