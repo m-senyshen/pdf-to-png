@@ -1209,16 +1209,43 @@ if (legendRows.length < 3) {
   legendRegion = null;
   redrawBase();
   return;
-}console.log(
-  "🧪 symbolClusters sizes:",
-  symbolClusters.map(c => c.length)
-);
-if (!symbolClusters || symbolClusters.length === 0) {
-  console.warn("Legend detection failed — no symbol clusters");
+}
+
+
+
+// 4️⃣ Group legend rows by column (X position)
+legendRows.sort((a, b) => a.textBox.x - b.textBox.x);
+
+const columns = [];
+const xTolerance = legendRows[0].textBox.height * 4;
+
+legendRows.forEach(row => {
+  let placed = false;
+
+  for (const col of columns) {
+    if (Math.abs(col[0].textBox.x - row.textBox.x) < xTolerance) {
+      col.push(row);
+      placed = true;
+      break;
+    }
+  }
+
+  if (!placed) columns.push([row]);
+});
+
+// Keep only columns with enough rows
+const validColumns = columns.filter(c => c.length >= 2);
+
+if (validColumns.length === 0) {
+  console.warn("Legend rejected — no valid legend columns");
   legendRegion = null;
   redrawBase();
   return;
 }
+
+// Flatten all valid columns
+const finalLegendRows = validColumns.flat();
+
 
 // 🔁 STEP C1.5 — Row-based legend detection (shape-agnostic)
 
@@ -1378,19 +1405,9 @@ if (filtered.length < 3) {
   return;
 }
 
-// 7️⃣ Build FINAL tight legend bounding box
-
-// 🚨 SAFETY GUARD — never build a legend box from junk
-if (!filtered || filtered.length < 3) {
-  console.warn("Legend rejected — insufficient final legend rows");
-  legendRegion = null;
-  redrawBase();
-  return;
-}
-// ✅ FINAL: build legend box ONLY from repeated symbol rows
 const xs = [], ys = [], xe = [], ye = [];
 
-filtered.forEach(e => {
+finalLegendRows.forEach(e => {
   const s = e.symbolBox;
   const t = e.textBox;
 
@@ -1401,23 +1418,15 @@ filtered.forEach(e => {
 });
 
 legendRegion = {
-  left: Math.max(0, Math.min(...xs) - 6),
-  top: Math.max(0, Math.min(...ys) - 6),
-  right: Math.min(canvas.width, Math.max(...xe) + 6),
-  bottom: Math.min(canvas.height, Math.max(...ye) + 6)
-};
-
-
-legendRegion = {
   left: Math.max(0, Math.min(...xs) - 8),
   top: Math.max(0, Math.min(...ys) - 8),
   right: Math.min(canvas.width, Math.max(...xe) + 8),
   bottom: Math.min(canvas.height, Math.max(...ye) + 8)
 };
 
-
-console.log("🟣 Tight legend region:", legendRegion);
+console.log("🟣 FINAL legend region:", legendRegion);
 redrawBase();
+
 
 };
 
