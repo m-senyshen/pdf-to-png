@@ -868,9 +868,24 @@ function isInkPixel(r, g, b, x, y) {
                 symbol = null;
               }
             }
+          function isNonLegendText(text) {
+          if (!text) return true;
+        
+          const t = text.toLowerCase();
+        
+          // Scale bars
+          if (/\b(km|kilometer|miles|mi|meters|m)\b/.test(t)) return true;
+          if (/\d/.test(t) && t.length < 6) return true;
+        
+          // North arrows / orientation
+          if (t === "n" || t === "north") return true;
+          if (["n","e","s","w","ne","nw","se","sw"].includes(t)) return true;
+        
+          return false;
+        }
 
 
-        if (symbol) {
+        if (symbol && !isNonLegendText(item.text)) {
             const sig = computeSymbolSignature(symbol, image, w, h);
 
             legendSymbolBoxes.push(symbol);
