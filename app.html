@@ -1300,6 +1300,14 @@ if (filtered.length < 3) {
 }
 
 // 7️⃣ Build FINAL tight legend bounding box
+
+// 🚨 SAFETY GUARD — never build a legend box from junk
+if (!filtered || filtered.length < 3) {
+  console.warn("Legend rejected — insufficient final legend rows");
+  legendRegion = null;
+  redrawBase();
+  return;
+}
 // ✅ FINAL: build legend box ONLY from repeated symbol rows
 const xs = [], ys = [], xe = [], ye = [];
 
