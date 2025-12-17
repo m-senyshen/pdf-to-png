@@ -1174,7 +1174,10 @@ classifyLegendEntries(
 );
 // 3️⃣ Cluster symbols by approximate shape / size (LOOSE)
 const symbolClusters = clusterSymbolsByShape(legendEntries);
-
+console.log(
+  "🧪 symbolClusters sizes:",
+  symbolClusters.map(c => c.length)
+);
 if (!symbolClusters || symbolClusters.length === 0) {
   console.warn("Legend detection failed — no symbol clusters");
   legendRegion = null;
@@ -1297,11 +1300,16 @@ if (!bestCluster) {
 }
 
 
-// 5️⃣ STRICT legend rule: symbol size must REPEAT across rows
-let filtered = filterByRepeatedSymbolSize(bestCluster);
+// 5️⃣ Legend rows = symbol + text, aligned vertically
+let filtered = bestCluster.filter(e =>
+  e.symbolBox &&
+  e.textBox &&
+  e.textBox.h > 6 &&
+  e.textBox.h < 40
+);
 
-if (!filtered || filtered.length < 3) {
-  console.warn("Legend rejected — no repeating symbol size");
+if (filtered.length < 3) {
+  console.warn("Legend rejected — not enough symbol-text rows");
   legendRegion = null;
   redrawBase();
   return;
