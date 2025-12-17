@@ -965,21 +965,20 @@ function isInkPixel(r, g, b, x, y) {
             const sig = computeSymbolSignature(symbol, image, w, h);
 
             legendSymbolBoxes.push(symbol);
+            const tightenedRow = cropRowToSymbol(t, symbol);
+            
             legendEntries.push({
-                text: item.text,
-                textBox: t,
-                symbolBox: symbol,
-                signature: sig,
-                type: "unknown"
+              text: item.text,
+              textBox: tightenedRow,
+              symbolBox: symbol,
+              signature: sig,
+              type: "unknown"
             });
 
-        } else {
-            legendEntries.push({
-                text: item.text,
-                textBox: t,
-                symbolBox: null,
-                type: "unknown"
-            });
+            } else {
+              // ❌ not a legend row — no nearby symbol
+              continue;
+            }
         }
     }
   console.log(
@@ -1016,6 +1015,39 @@ function filterRowsByVerticalRhythm(rows) {
       Math.abs(nextGap - medianGap) < medianGap * 0.6
     );
   });
+}
+/* -----------------------------------------------------
+   Tighten legend row text around its symbol
+----------------------------------------------------- */
+function cropRowToSymbol(row, symbol, maxTextWidth = 220) {
+  // Determine reading direction
+  const symbolCenterX = symbol.x + symbol.width / 2;
+  const rowCenterX = row.x + row.w / 2;
+
+  let newX = row.x;
+  let newW = row.w;
+
+  if (rowCenterX > symbolCenterX) {
+    // text is to the RIGHT of symbol
+    newX = symbol.x + symbol.width;
+    newW = Math.min(
+      maxTextWidth,
+      row.x + row.w - newX
+    );
+  } else {
+    // text is to the LEFT of symbol (rare, but handle it)
+    newX = Math.max(
+      row.x,
+      symbol.x - maxTextWidth
+    );
+    newW = symbol.x - newX;
+  }
+
+  return {
+    ...row,
+    x: newX,
+    w: Math.max(10, newW)
+  };
 }
 
 /* -----------------------------------------------------
