@@ -719,7 +719,13 @@ function isValidLegendRow(entry) {
 
   const s = entry.symbolBox;
   const t = entry.textBox;
+  const s = entry.symbolBox;
+  const t = entry.textBox;
 
+  // Absolute size guard (kills scale bars & arrows)
+  if (s.width > 40 || s.height > 40) return false;
+  if (s.width < 3 || s.height < 3) return false;
+  
   // 1️⃣ Symbol must be SMALL (reject arrows, logos, scale bars)
   if (s.width > t.height * 2.5) return false;
   if (s.height > t.height * 2.5) return false;
@@ -737,6 +743,30 @@ function isValidLegendRow(entry) {
     Math.max(s.y, t.y);
 
   if (vOverlap < t.height * 0.4) return false;
+
+
+  // Symbol must be closest to this text, not another OCR label
+  const symbolCx = s.x + s.width / 2;
+  const symbolCy = s.y + s.height / 2;
+  
+  let minOtherDist = Infinity;
+  
+  for (const other of legendEntries) {
+    if (other === entry || !other.textBox) continue;
+  
+    const o = other.textBox;
+    const ox = o.x + o.width / 2;
+    const oy = o.y + o.height / 2;
+  
+    const d = Math.hypot(symbolCx - ox, symbolCy - oy);
+    minOtherDist = Math.min(minOtherDist, d);
+  }
+  
+  const ownCx = t.x + t.width / 2;
+  const ownCy = t.y + t.height / 2;
+  const ownDist = Math.hypot(symbolCx - ownCx, symbolCy - ownCy);
+  
+  if (ownDist > minOtherDist * 0.85) return false;
 
   return true;
 }
@@ -1255,12 +1285,18 @@ rhythmicRows.forEach(e => {
   ye.push(s.y + s.height, t.y + t.height);
 });
 
+// Shrink vertically to avoid scale / arrows bleeding in
+const topY = Math.min(...ys);
+const bottomY = Math.max(...ye);
+const height = bottomY - topY;
+
 legendRegion = {
-  left: Math.max(0, Math.min(...xs) - 8),
-  top: Math.max(0, Math.min(...ys) - 8),
-  right: Math.min(canvas.width, Math.max(...xe) + 8),
-  bottom: Math.min(canvas.height, Math.max(...ye) + 8)
+  left: Math.max(0, Math.min(...xs) - 10),
+  top: Math.max(0, topY + height * 0.05),
+  right: Math.min(canvas.width, Math.max(...xe) + 10),
+  bottom: Math.min(canvas.height, bottomY - height * 0.05)
 };
+
 
 console.log("🟣 FINAL legend region:", legendRegion);
 redrawBase();
