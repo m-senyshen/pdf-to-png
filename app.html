@@ -572,48 +572,7 @@ function detectLegendRegionFromLegendRows(rows, w, h) {
   };
 }
 
-function clusterSymbolsByShape(entries) {
-  const clusters = [];
-
-  function similar(a, b) {
-    const areaA = a.width * a.height;
-    const areaB = b.width * b.height;
-    const areaRatio = Math.min(areaA, areaB) / Math.max(areaA, areaB);
-
-    const aspectA = a.width / a.height;
-    const aspectB = b.width / b.height;
-    const aspectDiff = Math.abs(aspectA - aspectB);
-
-    return areaRatio > 0.3 && aspectDiff < 1.8; // looser for triangles vs squares
-  }
-
-  entries.forEach(e => {
-    if (!e.symbolBox) return;
-
-    const w = e.symbolBox.width;
-    const h = e.symbolBox.height;
-
-    // Reject obvious non-legend junk
-    if (w > 90 || h > 90) return;                 // logos, arrows
-    if (Math.max(w, h) / Math.min(w, h) > 7) return; // scale bars
-
-    let placed = false;
-
-    for (const c of clusters) {
-      if (similar(e.symbolBox, c[0].symbolBox)) {
-        c.push(e);
-        placed = true;
-        break;
-      }
-    }
-
-    if (!placed) clusters.push([e]);
-  });
-
-  return clusters.filter(c => c.length >= 2); // was 3 → looser
-}
-
-  
+ 
 function detectLegendRegionFromRows(rows, w, h) {
 
     if (!rows || rows.length < 3) {
@@ -717,8 +676,6 @@ function filterLegendRowsBySymbolConsistency(rows) {
 function isValidLegendRow(entry) {
   if (!entry.symbolBox || !entry.textBox) return false;
 
-  const s = entry.symbolBox;
-  const t = entry.textBox;
   const s = entry.symbolBox;
   const t = entry.textBox;
 
@@ -999,65 +956,6 @@ function filterRowsByVerticalRhythm(rows) {
   });
 }
 
-
-/* -----------------------------------------------------
-   STEP C — Legend Cluster Scoring (NEW)
------------------------------------------------------ */
-function scoreLegendCluster(cluster) {
-
-  // 1️⃣ Text uniqueness — legends have mostly unique labels
-  const texts = cluster
-    .map(e => (e.text || "").trim().toLowerCase())
-    .filter(t => t.length > 0);
-
-  const uniqueTextRatio =
-    texts.length === 0 ? 0 :
-    new Set(texts).size / texts.length;
-
-  // 2️⃣ Symbol shape consistency — legends reuse same symbol
-  const areas = cluster.map(e =>
-    e.symbolBox.width * e.symbolBox.height
-  );
-
-  areas.sort((a,b)=>a-b);
-  const medianArea = areas[Math.floor(areas.length / 2)];
-
-  const consistentSymbols =
-    areas.filter(a =>
-      a > medianArea * 0.7 &&
-      a < medianArea * 1.4
-    ).length / areas.length;
-
-  // 3️⃣ Final weighted score
-  return (
-    uniqueTextRatio * 3 +       // legends win here
-    consistentSymbols * 4 +     // legends win here
-    cluster.length * 0.2        // size matters, but less
-  );
-}
-
-function filterByRepeatedSymbolSize(entries) {
-  if (!entries || entries.length < 3) return [];
-
-  const byArea = {};
-
-  entries.forEach(e => {
-    if (!e.symbolBox) return;
-    const area = Math.round(e.symbolBox.width * e.symbolBox.height / 10) * 10;
-    if (!byArea[area]) byArea[area] = [];
-    byArea[area].push(e);
-  });
-
-  // Keep only symbol sizes that repeat ≥ 3 times
-  const repeatingGroups = Object.values(byArea)
-    .filter(group => group.length >= 3);
-
-  if (repeatingGroups.length === 0) return [];
-
-  // Return the largest repeating group
-  return repeatingGroups.sort((a,b)=>b.length-a.length)[0];
-}
-
 /* -----------------------------------------------------
    STEP C — Geometric classification of legend symbols
 ----------------------------------------------------- */
@@ -1096,43 +994,6 @@ function classifyLegendEntries(entries, image, w, h) {
         if (!e.symbolBox) e.type = "unknown";
         else e.type = classify(e.symbolBox);
     });
-}
-/* -----------------------------------------------------
-   STEP C2B — Symbol-Anchored Legend Region Detection
------------------------------------------------------ */
-function detectLegendRegionFromSymbols(legendEntries, w, h) {
-  console.log("🟣 detectLegendRegionFromSymbols called — entries:", legendEntries.length);
-
-  // Keep only entries that ACTUALLY have symbols
-  const candidates = legendEntries.filter(e => e.symbolBox);
-
-  if (candidates.length === 0) {
-    console.warn("🟣 Legend detection failed — not enough symbol entries");
-    return null;
-  }
-
-  // Build bounding box ONLY from symbol-text pairs
-  const xs = [];
-  const ys = [];
-  const xe = [];
-  const ye = [];
-
-  candidates.forEach(e => {
-    const t = e.textBox;
-    const s = e.symbolBox;
-
-    xs.push(t.x, s.x);
-    ys.push(t.y, s.y);
-    xe.push(t.x + t.width, s.x + s.width);
-    ye.push(t.y + t.height, s.y + s.height);
-  });
-
-  return {
-    left: Math.max(0, Math.min(...xs) - 15),
-    top: Math.max(0, Math.min(...ys) - 15),
-    right: Math.min(w, Math.max(...xe) + 15),
-    bottom: Math.min(h, Math.max(...ye) + 15)
-  };
 }
 
 
@@ -1207,100 +1068,92 @@ function fitPoly2(gcps){
 
 
 btnOCRTest.onclick = async () => {
-  if (!renderedImage) return alert("Load a PDF first.");
+  if (!renderedImage) {
+    alert("Load a PDF first.");
+    return;
+  }
 
   const boxes = await extractTextBoxes();
   ocrBoxesGlobal = boxes;
 
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-// 1️⃣ Detect symbols FIRST
-detectLegendSymbols(
-  boxes,
-  imgData.data,
-  canvas.width,
-  canvas.height
-);
-
-// 2️⃣ Classify symbols
-classifyLegendEntries(
-  legendEntries,
-  imgData.data,
-  canvas.width,
-  canvas.height
-);
-// STEP A — ROW-BASED LEGEND DETECTION (ROBUST)
-
-const legendRows = legendEntries.filter(isValidLegendRow);
-
-console.log("🧪 Valid legend rows:", legendRows.length);
-
-if (legendRows.length < 3) {
-  console.warn("Legend rejected — not enough valid legend rows");
-  legendRegion = null;
-  redrawBase();
-  return;
-}
-
-// Sort rows top-to-bottom
-legendRows.sort((a, b) => a.textBox.y - b.textBox.y);
-
-// Compute vertical rhythm
-const gaps = [];
-for (let i = 1; i < legendRows.length; i++) {
-  gaps.push(
-    legendRows[i].textBox.y -
-    legendRows[i - 1].textBox.y
+  // 1️⃣ Detect symbols near OCR text
+  detectLegendSymbols(
+    boxes,
+    imgData.data,
+    canvas.width,
+    canvas.height
   );
-}
 
-gaps.sort((a, b) => a - b);
-const medianGap = gaps[Math.floor(gaps.length / 2)] || 20;
+  // 2️⃣ Filter to VALID legend rows only
+  let legendRows = legendEntries.filter(isValidLegendRow);
 
-// Keep rows that follow the rhythm
-const rhythmicRows = legendRows.filter((row, i) => {
-  if (i === 0 || i === legendRows.length - 1) return true;
-  const dy =
-    row.textBox.y - legendRows[i - 1].textBox.y;
-  return Math.abs(dy - medianGap) < medianGap * 0.9;
-});
+  console.log("🧪 Valid legend rows:", legendRows.length);
 
-if (rhythmicRows.length < 3) {
-  console.warn("Legend rejected — rows not rhythmic");
-  legendRegion = null;
+  if (legendRows.length < 3) {
+    console.warn("Legend rejected — not enough valid legend rows");
+    legendRegion = null;
+    redrawBase();
+    return;
+  }
+
+  // 3️⃣ Sort top → bottom
+  legendRows.sort((a, b) => a.textBox.y - b.textBox.y);
+
+  // 4️⃣ Compute vertical rhythm
+  const gaps = [];
+  for (let i = 1; i < legendRows.length; i++) {
+    gaps.push(
+      legendRows[i].textBox.y -
+      legendRows[i - 1].textBox.y
+    );
+  }
+
+  gaps.sort((a, b) => a - b);
+  const medianGap = gaps[Math.floor(gaps.length / 2)] || 20;
+
+  // 5️⃣ Keep rows that follow the rhythm
+  const rhythmicRows = legendRows.filter((row, i) => {
+    if (i === 0 || i === legendRows.length - 1) return true;
+    const dy = row.textBox.y - legendRows[i - 1].textBox.y;
+    return Math.abs(dy - medianGap) < medianGap * 0.9;
+  });
+
+  if (rhythmicRows.length < 3) {
+    console.warn("Legend rejected — rows not rhythmic");
+    legendRegion = null;
+    redrawBase();
+    return;
+  }
+
+  // 6️⃣ Build TIGHT bounding box from rows only
+  const xs = [], ys = [], xe = [], ye = [];
+
+  rhythmicRows.forEach(e => {
+    const s = e.symbolBox;
+    const t = e.textBox;
+
+    xs.push(s.x, t.x);
+    ys.push(s.y, t.y);
+    xe.push(s.x + s.width, t.x + t.width);
+    ye.push(s.y + s.height, t.y + t.height);
+  });
+
+  const topY = Math.min(...ys);
+  const bottomY = Math.max(...ye);
+  const height = bottomY - topY;
+
+  legendRegion = {
+    left: Math.max(0, Math.min(...xs) - 10),
+    top: Math.max(0, topY + height * 0.05),
+    right: Math.min(canvas.width, Math.max(...xe) + 10),
+    bottom: Math.min(canvas.height, bottomY - height * 0.05)
+  };
+
+  console.log("🟣 FINAL legend region:", legendRegion);
   redrawBase();
-  return;
-}
-
-// Build tight legend bounding box ONLY from these rows
-const xs = [], ys = [], xe = [], ye = [];
-
-rhythmicRows.forEach(e => {
-  const s = e.symbolBox;
-  const t = e.textBox;
-
-  xs.push(s.x, t.x);
-  ys.push(s.y, t.y);
-  xe.push(s.x + s.width, t.x + t.width);
-  ye.push(s.y + s.height, t.y + t.height);
-});
-
-// Shrink vertically to avoid scale / arrows bleeding in
-const topY = Math.min(...ys);
-const bottomY = Math.max(...ye);
-const height = bottomY - topY;
-
-legendRegion = {
-  left: Math.max(0, Math.min(...xs) - 10),
-  top: Math.max(0, topY + height * 0.05),
-  right: Math.min(canvas.width, Math.max(...xe) + 10),
-  bottom: Math.min(canvas.height, bottomY - height * 0.05)
 };
-
-
-console.log("🟣 FINAL legend region:", legendRegion);
-redrawBase();
-}
 
 
 
