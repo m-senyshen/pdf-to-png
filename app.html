@@ -412,14 +412,32 @@ async function extractTextBoxes() {
         logger: m => console.log(m)
     });
 
-    const boxes = result.data.words.map(w => ({
+    const boxes = result.data.words
+      .map(w => ({
         x: w.bbox.x0,
         y: w.bbox.y0,
         w: w.bbox.x1 - w.bbox.x0,
         h: w.bbox.y1 - w.bbox.y0,
-        text: w.text,
+        text: (w.text || "").trim(),
         conf: w.conf
-    }));
+      }))
+      // 🚫 remove OCR "words" that are actually symbols
+      .filter(b => {
+        if (b.text.length === 0) return false;
+    
+        // single-character junk (▲ ■ ● | etc)
+        if (b.text.length === 1 && !/[A-Za-z0-9]/.test(b.text)) {
+          return false;
+        }
+    
+        // very small boxes are almost always symbols
+        if (b.w < 8 && b.h < 8) {
+          return false;
+        }
+    
+        return true;
+      });
+
 
     console.log("OCR boxes:", boxes);
     statusEl.textContent = "OCR complete.";
@@ -726,6 +744,50 @@ function isValidLegendRow(entry) {
   if (ownDist > minOtherDist * 0.85) return false;
 
   return true;
+}
+
+/* -----------------------------------------------------
+   Merge OCR word boxes into row-level text boxes
+----------------------------------------------------- */
+function mergeWordsIntoRows(ocrBoxes) {
+  if (!ocrBoxes || ocrBoxes.length === 0) return [];
+
+  // sort top-to-bottom
+  const sorted = [...ocrBoxes].sort((a, b) => a.y - b.y);
+
+  const rows = [];
+  const yTolerance = 0.6; // fraction of text height
+
+  for (const box of sorted) {
+    let placed = false;
+
+    for (const row of rows) {
+      const dy = Math.abs(box.y - row.y);
+
+      if (dy < row.h * yTolerance) {
+        // merge into row
+        row.x = Math.min(row.x, box.x);
+        row.y = Math.min(row.y, box.y);
+        row.w = Math.max(row.x + row.w, box.x + box.w) - row.x;
+        row.h = Math.max(row.h, box.h);
+        row.text += " " + box.text;
+        placed = true;
+        break;
+      }
+    }
+
+    if (!placed) {
+      rows.push({
+        x: box.x,
+        y: box.y,
+        w: box.w,
+        h: box.h,
+        text: box.text
+      });
+    }
+  }
+
+  return rows;
 }
 
 /* -----------------------------------------------------
@@ -1074,13 +1136,15 @@ btnOCRTest.onclick = async () => {
   }
 
   const boxes = await extractTextBoxes();
-  ocrBoxesGlobal = boxes;
+  const mergedRows = mergeWordsIntoRows(boxes);
+  ocrBoxesGlobal = mergedRows;
+
 
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
   // 1️⃣ Detect symbols near OCR text
   detectLegendSymbols(
-    boxes,
+    mergedRows,
     imgData.data,
     canvas.width,
     canvas.height
