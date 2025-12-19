@@ -175,6 +175,9 @@
       <button id="btn-compute" class="secondary">Compute Transform</button>
       <button id="btn-export-geojson" class="secondary">Export Water GeoJSON</button>
       <button id="btn-ocr-test" class="secondary">Run OCR Test</button>
+      <button id="btn-legend-mode" class="secondary">
+  Select Legend Item
+</button>
     </div>
   </header>
 
@@ -200,6 +203,13 @@
           <p><strong>2️⃣ Georeference</strong><br>Toggle Georeference Mode, click points on the map, and enter lon/lat.</p>
           <p><strong>3️⃣ Compute transform</strong><br>Choose affine or polynomial, then click Compute Transform.</p>
           <p><strong>4️⃣ Extract water</strong><br>Click Extract Water to detect water bodies inside the map area.</p>
+          <hr style="margin:20px 0"/>
+          
+          <h3>Legend Extraction</h3>
+          <button id="btn-extract-legend" class="secondary">
+            Extract Selected Legend Item
+          </button>
+
           <p><strong>5️⃣ Export</strong><br>Export water polygons as GeoJSON for GIS tools.</p>
         </div>
       </div>
@@ -278,6 +288,36 @@ selectPdf.onclick = () => {
   console.log("Select PDF clicked");
   fileInput.click();
 };
+
+
+
+function sampleLegendSignature(box) {
+  const img = ctx.getImageData(
+    Math.floor(box.x),
+    Math.floor(box.y),
+    Math.floor(box.w),
+    Math.floor(box.h)
+  ).data;
+
+  let r=0, g=0, b=0, n=0;
+
+  for (let i=0; i<img.length; i+=4) {
+    const br = 0.299*img[i] + 0.587*img[i+1] + 0.114*img[i+2];
+    if (br < 230) { // ignore white
+      r += img[i];
+      g += img[i+1];
+      b += img[i+2];
+      n++;
+    }
+  }
+
+  return n === 0 ? null : {
+    r: r/n,
+    g: g/n,
+    b: b/n
+  };
+}
+
 /* -----------------------------------------------------
    STEP C1 — Detect Legend Region (boxed OR unboxed)
 ----------------------------------------------------- */
@@ -1197,6 +1237,12 @@ let waterPixelPolys=[];
 let waterFeatures=[];
 let showWaterOverlay=true;
 let mapBoundary=null; // {left,right,top,bottom}
+let legendSelectMode = false;
+let legendSelection = null; // { x, y, w, h }
+let isDraggingLegend = false;
+let legendStart = null;
+
+  
 // generic extracted geometry holders
 let extractedPolygons = [];   // polygon features from any extraction
 let extractedLines = [];      // line features (future)
@@ -1209,6 +1255,15 @@ let legendSymbolBoxes = [];  // boxes we draw on canvas
 let ocrBoxesGlobal = [];   // <-- store OCR rectangles so redrawBase() can show them
 let legendRegion = null;     // <-- bounding box of legend
 
+const btnLegendMode = document.getElementById("btn-legend-mode");
+
+btnLegendMode.onclick = () => {
+  legendSelectMode = !legendSelectMode;
+  btnLegendMode.className = legendSelectMode ? "danger" : "secondary";
+  btnLegendMode.textContent = legendSelectMode
+    ? "Exit Legend Selection"
+    : "Select Legend Item";
+};
 
 /* ---------- Drawing ---------- */
 function drawExclusionMask(){
@@ -1242,6 +1297,21 @@ function redrawBase() {
 
     drawExclusionMask();
 
+    // Draw legend selection box
+    if (legendSelection) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 165, 0, 0.9)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(
+        legendSelection.x,
+        legendSelection.y,
+        legendSelection.w,
+        legendSelection.h
+      );
+      ctx.restore();
+    }
+        
     // Draw GCP markers
     gcps.forEach(g=>{
         ctx.fillStyle="rgba(0,120,255,0.9)";
@@ -1447,6 +1517,41 @@ canvas.addEventListener("click",e=>{
   refreshTable(); redrawBase();
 });
 
+canvas.addEventListener("mousedown", e => {
+  if (!legendSelectMode) return;
+
+  const r = canvas.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (canvas.width / r.width);
+  const y = (e.clientY - r.top) * (canvas.height / r.height);
+
+  isDraggingLegend = true;
+  legendStart = { x, y };
+  legendSelection = null;
+});
+
+canvas.addEventListener("mousemove", e => {
+  if (!isDraggingLegend || !legendSelectMode) return;
+
+  const r = canvas.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (canvas.width / r.width);
+  const y = (e.clientY - r.top) * (canvas.height / r.height);
+
+  legendSelection = {
+    x: Math.min(legendStart.x, x),
+    y: Math.min(legendStart.y, y),
+    w: Math.abs(x - legendStart.x),
+    h: Math.abs(y - legendStart.y)
+  };
+
+  redrawBase();
+});
+
+canvas.addEventListener("mouseup", () => {
+  if (!legendSelectMode) return;
+  isDraggingLegend = false;
+});
+
+  
 function refreshTable(){
   gcpTable.innerHTML="";
   gcps.forEach((g,i)=>{
@@ -1698,6 +1803,24 @@ btnExport.onclick=()=>{
   a.href=url; a.download="water.geojson"; a.click();
   URL.revokeObjectURL(url);
 };
+
+document.getElementById("btn-extract-legend").onclick = () => {
+  if (!legendSelection) {
+    alert("Please select a legend item first.");
+    return;
+  }
+
+  const signature = sampleLegendSignature(legendSelection);
+  if (!signature) {
+    alert("Could not sample legend item.");
+    return;
+  }
+
+  console.log("Legend signature:", signature);
+
+  // Step B will go here
+};
+
 </script>
 </body>
 </html>
