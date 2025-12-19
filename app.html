@@ -181,7 +181,7 @@
   <main>
     <section id="left">
       <div class="upload-box">
-        <button id="select-pdf">Select PDF</button>
+        <button id="select-pdf" type="button">Select PDF</button>
         <input type="file" id="file-input" accept="application/pdf" style="display:none" />
       </div>
 
@@ -790,6 +790,47 @@ function mergeWordsIntoRows(ocrBoxes) {
   return rows;
 }
 
+function isInkPixel(r, g, b, x, y) {
+    const brightness = 0.299*r + 0.587*g + 0.114*b;
+
+    // --- Detect light / pastel blue water symbol ---
+    const pastelBlue =
+        b > g + 10 && b > r + 10 &&   // still blue-ish
+        brightness > 140 && brightness < 230; // not dark, not white
+
+    // --- Detect hollow road symbols (white interior + dark border) ---
+    const dark = brightness < 140;
+    let borderHit = false;
+
+    if (!dark) {
+        // Check neighbors for a "dark border" pattern
+        // (no bounds check needed; caller loop is inside bounds)
+        function darkAt(nx, ny) {
+              if (nx < 0 || ny < 0 || nx >= w || ny >= h) return false;
+              const i = ny * w + nx;
+              const di = i * 4;
+              const br = 0.299*image[di] + 0.587*image[di+1] + 0.114*image[di+2];
+              return br < 140;
+          }
+          
+          if (
+              darkAt(x, y - 1) ||
+              darkAt(x, y + 1) ||
+              darkAt(x + 1, y) ||
+              darkAt(x - 1, y)
+          ) {
+              borderHit = true;
+          }
+    }
+    const isDarkInk = dark;
+    const isColoredStrong =
+        (b > r + 35 && b > g + 35) ||     // strong blue
+        (r > g + 35 && r > b + 35) ||     // strong red
+        (g > r + 35 && g > b + 35);       // strong green
+
+    return isDarkInk || isColoredStrong || pastelBlue || borderHit;
+}
+  
 /* -----------------------------------------------------
    Detect legend symbols located near OCR text labels
 ----------------------------------------------------- */
@@ -847,46 +888,7 @@ function detectLegendSymbols(ocrResults, image, w, h) {
         let symbol = null;
 
         // Improved color filter
-function isInkPixel(r, g, b, x, y) {
-    const brightness = 0.299*r + 0.587*g + 0.114*b;
 
-    // --- Detect light / pastel blue water symbol ---
-    const pastelBlue =
-        b > g + 10 && b > r + 10 &&   // still blue-ish
-        brightness > 140 && brightness < 230; // not dark, not white
-
-    // --- Detect hollow road symbols (white interior + dark border) ---
-    const dark = brightness < 140;
-    let borderHit = false;
-
-    if (!dark) {
-        // Check neighbors for a "dark border" pattern
-        // (no bounds check needed; caller loop is inside bounds)
-        function darkAt(nx, ny) {
-              if (nx < 0 || ny < 0 || nx >= w || ny >= h) return false;
-              const i = ny * w + nx;
-              const di = i * 4;
-              const br = 0.299*image[di] + 0.587*image[di+1] + 0.114*image[di+2];
-              return br < 140;
-          }
-          
-          if (
-              darkAt(x, y - 1) ||
-              darkAt(x, y + 1) ||
-              darkAt(x + 1, y) ||
-              darkAt(x - 1, y)
-          ) {
-              borderHit = true;
-          }
-    }
-    const isDarkInk = dark;
-    const isColoredStrong =
-        (b > r + 35 && b > g + 35) ||     // strong blue
-        (r > g + 35 && r > b + 35) ||     // strong red
-        (g > r + 35 && g > b + 35);       // strong green
-
-    return isDarkInk || isColoredStrong || pastelBlue || borderHit;
-}
 
 
         for (const region of searchRegions) {
@@ -1468,7 +1470,6 @@ function detectMapBoundaryFromCanvas(){
 }
 
 /* ---------- PDF Loading ---------- */
-selectPdf.onclick=()=>fileInput.click();
 
 fileInput.onchange=async()=>{
   const f=fileInput.files[0];
