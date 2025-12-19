@@ -836,160 +836,93 @@ function isInkPixel(r, g, b, x, y) {
 ----------------------------------------------------- */
 function detectLegendSymbols(ocrResults, image, w, h) {
 
-    legendEntries = [];
-    legendSymbolBoxes = [];
+  legendEntries = [];
+  legendSymbolBoxes = [];
 
-    for (const item of ocrResults) {
+  for (const item of ocrResults) {
 
-        // Skip text inside map interior
-        if (mapBoundary) {
-            const cx = item.x + item.w / 2;
-            const cy = item.y + item.h / 2;
-
-            if (cx > mapBoundary.left &&
-                cx < mapBoundary.right &&
-                cy > mapBoundary.top &&
-                cy < mapBoundary.bottom) {
-                continue;
-            }
-        }
-
-        const t = {
-            x: item.x,
-            y: item.y,
-            width: item.w,
-            height: item.h
-        };
-        // ❌ Reject long labels (titles, metadata, scale descriptions)
-        if (item.text.length > 30) {
-          continue;
-        }
-
-        // MUCH tighter search windows
-        const midY = t.y + t.height / 2;
-        const vertPad = Math.round(t.height * 0.8);
-        const padX = Math.round(t.height * 2.5);  // was t.width * 1.5 (too big)
-
-        const searchRegions = [
-            {
-                x1: Math.max(0, t.x - padX),
-                x2: t.x,
-                y1: Math.max(0, midY - vertPad),
-                y2: Math.min(h, midY + vertPad)
-            },
-            {
-                x1: t.x + t.width,
-                x2: Math.min(w, t.x + t.width + padX),
-                y1: Math.max(0, midY - vertPad),
-                y2: Math.min(h, midY + vertPad)
-            }
-        ];
-
-        let symbol = null;
-
-        // Improved color filter
-
-
-
-        for (const region of searchRegions) {
-
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
-            let count = 0;
-
-            for (let y = region.y1; y < region.y2; y++) {
-                for (let x = region.x1; x < region.x2; x++) {
-
-                    // Skip interior of the map
-                    if (mapBoundary &&
-                        x > mapBoundary.left &&
-                        x < mapBoundary.right &&
-                        y > mapBoundary.top &&
-                        y < mapBoundary.bottom) continue;
-
-                    const idx = (y * w + x) * 4;
-                    const r = image[idx], g = image[idx+1], b = image[idx+2];
-
-                    if (isInkPixel(r, g, b, x, y)) {
-                        count++;
-                        minX = Math.min(minX, x);
-                        maxX = Math.max(maxX, x);
-                        minY = Math.min(minY, y);
-                        maxY = Math.max(maxY, y);
-                    }
-                }
-            }
-
-            if (count < 6) continue; // was 20; smaller windows → need smaller threshold
-
-            const width = maxX - minX;
-            const height = maxY - minY;
-
-            // Symbol must be roughly the same height as text
-            if (height < t.height * 0.4 || height > t.height * 1.4) continue;
-
-            symbol = { x: minX, y: minY, width, height };
-            break;
-                  }
-            if (symbol) {
-              const dx = Math.abs(
-                (symbol.x + symbol.width / 2) -
-                (t.x + t.width / 2)
-              );
-              const dy = Math.abs(
-                (symbol.y + symbol.height / 2) -
-                (t.y + t.height / 2)
-              );
-            
-              // Reject loose associations (titles, metadata, scale labels)
-              if (dx > t.height * 3 || dy > t.height * 1.5) {
-                symbol = null;
-              }
-            }
-          function isNonLegendText(text) {
-          if (!text) return true;
-        
-          const t = text.toLowerCase();
-        
-          // Scale bars
-          if (/\b(km|kilometer|miles|mi|meters|m)\b/.test(t)) return true;
-          if (/\d/.test(t) && t.length < 6) return true;
-        
-          // North arrows / orientation
-          if (t === "n" || t === "north") return true;
-          if (["n","e","s","w","ne","nw","se","sw"].includes(t)) return true;
-        
-          return false;
-        }
-
-
-        if (symbol && !isNonLegendText(item.text)) {
-            const sig = computeSymbolSignature(symbol, image, w, h);
-
-            legendSymbolBoxes.push(symbol);
-            const tightenedRow = cropRowToSymbol(t, symbol);
-            
-            legendEntries.push({
-              text: item.text,
-              textBox: tightenedRow,
-              symbolBox: symbol,
-              signature: sig,
-              type: "unknown"
-            });
-
-            } else {
-              // ❌ not a legend row — no nearby symbol
-              continue;
-            }
-        }
+    // Skip text inside map interior
+    if (mapBoundary) {
+      const cx = item.x + item.w / 2;
+      const cy = item.y + item.h / 2;
+      if (
+        cx > mapBoundary.left &&
+        cx < mapBoundary.right &&
+        cy > mapBoundary.top &&
+        cy < mapBoundary.bottom
+      ) continue;
     }
-  console.log(
-  "Symbol detection results:",
-  legendEntries.filter(e => e.symbolBox).length,
-  "symbols found out of",
-  legendEntries.length,
-  "OCR labels"
-);
+
+    // Reject long or non-legend text early
+    if (!item.text || item.text.length > 30) continue;
+
+    const t = {
+      x: item.x,
+      y: item.y,
+      width: item.w,
+      height: item.h
+    };
+
+    const midY = t.y + t.height / 2;
+    const vertPad = Math.round(t.height * 0.8);
+    const padX = Math.round(t.height * 2.5);
+
+    const searchRegions = [
+      { x1: t.x - padX, x2: t.x, y1: midY - vertPad, y2: midY + vertPad },
+      { x1: t.x + t.width, x2: t.x + t.width + padX, y1: midY - vertPad, y2: midY + vertPad }
+    ];
+
+    let symbol = null;
+
+    for (const r of searchRegions) {
+      let minX = Infinity, minY = Infinity;
+      let maxX = -Infinity, maxY = -Infinity;
+      let count = 0;
+
+      for (let y = Math.max(0, r.y1); y < Math.min(h, r.y2); y++) {
+        for (let x = Math.max(0, r.x1); x < Math.min(w, r.x2); x++) {
+          const idx = (y * w + x) * 4;
+          const br =
+            0.299 * image[idx] +
+            0.587 * image[idx + 1] +
+            0.114 * image[idx + 2];
+
+          if (br < 200) {
+            count++;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+          }
+        }
+      }
+
+      if (count < 8) continue;
+
+      const width = maxX - minX;
+      const height = maxY - minY;
+
+      if (width < 3 || height < 3) continue;
+      if (width > t.height * 2.5) continue;
+      if (height > t.height * 2.5) continue;
+
+      symbol = { x: minX, y: minY, width, height };
+      break;
+    }
+
+    if (!symbol) continue;
+
+    legendEntries.push({
+      text: item.text,
+      textBox: t,
+      symbolBox: symbol,
+      type: "unknown"
+    });
+
+    legendSymbolBoxes.push(symbol);
+  }
+
+  console.log("Legend symbol candidates:", legendEntries.length);
 }
 
 function filterRowsByVerticalRhythm(rows) {
