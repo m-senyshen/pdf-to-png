@@ -1655,6 +1655,11 @@ function extractLegendMatchMask(signature, tolerance = 25) {
       }
     }
   }
+  let count = 0;
+  for (let i = 0; i < mask.length; i++) {
+    if (mask[i]) count++;
+  }
+  console.log("Legend match pixel count:", count);
 
   return mask;
 }
