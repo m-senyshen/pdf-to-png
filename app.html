@@ -1300,7 +1300,18 @@ function redrawBase() {
   if (renderedImage) {
     ctx.drawImage(renderedImage, 0, 0, canvas.width, canvas.height);
   }
+    if (legendMatchMask) {
+    ctx.fillStyle = "rgba(255, 215, 0, 0.45)";
+    const w = canvas.width;
 
+    for (let i = 0; i < legendMatchMask.length; i++) {
+      if (legendMatchMask[i]) {
+        const x = i % w;
+        const y = (i / w) | 0;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
   drawExclusionMask();
 
   // Draw legend selection rectangle (manual selection)
@@ -1372,18 +1383,7 @@ function redrawBase() {
   ctx.restore();
 
   // Draw legend match overlay (yellow mask)
-  if (legendMatchMask) {
-    ctx.fillStyle = "rgba(255, 215, 0, 0.45)";
-    const w = canvas.width;
 
-    for (let i = 0; i < legendMatchMask.length; i++) {
-      if (legendMatchMask[i]) {
-        const x = i % w;
-        const y = (i / w) | 0;
-        ctx.fillRect(x, y, 1, 1);
-      }
-    }
-  }
 }
 
   
