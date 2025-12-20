@@ -1854,7 +1854,6 @@ btnExport.onclick=()=>{
   a.href=url; a.download="water.geojson"; a.click();
   URL.revokeObjectURL(url);
 };
-
 document.getElementById("btn-extract-legend").onclick = () => {
   if (!legendSelection) {
     alert("Please select a legend item first.");
@@ -1867,14 +1866,18 @@ document.getElementById("btn-extract-legend").onclick = () => {
     return;
   }
 
-  console.log("Legend signature:", signature);
-  
-  // Step B will go here
+  // ✅ STORE IT GLOBALLY
+  legendSignature = signature;
+
+  console.log("Legend signature:", legendSignature);
+
+  // ✅ USE THE STORED SIGNATURE
   legendMatchMask = extractLegendMatchMask(legendSignature, 25);
+
   console.log("Legend match mask generated");
   redrawBase();
-
 };
+
 
 </script>
 </body>
