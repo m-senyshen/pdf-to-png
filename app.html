@@ -1390,6 +1390,16 @@ function redrawBase() {
       }
     }
 
+    if (legendMatchMask) {
+    ctx.fillStyle = "rgba(255, 255, 0, 0.35)";
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        if (legendMatchMask[y * canvas.width + x]) {
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+  }
 
     ctx.restore();
 }
