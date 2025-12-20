@@ -1374,6 +1374,19 @@ function redrawBase() {
         ctx.setLineDash([]);
 
 });
+    // 3️⃣ Draw legend match overlay (STEP B – visual only)
+    if (legendMatchMask) {
+      ctx.fillStyle = "rgba(255, 215, 0, 0.45)"; // yellow overlay
+      const w = canvas.width;
+    
+      for (let i = 0; i < legendMatchMask.length; i++) {
+        if (legendMatchMask[i]) {
+          const x = i % w;
+          const y = (i / w) | 0;
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
 
 
     ctx.restore();
@@ -1611,6 +1624,39 @@ btnCompute.onclick=()=>{
 function isWaterPixel(r,g,b){
   return (b > 120 && b > r+25 && b > g+15);
 }
+// ---------- LEGEND COLOR MATCHING ----------
+function extractLegendMatchMask(signature, tolerance = 25) {
+  const w = canvas.width;
+  const h = canvas.height;
+  const img = ctx.getImageData(0, 0, w, h).data;
+
+  const mask = new Uint8Array(w * h);
+
+  const left   = mapBoundary?.left   ?? 0;
+  const right  = mapBoundary?.right  ?? w;
+  const top    = mapBoundary?.top    ?? 0;
+  const bottom = mapBoundary?.bottom ?? h;
+
+  for (let y = top; y < bottom; y++) {
+    for (let x = left; x < right; x++) {
+      const idx = (y * w + x) * 4;
+      const r = img[idx];
+      const g = img[idx + 1];
+      const b = img[idx + 2];
+
+      if (
+        Math.abs(r - signature.r) < tolerance &&
+        Math.abs(g - signature.g) < tolerance &&
+        Math.abs(b - signature.b) < tolerance
+      ) {
+        mask[y * w + x] = 1;
+      }
+    }
+  }
+
+  return mask;
+}
+
 
 function getWaterMask(){
   if(!renderedImage){
@@ -1820,8 +1866,12 @@ document.getElementById("btn-extract-legend").onclick = () => {
   }
 
   console.log("Legend signature:", signature);
-
+  
   // Step B will go here
+  legendMatchMask = extractLegendMatchMask(legendSignature, 25);
+  console.log("Legend match mask generated");
+  redrawBase();
+
 };
 
 </script>
