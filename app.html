@@ -1376,6 +1376,13 @@ function redrawBase() {
         ctx.setLineDash([]);
 
 });
+
+    ctx.restore();
+}
+    console.log(
+    "Overlay visible pixels:",
+    legendMatchMask.reduce((s,v)=>s+v,0)
+    );
     // 3️⃣ Draw legend match overlay (STEP B – visual only)
     if (legendMatchMask) {
       ctx.fillStyle = "rgba(255, 215, 0, 0.45)"; // yellow overlay
@@ -1388,22 +1395,7 @@ function redrawBase() {
           ctx.fillRect(x, y, 1, 1);
         }
       }
-    }
-
-    if (legendMatchMask) {
-    ctx.fillStyle = "rgba(255, 255, 0, 0.35)";
-    for (let y = 0; y < canvas.height; y++) {
-      for (let x = 0; x < canvas.width; x++) {
-        if (legendMatchMask[y * canvas.width + x]) {
-          ctx.fillRect(x, y, 1, 1);
-        }
-      }
-    }
-  }
-
-    ctx.restore();
 }
-
 
 /* ---------- NEW: Connected Component Map Detection ---------- */
 function detectMapBoundaryFromCanvas(){
