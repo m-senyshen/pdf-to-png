@@ -1295,110 +1295,98 @@ function drawWaterOverlay(){
   }
 }
 function redrawBase() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (renderedImage)
-        ctx.drawImage(renderedImage,0,0,canvas.width,canvas.height);
+  if (renderedImage) {
+    ctx.drawImage(renderedImage, 0, 0, canvas.width, canvas.height);
+  }
 
-    drawExclusionMask();
+  drawExclusionMask();
 
-    // Draw legend selection box
-    if (legendSelection) {
-      ctx.save();
-      ctx.strokeStyle = "rgba(255, 165, 0, 0.9)";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
-      ctx.strokeRect(
-        legendSelection.x,
-        legendSelection.y,
-        legendSelection.w,
-        legendSelection.h
-      );
-      ctx.restore();
-    }
-        
-    // Draw GCP markers
-    gcps.forEach(g=>{
-        ctx.fillStyle="rgba(0,120,255,0.9)";
-        ctx.beginPath();
-        ctx.arc(g.x,g.y,4,0,6.28);
-        ctx.fill();
-    });
-
-    // Draw water features
-    if(showWaterOverlay) drawWaterOverlay();
-
+  // Draw legend selection rectangle (manual selection)
+  if (legendSelection) {
     ctx.save();
-
-    // 1️⃣ Draw OCR rectangles (RED)
-    ctx.strokeStyle = "rgba(255,0,0,0.75)";
+    ctx.strokeStyle = "rgba(255, 165, 0, 0.9)";
     ctx.lineWidth = 2;
-    ocrBoxesGlobal.forEach(b => {
-        ctx.strokeRect(b.x, b.y, b.w, b.h);
-    });
-    if (legendRegion) {
-        ctx.strokeStyle = "rgba(180, 0, 255, 0.6)";
-        ctx.lineWidth = 3;
-        ctx.setLineDash([8, 4]);
-        ctx.strokeRect(
-            legendRegion.left,
-            legendRegion.top,
-            legendRegion.right - legendRegion.left,
-            legendRegion.bottom - legendRegion.top
-        );
-    }
-    // 2️⃣ Draw legend symbol boxes
-    legendEntries.forEach(entry => {
-        const b = entry.symbolBox;
-        if (!b) return;
-
-        let color;
-
-        // Geometry classifier colors
-        switch (entry.type) {
-            case "point":
-                color = "rgba(180, 0, 255, 0.9)";  // purple
-                break;
-            case "line":
-                color = "rgba(0, 200, 0, 0.9)";    // green
-                break;
-            case "polygon":
-                color = "rgba(0, 150, 255, 0.9)";  // blue
-                break;
-            default:
-                color = "yellow";                 // unknown
-                break;
-        }
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
-        ctx.strokeRect(b.x, b.y, b.width, b.height);
-        ctx.setLineDash([]);
-
-});
-
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(
+      legendSelection.x,
+      legendSelection.y,
+      legendSelection.w,
+      legendSelection.h
+    );
     ctx.restore();
+  }
 
-    if (legendMatchMask) {
-      console.log(
-        "Overlay visible pixels:",
-        legendMatchMask.reduce((s,v)=>s+v,0)
-      );
-    }
-    // 3️⃣ Draw legend match overlay (STEP B – visual only)
-    if (legendMatchMask) {
-      ctx.fillStyle = "rgba(255, 215, 0, 0.45)"; // yellow overlay
-      const w = canvas.width;
-    
-      for (let i = 0; i < legendMatchMask.length; i++) {
-        if (legendMatchMask[i]) {
-          const x = i % w;
-          const y = (i / w) | 0;
-          ctx.fillRect(x, y, 1, 1);
-        }
+  // Draw GCP points
+  gcps.forEach(g => {
+    ctx.fillStyle = "rgba(0,120,255,0.9)";
+    ctx.beginPath();
+    ctx.arc(g.x, g.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Draw water overlay
+  if (showWaterOverlay) {
+    drawWaterOverlay();
+  }
+
+  ctx.save();
+
+  // Draw OCR boxes (red)
+  ctx.strokeStyle = "rgba(255,0,0,0.75)";
+  ctx.lineWidth = 2;
+  ocrBoxesGlobal.forEach(b => {
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+  });
+
+  // Draw detected legend region (purple dashed)
+  if (legendRegion) {
+    ctx.strokeStyle = "rgba(180, 0, 255, 0.6)";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 4]);
+    ctx.strokeRect(
+      legendRegion.left,
+      legendRegion.top,
+      legendRegion.right - legendRegion.left,
+      legendRegion.bottom - legendRegion.top
+    );
+    ctx.setLineDash([]);
+  }
+
+  // Draw legend symbol boxes (classified)
+  legendEntries.forEach(entry => {
+    const b = entry.symbolBox;
+    if (!b) return;
+
+    let color = "yellow";
+    if (entry.type === "point") color = "rgba(180, 0, 255, 0.9)";
+    else if (entry.type === "line") color = "rgba(0, 200, 0, 0.9)";
+    else if (entry.type === "polygon") color = "rgba(0, 150, 255, 0.9)";
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(b.x, b.y, b.width, b.height);
+  });
+
+  ctx.restore();
+
+  // Draw legend match overlay (yellow mask)
+  if (legendMatchMask) {
+    ctx.fillStyle = "rgba(255, 215, 0, 0.45)";
+    const w = canvas.width;
+
+    for (let i = 0; i < legendMatchMask.length; i++) {
+      if (legendMatchMask[i]) {
+        const x = i % w;
+        const y = (i / w) | 0;
+        ctx.fillRect(x, y, 1, 1);
       }
+    }
+  }
 }
 
+  
 /* ---------- NEW: Connected Component Map Detection ---------- */
 function detectMapBoundaryFromCanvas(){
   const w = canvas.width, h = canvas.height;
