@@ -1300,6 +1300,8 @@ function redrawBase() {
   if (renderedImage) {
     ctx.drawImage(renderedImage, 0, 0, canvas.width, canvas.height);
   }
+  drawExclusionMask();
+  
     if (legendMatchMask) {
     ctx.fillStyle = "rgba(255, 215, 0, 0.45)";
     const w = canvas.width;
@@ -1312,7 +1314,7 @@ function redrawBase() {
       }
     }
   }
-  drawExclusionMask();
+  
 
   // Draw legend selection rectangle (manual selection)
   if (legendSelection) {
