@@ -1248,6 +1248,9 @@ let extractedPolygons = [];   // polygon features from any extraction
 let extractedLines = [];      // line features (future)
 let extractedPoints = [];     // point features (future)
 let nextFeatureId = 1;        // auto increment ID
+  // ---------- LEGEND EXTRACTION (STEP B) ----------
+let legendMatchMask = null; // Uint8Array of matching pixels
+
 
 // ---------- LEGEND DETECTION STATE ----------
 let legendEntries = [];      // { text, textBox, symbolBox }
