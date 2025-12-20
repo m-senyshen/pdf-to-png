@@ -1378,11 +1378,13 @@ function redrawBase() {
 });
 
     ctx.restore();
-}
-    console.log(
-    "Overlay visible pixels:",
-    legendMatchMask.reduce((s,v)=>s+v,0)
-    );
+
+    if (legendMatchMask) {
+      console.log(
+        "Overlay visible pixels:",
+        legendMatchMask.reduce((s,v)=>s+v,0)
+      );
+    }
     // 3️⃣ Draw legend match overlay (STEP B – visual only)
     if (legendMatchMask) {
       ctx.fillStyle = "rgba(255, 215, 0, 0.45)"; // yellow overlay
