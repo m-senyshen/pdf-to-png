@@ -1976,6 +1976,7 @@ btnExport.onclick=()=>{
   a.href=url; a.download="water.geojson"; a.click();
   URL.revokeObjectURL(url);
 };
+  
 document.getElementById("btn-extract-legend").onclick = () => {
   if (!legendSelection) {
     alert("Please select a legend item first.");
@@ -1988,43 +1989,38 @@ document.getElementById("btn-extract-legend").onclick = () => {
     return;
   }
 
-  // ✅ STORE IT GLOBALLY
   legendSignature = signature;
-
   console.log("Legend signature:", legendSignature);
 
-  // ✅ USE THE STORED SIGNATURE
   legendMatchMask = extractLegendMatchMask(legendSignature, 35);
-  
+
   const components = extractConnectedComponents(
     legendMatchMask,
     canvas.width,
     canvas.height
   );
-  
+
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
   const filteredComponents = filterComponentsByShape(
     components,
     canvas.width,
     imgData.data
   );
-  
-  // Build a NEW mask from filtered shapes only
+
+  // Rebuild mask
   legendMatchMask = new Uint8Array(canvas.width * canvas.height);
   filteredComponents.forEach(comp => {
     comp.forEach(i => legendMatchMask[i] = 1);
   });
-  
+
   console.log(
     "Legend components:",
     components.length,
     "→ kept:",
     filteredComponents.length
   );
-  
-  redrawBase();
 
-
-  console.log("Legend match mask generated");
   redrawBase();
 };
 
