@@ -1303,18 +1303,21 @@ function redrawBase() {
   drawExclusionMask();
   
     if (legendMatchMask) {
-    ctx.fillStyle = "rgba(255, 215, 0, 0.45)";
-    const w = canvas.width;
-
-    for (let i = 0; i < legendMatchMask.length; i++) {
-      if (legendMatchMask[i]) {
-        const x = i % w;
-        const y = (i / w) | 0;
-        ctx.fillRect(x, y, 1, 1);
+      ctx.save();
+      ctx.fillStyle = "rgba(255, 215, 0, 0.75)"; // stronger yellow
+      const w = canvas.width;
+    
+      for (let i = 0; i < legendMatchMask.length; i++) {
+        if (legendMatchMask[i]) {
+          const x = i % w;
+          const y = (i / w) | 0;
+          ctx.fillRect(x, y, 1.5, 1.5); // slightly bigger pixels
+        }
       }
+    
+      ctx.restore();
     }
-  }
-  
+      
 
   // Draw legend selection rectangle (manual selection)
   if (legendSelection) {
