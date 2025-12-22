@@ -1661,6 +1661,86 @@ function extractLegendMatchMask(signature, tolerance = 25) {
   return mask;
 }
 
+function extractConnectedComponents(mask, w, h) {
+  const visited = new Uint8Array(w * h);
+  const components = [];
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const idx = y * w + x;
+      if (!mask[idx] || visited[idx]) continue;
+
+      const stack = [idx];
+      visited[idx] = 1;
+      const pixels = [];
+
+      while (stack.length) {
+        const i = stack.pop();
+        pixels.push(i);
+
+        const py = (i / w) | 0;
+        const px = i % w;
+
+        for (const [dx,dy] of dirs) {
+          const nx = px + dx, ny = py + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const ni = ny * w + nx;
+          if (mask[ni] && !visited[ni]) {
+            visited[ni] = 1;
+            stack.push(ni);
+          }
+        }
+      }
+
+      if (pixels.length > 20) { // ignore tiny noise
+        components.push(pixels);
+      }
+    }
+  }
+
+  return components;
+}
+
+
+function computeComponentShape(component, w) {
+  let minX = Infinity, minY = Infinity;
+  let maxX = -Infinity, maxY = -Infinity;
+
+  component.forEach(i => {
+    const y = (i / w) | 0;
+    const x = i % w;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  });
+
+  const width = maxX - minX + 1;
+  const height = maxY - minY + 1;
+  const area = component.length;
+  const aspect = width / height;
+
+  return { width, height, area, aspect };
+}
+  
+function filterComponentsByShape(components, w) {
+  return components.filter(c => {
+    const s = computeComponentShape(c, w);
+
+    // Reject long thin things (roads, borders)
+    if (s.aspect > 3 || s.aspect < 0.33) return false;
+
+    // Reject very large blobs (text blocks)
+    if (s.area > 2000) return false;
+
+    // Reject tiny specks
+    if (s.area < 30) return false;
+
+    return true;
+  });
+}
+
 
 function getWaterMask(){
   if(!renderedImage){
@@ -1874,7 +1954,34 @@ document.getElementById("btn-extract-legend").onclick = () => {
   console.log("Legend signature:", legendSignature);
 
   // ✅ USE THE STORED SIGNATURE
-  legendMatchMask = extractLegendMatchMask(legendSignature, 25);
+  legendMatchMask = extractLegendMatchMask(legendSignature, 35);
+  
+  const components = extractConnectedComponents(
+    legendMatchMask,
+    canvas.width,
+    canvas.height
+  );
+  
+  const filteredComponents = filterComponentsByShape(
+    components,
+    canvas.width
+  );
+  
+  // Build a NEW mask from filtered shapes only
+  legendMatchMask = new Uint8Array(canvas.width * canvas.height);
+  filteredComponents.forEach(comp => {
+    comp.forEach(i => legendMatchMask[i] = 1);
+  });
+  
+  console.log(
+    "Legend components:",
+    components.length,
+    "→ kept:",
+    filteredComponents.length
+  );
+  
+  redrawBase();
+
 
   console.log("Legend match mask generated");
   redrawBase();
