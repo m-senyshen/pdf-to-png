@@ -1624,42 +1624,108 @@ function isWaterPixel(r,g,b){
   return (b > 120 && b > r+25 && b > g+15);
 }
 // ---------- LEGEND COLOR MATCHING ----------
-function extractLegendMatchMask(signature, tolerance = 25) {
+function extractLegendMatchMask(legendSignature, legendShape, tolerance = 28) {
+
   const w = canvas.width;
   const h = canvas.height;
-  const img = ctx.getImageData(0, 0, w, h).data;
+
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const d = imgData.data;
 
   const mask = new Uint8Array(w * h);
+  const visited = new Uint8Array(w * h);
 
-  const left   = mapBoundary?.left   ?? 0;
-  const right  = mapBoundary?.right  ?? w;
-  const top    = mapBoundary?.top    ?? 0;
-  const bottom = mapBoundary?.bottom ?? h;
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
 
-  for (let y = top; y < bottom; y++) {
-    for (let x = left; x < right; x++) {
-      const idx = (y * w + x) * 4;
-      const r = img[idx];
-      const g = img[idx + 1];
-      const b = img[idx + 2];
+  let acceptedComponents = 0;
 
-      if (
-        Math.abs(r - signature.r) < tolerance &&
-        Math.abs(g - signature.g) < tolerance &&
-        Math.abs(b - signature.b) < tolerance
-      ) {
-        mask[y * w + x] = 1;
+  function colorClose(i) {
+    const r = d[i];
+    const g = d[i+1];
+    const b = d[i+2];
+
+    return (
+      Math.abs(r - legendSignature.r) < tolerance &&
+      Math.abs(g - legendSignature.g) < tolerance &&
+      Math.abs(b - legendSignature.b) < tolerance
+    );
+  }
+
+  for (let y = mapBoundary.top; y < mapBoundary.bottom; y++) {
+    for (let x = mapBoundary.left; x < mapBoundary.right; x++) {
+
+      const idx = y * w + x;
+      if (visited[idx]) continue;
+
+      const di = idx * 4;
+      if (!colorClose(di)) continue;
+
+      // Flood-fill component
+      const stack = [idx];
+      const component = [];
+      visited[idx] = 1;
+
+      let minX = x, maxX = x, minY = y, maxY = y;
+
+      while (stack.length) {
+        const i = stack.pop();
+        component.push(i);
+
+        const py = (i / w) | 0;
+        const px = i % w;
+
+        minX = Math.min(minX, px);
+        maxX = Math.max(maxX, px);
+        minY = Math.min(minY, py);
+        maxY = Math.max(maxY, py);
+
+        for (const [dx,dy] of dirs) {
+          const nx = px + dx;
+          const ny = py + dy;
+          if (nx < mapBoundary.left || nx >= mapBoundary.right ||
+              ny < mapBoundary.top  || ny >= mapBoundary.bottom) continue;
+
+          const ni = ny * w + nx;
+          if (visited[ni]) continue;
+
+          const ndi = ni * 4;
+          if (colorClose(ndi)) {
+            visited[ni] = 1;
+            stack.push(ni);
+          }
+        }
       }
+
+      // ---------- SHAPE FILTERING (THIS IS THE KEY FIX) ----------
+
+      const compArea = component.length;
+      const boxW = maxX - minX + 1;
+      const boxH = maxY - minY + 1;
+      const boxArea = boxW * boxH;
+      const fillRatio = compArea / boxArea;
+      const aspect = boxW / boxH;
+
+      // 1️⃣ Area gate — KILLS HILLSHADE
+      if (compArea > legendShape.area * 4) continue;
+      if (compArea < legendShape.area * 0.25) continue;
+
+      // 2️⃣ Aspect ratio gate — KILLS ROADS
+      if (Math.abs(aspect - legendShape.aspect) > 0.7) continue;
+
+      // 3️⃣ Fill ratio gate — KILLS LINEWORK + SHADING
+      if (Math.abs(fillRatio - legendShape.fill) > 0.25) continue;
+
+      // ✅ ACCEPT COMPONENT
+      acceptedComponents++;
+
+      component.forEach(i => mask[i] = 1);
     }
   }
-  let count = 0;
-  for (let i = 0; i < mask.length; i++) {
-    if (mask[i]) count++;
-  }
-  console.log("Legend match pixel count:", count);
 
+  console.log("Legend components accepted:", acceptedComponents);
   return mask;
 }
+
 
 function extractConnectedComponents(mask, w, h) {
   const visited = new Uint8Array(w * h);
