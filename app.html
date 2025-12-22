@@ -630,7 +630,7 @@ function detectLegendRegionFromLegendRows(rows, w, h) {
   };
 }
 
- 
+
 function detectLegendRegionFromRows(rows, w, h) {
 
     if (!rows || rows.length < 3) {
@@ -1724,21 +1724,61 @@ function computeComponentShape(component, w) {
   return { width, height, area, aspect };
 }
   
-function filterComponentsByShape(components, w) {
+function filterComponentsByShape(components, w, image) {
   return components.filter(c => {
     const s = computeComponentShape(c, w);
+    const entropy = computeOrientationEntropy(c, image, w);
 
-    // Reject long thin things (roads, borders)
-    if (s.aspect > 3 || s.aspect < 0.33) return false;
+    // Size sanity
+    if (s.area < 40 || s.area > 1200) return false;
 
-    // Reject very large blobs (text blocks)
-    if (s.area > 2000) return false;
+    // Reject elongated things
+    if (s.aspect > 2.2 || s.aspect < 0.45) return false;
 
-    // Reject tiny specks
-    if (s.area < 30) return false;
+    // 🚨 THIS is the key line
+    // Roads ≈ low entropy, symbols ≈ high entropy
+    if (entropy < 1.2) return false;
 
     return true;
   });
+}
+
+
+function computeOrientationEntropy(component, image, w) {
+  const bins = new Array(12).fill(0); // 15° bins
+
+  component.forEach(i => {
+    const y = (i / w) | 0;
+    const x = i % w;
+    const idx = (y * w + x) * 4;
+
+    // Sobel-like gradient (cheap)
+    const gx =
+      image[idx + 4] - image[idx - 4] || 0;
+    const gy =
+      image[idx + w * 4] - image[idx - w * 4] || 0;
+
+    const mag = Math.hypot(gx, gy);
+    if (mag < 15) return;
+
+    let angle = Math.atan2(gy, gx);
+    if (angle < 0) angle += Math.PI;
+
+    const bin = Math.floor((angle / Math.PI) * bins.length);
+    bins[bin]++;
+  });
+
+  const total = bins.reduce((a,b)=>a+b,0);
+  if (total === 0) return 0;
+
+  let entropy = 0;
+  bins.forEach(c => {
+    if (!c) return;
+    const p = c / total;
+    entropy -= p * Math.log2(p);
+  });
+
+  return entropy;
 }
 
 
@@ -1964,7 +2004,8 @@ document.getElementById("btn-extract-legend").onclick = () => {
   
   const filteredComponents = filterComponentsByShape(
     components,
-    canvas.width
+    canvas.width,
+    imgData.data
   );
   
   // Build a NEW mask from filtered shapes only
