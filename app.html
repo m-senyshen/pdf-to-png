@@ -630,6 +630,50 @@ function detectLegendRegionFromLegendRows(rows, w, h) {
   };
 }
 
+function extractLegendMatchMask(signature, tolerance = 35) {
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const imgData = ctx.getImageData(0, 0, w, h).data;
+  const mask = new Uint8Array(w * h);
+
+  let count = 0;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+
+      // Respect map interior only
+      if (mapBoundary) {
+        if (
+          x < mapBoundary.left ||
+          x >= mapBoundary.right ||
+          y < mapBoundary.top ||
+          y >= mapBoundary.bottom
+        ) {
+          continue;
+        }
+      }
+
+      const i = (y * w + x) * 4;
+      const r = imgData[i];
+      const g = imgData[i + 1];
+      const b = imgData[i + 2];
+
+      const dr = Math.abs(r - signature.r);
+      const dg = Math.abs(g - signature.g);
+      const db = Math.abs(b - signature.b);
+
+      if (dr < tolerance && dg < tolerance && db < tolerance) {
+        mask[y * w + x] = 1;
+        count++;
+      }
+    }
+  }
+
+  console.log("Legend match pixel count:", count);
+  return mask;
+}
+
 
 function detectLegendRegionFromRows(rows, w, h) {
 
