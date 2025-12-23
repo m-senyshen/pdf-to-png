@@ -1741,38 +1741,6 @@ function filterLegendComponentsByConvexity(components, w, referenceShape) {
     return Math.abs(area / 2);
   }
 
-  const kept = [];
-
-  components.forEach(comp => {
-    if (!comp.pixels || comp.pixels.length < 20) return;
-
-    const area = comp.pixels.length;
-
-    // Bounding box sanity check
-    const w = comp.maxX - comp.minX + 1;
-    const h = comp.maxY - comp.minY + 1;
-    const aspect = Math.max(w / h, h / w);
-
-    if (area < 30 || area > 2000) return;
-    if (aspect > 2.2) return; // rejects roads
-
-    // Convexity test
-    const hull = convexHull(comp.pixels);
-    if (hull.length < 3) return;
-
-    const hullArea = polygonArea(hull);
-    const solidity = area / hullArea;
-
-    // 🔑 THIS IS THE KEY FILTER
-    if (solidity < 0.82) return;
-
-    kept.push(comp);
-  });
-
-  console.log(
-    `Legend components: ${components.length} → kept: ${kept.length}`
-  );
-
   return kept;
 }
 
