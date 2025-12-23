@@ -2060,7 +2060,18 @@ document.getElementById("btn-extract-legend").onclick = () => {
     legendMatchMask,
     canvas.width,
     canvas.height
-  );
+    );
+    if (!components || components.length === 0) {
+    alert("No symbol detected inside legend selection.");
+    return;
+  }
+  
+  // Pick the largest component as the reference shape
+  components.sort((a, b) => b.length - a.length);
+  referenceLegendComponent = components[0];
+  
+  console.log("Reference legend shape set:", referenceLegendComponent.length);
+
 
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
