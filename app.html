@@ -1668,38 +1668,69 @@ function isWaterPixel(r,g,b){
   return (b > 120 && b > r+25 && b > g+15);
 }
 // ---------- LEGEND COLOR MATCHING ----------
-function filterLegendComponentsByConvexity(components) {
-  function convexHull(points) {
-    // Andrew's monotone chain algorithm
-    points = [...points].sort((a, b) =>
-      a.x === b.x ? a.y - b.y : a.x - b.x
-    );
+function filterLegendComponentsByConvexity(components, w, referenceShape) {
 
-    const cross = (o, a, b) =>
-      (a.x - o.x) * (b.y - o.y) -
-      (a.y - o.y) * (b.x - o.x);
+  function shapeDescriptor(comp) {
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
 
-    const lower = [];
-    for (const p of points) {
-      while (lower.length >= 2 &&
-        cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0
-      ) lower.pop();
-      lower.push(p);
-    }
+    comp.forEach(i => {
+      const y = (i / w) | 0;
+      const x = i % w;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    });
 
-    const upper = [];
-    for (let i = points.length - 1; i >= 0; i--) {
-      const p = points[i];
-      while (upper.length >= 2 &&
-        cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0
-      ) upper.pop();
-      upper.push(p);
-    }
+    const width = maxX - minX + 1;
+    const height = maxY - minY + 1;
+    const area = comp.length;
 
-    upper.pop();
-    lower.pop();
-    return lower.concat(upper);
+    const boxArea = width * height;
+    const fillRatio = area / boxArea;
+    const aspect = width / height;
+    const compactness = (area * 4 * Math.PI) / (Math.pow(width + height, 2));
+
+    return { width, height, area, fillRatio, aspect, compactness };
   }
+
+  const ref = shapeDescriptor(referenceShape);
+
+  const kept = [];
+
+  components.forEach(comp => {
+    if (comp.length < 25) return;
+
+    const s = shapeDescriptor(comp);
+
+    // --- SIZE SIMILARITY ---
+    const areaRatio =
+      Math.min(s.area, ref.area) / Math.max(s.area, ref.area);
+    if (areaRatio < 0.25) return;
+
+    // --- ASPECT RATIO ---
+    const aspectDiff = Math.abs(s.aspect - ref.aspect);
+    if (aspectDiff > 0.6) return;
+
+    // --- FILL RATIO (kills hillshade & lines) ---
+    const fillDiff = Math.abs(s.fillRatio - ref.fillRatio);
+    if (fillDiff > 0.25) return;
+
+    // --- COMPACTNESS (kills roads) ---
+    const compDiff = Math.abs(s.compactness - ref.compactness);
+    if (compDiff > 0.35) return;
+
+    kept.push(comp);
+  });
+
+  console.log(
+    `Legend components: ${components.length} → kept: ${kept.length}`
+  );
+
+  return kept;
+}
+
 
   function polygonArea(pts) {
     let area = 0;
