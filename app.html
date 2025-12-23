@@ -1690,13 +1690,12 @@ function filterLegendComponentsByConvexity(components, w, referenceShape) {
     const boxArea = width * height;
     const fillRatio = area / boxArea;
     const aspect = width / height;
-    const compactness = (area * 4 * Math.PI) / (Math.pow(width + height, 2));
+    const compactness = (area * 4 * Math.PI) / ((width + height) ** 2);
 
     return { width, height, area, fillRatio, aspect, compactness };
   }
 
   const ref = shapeDescriptor(referenceShape);
-
   const kept = [];
 
   components.forEach(comp => {
@@ -1704,22 +1703,18 @@ function filterLegendComponentsByConvexity(components, w, referenceShape) {
 
     const s = shapeDescriptor(comp);
 
-    // --- SIZE SIMILARITY ---
-    const areaRatio =
-      Math.min(s.area, ref.area) / Math.max(s.area, ref.area);
+    // size similarity
+    const areaRatio = Math.min(s.area, ref.area) / Math.max(s.area, ref.area);
     if (areaRatio < 0.25) return;
 
-    // --- ASPECT RATIO ---
-    const aspectDiff = Math.abs(s.aspect - ref.aspect);
-    if (aspectDiff > 0.6) return;
+    // aspect ratio
+    if (Math.abs(s.aspect - ref.aspect) > 0.6) return;
 
-    // --- FILL RATIO (kills hillshade & lines) ---
-    const fillDiff = Math.abs(s.fillRatio - ref.fillRatio);
-    if (fillDiff > 0.25) return;
+    // fill ratio (kills hillshade)
+    if (Math.abs(s.fillRatio - ref.fillRatio) > 0.25) return;
 
-    // --- COMPACTNESS (kills roads) ---
-    const compDiff = Math.abs(s.compactness - ref.compactness);
-    if (compDiff > 0.35) return;
+    // compactness (kills roads)
+    if (Math.abs(s.compactness - ref.compactness) > 0.35) return;
 
     kept.push(comp);
   });
@@ -1730,6 +1725,7 @@ function filterLegendComponentsByConvexity(components, w, referenceShape) {
 
   return kept;
 }
+
 
 
   function polygonArea(pts) {
