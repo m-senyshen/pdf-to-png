@@ -1703,17 +1703,11 @@ function filterLegendComponentsByConvexity(components, w, referenceShape) {
 
     const s = shapeDescriptor(comp);
 
-    // size similarity
     const areaRatio = Math.min(s.area, ref.area) / Math.max(s.area, ref.area);
     if (areaRatio < 0.25) return;
 
-    // aspect ratio
     if (Math.abs(s.aspect - ref.aspect) > 0.6) return;
-
-    // fill ratio (kills hillshade)
     if (Math.abs(s.fillRatio - ref.fillRatio) > 0.25) return;
-
-    // compactness (kills roads)
     if (Math.abs(s.compactness - ref.compactness) > 0.35) return;
 
     kept.push(comp);
@@ -1726,19 +1720,6 @@ function filterLegendComponentsByConvexity(components, w, referenceShape) {
   return kept;
 }
 
-
-
-  function polygonArea(pts) {
-    let area = 0;
-    for (let i = 0; i < pts.length; i++) {
-      const j = (i + 1) % pts.length;
-      area += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
-    }
-    return Math.abs(area / 2);
-  }
-
-  return kept;
-}
 
 
 function extractConnectedComponents(mask, w, h) {
