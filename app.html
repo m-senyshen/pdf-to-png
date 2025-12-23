@@ -2082,11 +2082,33 @@ document.getElementById("btn-extract-legend").onclick = () => {
 
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-  const referenceComponent = extractConnectedComponents(
-    extractLegendMatchMask(legendSignature, 35),
+  // Use the user's selection as the reference shape
+  const refMask = extractLegendMatchMask(legendSignature, 35);
+  const refComponents = extractConnectedComponents(
+    refMask,
     canvas.width,
     canvas.height
-  )[0];
+  );
+  
+  // Choose component that overlaps the selection box
+  const referenceComponent = refComponents.find(comp =>
+    comp.some(i => {
+      const y = (i / canvas.width) | 0;
+      const x = i % canvas.width;
+      return (
+        x >= legendSelection.x &&
+        x <= legendSelection.x + legendSelection.w &&
+        y >= legendSelection.y &&
+        y <= legendSelection.y + legendSelection.h
+      );
+    })
+  );
+  
+  if (!referenceComponent) {
+    alert("Could not determine reference legend shape.");
+    return;
+  }
+
   
   const filteredComponents = filterLegendComponentsByConvexity(
     components,
