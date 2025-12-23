@@ -2043,7 +2043,7 @@ document.getElementById("btn-extract-legend").onclick = () => {
 
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-  const filteredComponents = filterComponentsByShape(
+  const filteredComponents = filterLegendComponentsByConvexity(
     components,
     canvas.width,
     imgData.data
