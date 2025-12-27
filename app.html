@@ -1690,6 +1690,10 @@ function isWaterPixel(r,g,b){
 // ---------- LEGEND COLOR MATCHING ----------
 function filterLegendComponentsByConvexity(components, w, referenceShape) {
 
+    if (!referenceShape || !Array.isArray(referenceShape)) {
+    console.warn("No reference shape provided — skipping shape filtering.");
+    return [];
+  }
   function shapeDescriptor(comp) {
     let minX = Infinity, minY = Infinity;
     let maxX = -Infinity, maxY = -Infinity;
