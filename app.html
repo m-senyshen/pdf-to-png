@@ -299,24 +299,33 @@ function sampleLegendSignature(box) {
     Math.floor(box.h)
   ).data;
 
-  let r=0, g=0, b=0, n=0;
+  let r = 0, g = 0, b = 0, n = 0;
 
-  for (let i=0; i<img.length; i+=4) {
-    const br = 0.299*img[i] + 0.587*img[i+1] + 0.114*img[i+2];
-    if (br < 230) { // ignore white
-      r += img[i];
-      g += img[i+1];
-      b += img[i+2];
+  for (let i = 0; i < img.length; i += 4) {
+    const R = img[i];
+    const G = img[i + 1];
+    const B = img[i + 2];
+
+    const brightness = 0.299 * R + 0.587 * G + 0.114 * B;
+
+    // ✅ ONLY sample dark / ink pixels
+    if (brightness < 160) {
+      r += R;
+      g += G;
+      b += B;
       n++;
     }
   }
 
-  return n === 0 ? null : {
-    r: r/n,
-    g: g/n,
-    b: b/n
+  if (n === 0) return null;
+
+  return {
+    r: r / n,
+    g: g / n,
+    b: b / n
   };
 }
+
 
 /* -----------------------------------------------------
    STEP C1 — Detect Legend Region (boxed OR unboxed)
@@ -1349,21 +1358,25 @@ function redrawBase() {
   }
   drawExclusionMask();
   
-    if (legendMatchMask) {
-      ctx.save();
-      ctx.fillStyle = "rgba(255, 215, 0, 0.75)"; // stronger yellow
-      const w = canvas.width;
-    
-      for (let i = 0; i < legendMatchMask.length; i++) {
-        if (legendMatchMask[i]) {
-          const x = i % w;
-          const y = (i / w) | 0;
-          ctx.fillRect(x, y, 1.5, 1.5); // slightly bigger pixels
-        }
+  if (
+    legendMatchMask &&
+    legendMatchMask.length === canvas.width * canvas.height
+  ) {
+    ctx.save();
+    ctx.fillStyle = "rgba(255, 215, 0, 0.75)";
+    const w = canvas.width;
+  
+    for (let i = 0; i < legendMatchMask.length; i++) {
+      if (legendMatchMask[i] === 1) {
+        const x = i % w;
+        const y = (i / w) | 0;
+        ctx.fillRect(x, y, 1.5, 1.5);
       }
-    
-      ctx.restore();
     }
+  
+    ctx.restore();
+  }
+
       
 
   // Draw legend selection rectangle (manual selection)
