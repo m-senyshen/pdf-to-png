@@ -2109,21 +2109,41 @@ document.getElementById("btn-extract-legend").onclick = () => {
 
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-  // Build reference mask strictly from the user's selection
-  const refMask = new Uint8Array(canvas.width * canvas.height);
+  // Build reference components ONLY from dark ink pixels inside selection
+  const w = canvas.width;
+  const h = canvas.height;
+  const img = ctx.getImageData(0, 0, w, h).data;
   
-  for (let y = Math.floor(legendSelection.y); y < legendSelection.y + legendSelection.h; y++) {
-    for (let x = Math.floor(legendSelection.x); x < legendSelection.x + legendSelection.w; x++) {
-      if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) continue;
-      refMask[y * canvas.width + x] = legendMatchMask[y * canvas.width + x];
+  const refMask = new Uint8Array(w * h);
+  
+  for (
+    let y = Math.floor(legendSelection.y);
+    y < legendSelection.y + legendSelection.h;
+    y++
+  ) {
+    for (
+      let x = Math.floor(legendSelection.x);
+      x < legendSelection.x + legendSelection.w;
+      x++
+    ) {
+      if (x < 0 || y < 0 || x >= w || y >= h) continue;
+  
+      const i = (y * w + x) * 4;
+      const r = img[i];
+      const g = img[i + 1];
+      const b = img[i + 2];
+  
+      const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+  
+      // ✅ ONLY dark pixels become reference shape
+      if (brightness < 160) {
+        refMask[y * w + x] = 1;
+      }
     }
   }
   
-  const refComponents = extractConnectedComponents(
-    refMask,
-    canvas.width,
-    canvas.height
-  );
+  const refComponents = extractConnectedComponents(refMask, w, h);
+
   
   if (!refComponents || refComponents.length === 0) {
     alert("Could not determine reference legend shape.");
