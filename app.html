@@ -2067,6 +2067,17 @@ document.getElementById("btn-extract-legend").onclick = () => {
     alert("No symbol detected inside legend selection.");
     return;
   }
+
+    // Pick the largest component as the reference shape
+    components.sort((a, b) => b.length - a.length);
+    referenceLegendComponent = components[0];
+    
+    console.log("Reference legend shape set:", referenceLegendComponent.length);
+
+    if (!components || components.length === 0) {
+    alert("No symbol detected inside legend selection.");
+    return;
+  }
   
   // Pick the largest component as the reference shape
   components.sort((a, b) => b.length - a.length);
