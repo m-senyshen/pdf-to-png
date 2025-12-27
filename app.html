@@ -1736,8 +1736,8 @@ function filterLegendComponentsByConvexity(components, w, referenceShape) {
     // Fill ratio: triangles vs rasterization noise
     if (Math.abs(s.fillRatio - ref.fillRatio) > 0.35) return;
     
-    // Compactness: keep symbols, reject long roads
-    if (s.compactness < ref.compactness * 0.65) return;
+    // Compactness guard — only reject EXTREMELY elongated things
+    if (s.compactness < 0.03) return;
 
 
     kept.push(comp);
