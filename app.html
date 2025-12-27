@@ -2127,9 +2127,10 @@ document.getElementById("btn-extract-legend").onclick = () => {
     })
   );
   
-  if (!referenceComponent) {
-    alert("Could not determine reference legend shape.");
-    return;
+  if (!referenceLegendComponent) {
+    console.warn(
+      "No clean reference shape found — falling back to color-only matching."
+    );
   }
 
   
