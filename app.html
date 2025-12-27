@@ -289,6 +289,37 @@ selectPdf.onclick = () => {
   fileInput.click();
 };
 
+/* ---------- PDF Loading ---------- */
+
+fileInput.onchange = async () => {
+  const f = fileInput.files[0];
+  if (!f) return;
+
+  statusEl.textContent = "Loading PDF…";
+  waterPixelPolys = [];
+  waterFeatures = [];
+  waterCount.textContent = "0";
+
+  const ab = await f.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({ scale: 2 });
+
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+
+  await page.render({ canvasContext: ctx, viewport }).promise;
+
+  detectMapBoundaryFromCanvas();
+
+  renderedImage = new Image();
+  renderedImage.src = canvas.toDataURL();
+  await renderedImage.decode();
+
+  statusEl.textContent = "PDF loaded.";
+  redrawBase();
+};
+
 
 
 function sampleLegendSignature(box) {
@@ -1306,7 +1337,6 @@ let nextFeatureId = 1;        // auto increment ID
   // ---------- LEGEND EXTRACTION (STEP B) ----------
 let legendMatchMask = null; // Uint8Array of matching pixels
 let legendSignature = null; // sampled RGB signature of selected legend item
-let referenceLegendComponent = null;
 
 
 
@@ -1547,33 +1577,7 @@ function detectMapBoundaryFromCanvas(){
   console.log("Final map interior boundary:", mapBoundary);
 }
 
-/* ---------- PDF Loading ---------- */
 
-fileInput.onchange=async()=>{
-  const f=fileInput.files[0];
-  if(!f) return;
-
-  statusEl.textContent="Loading PDF…";
-  waterPixelPolys=[]; waterFeatures=[]; waterCount.textContent="0";
-
-  const ab=await f.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
-  const page=await pdf.getPage(1);
-  const viewport=page.getViewport({scale:2});
-  canvas.width=viewport.width;
-  canvas.height=viewport.height;
-
-  await page.render({canvasContext:ctx,viewport}).promise;
-
-  detectMapBoundaryFromCanvas();
-
-  renderedImage=new Image();
-  renderedImage.src=canvas.toDataURL();
-  await renderedImage.decode();
-
-  statusEl.textContent="PDF loaded.";
-  redrawBase();
-};
 
 /* ---------- GCPs ---------- */
 btnGeoref.onclick=()=>{
