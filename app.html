@@ -2105,33 +2105,32 @@ document.getElementById("btn-extract-legend").onclick = () => {
 
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-  // Use the user's selection as the reference shape
-  const refMask = extractLegendMatchMask(legendSignature, 35);
+  // Build reference mask strictly from the user's selection
+  const refMask = new Uint8Array(canvas.width * canvas.height);
+  
+  for (let y = Math.floor(legendSelection.y); y < legendSelection.y + legendSelection.h; y++) {
+    for (let x = Math.floor(legendSelection.x); x < legendSelection.x + legendSelection.w; x++) {
+      if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) continue;
+      refMask[y * canvas.width + x] = legendMatchMask[y * canvas.width + x];
+    }
+  }
+  
   const refComponents = extractConnectedComponents(
     refMask,
     canvas.width,
     canvas.height
   );
   
-  // Choose component that overlaps the selection box
-  const referenceComponent = refComponents.find(comp =>
-    comp.some(i => {
-      const y = (i / canvas.width) | 0;
-      const x = i % canvas.width;
-      return (
-        x >= legendSelection.x &&
-        x <= legendSelection.x + legendSelection.w &&
-        y >= legendSelection.y &&
-        y <= legendSelection.y + legendSelection.h
-      );
-    })
-  );
-  
-  if (!referenceLegendComponent) {
-    console.warn(
-      "No clean reference shape found — falling back to color-only matching."
-    );
+  if (!refComponents || refComponents.length === 0) {
+    alert("Could not determine reference legend shape.");
+    return;
   }
+  
+  // ✅ Always pick the largest connected component inside selection
+  const referenceComponent = refComponents.sort((a, b) => b.length - a.length)[0];
+  
+  console.log("Reference legend shape pixels:", referenceComponent.length);
+
 
   
   const filteredComponents = filterLegendComponentsByConvexity(
