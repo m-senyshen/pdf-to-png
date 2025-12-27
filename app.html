@@ -1730,9 +1730,15 @@ function filterLegendComponentsByConvexity(components, w, referenceShape) {
     const areaRatio = Math.min(s.area, ref.area) / Math.max(s.area, ref.area);
     if (areaRatio < 0.25) return;
 
-    if (Math.abs(s.aspect - ref.aspect) > 0.6) return;
-    if (Math.abs(s.fillRatio - ref.fillRatio) > 0.25) return;
-    if (Math.abs(s.compactness - ref.compactness) > 0.35) return;
+    // Aspect ratio: triangles vary more
+    if (Math.abs(s.aspect - ref.aspect) > 1.0) return;
+    
+    // Fill ratio: triangles vs rasterization noise
+    if (Math.abs(s.fillRatio - ref.fillRatio) > 0.35) return;
+    
+    // Compactness: keep symbols, reject long roads
+    if (s.compactness < ref.compactness * 0.65) return;
+
 
     kept.push(comp);
   });
