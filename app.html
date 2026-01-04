@@ -2068,122 +2068,95 @@ btnExport.onclick=()=>{
   URL.revokeObjectURL(url);
 };
   
-document.getElementById("btn-extract-legend").onclick = () => {
-  if (!legendSelection) {
-    alert("Please select a legend item first.");
-    return;
-  }
+const btnExtractLegend = document.getElementById("btn-extract-legend");
+console.log("btn-extract-legend found?", !!btnExtractLegend);
 
-  const signature = sampleLegendSignature(legendSelection);
-  if (!signature) {
-    alert("Could not sample legend item.");
-    return;
-  }
+if (btnExtractLegend) {
+  btnExtractLegend.addEventListener("click", () => {
+    console.log("✅ Extract Selected Legend Item clicked");
 
-  legendSignature = signature;
-  console.log("Legend signature:", legendSignature);
+    if (!legendSelection) {
+      alert("Please select a legend item first.");
+      return;
+    }
 
-  legendMatchMask = extractLegendMatchMask(legendSignature, 35);
+    const signature = sampleLegendSignature(legendSelection);
+    if (!signature) {
+      alert("Could not sample legend item.");
+      return;
+    }
 
-  const components = extractConnectedComponents(
-    legendMatchMask,
-    canvas.width,
-    canvas.height
+    legendSignature = signature;
+    console.log("Legend signature:", legendSignature);
+
+    // 1) color match across map interior
+    legendMatchMask = extractLegendMatchMask(legendSignature, 35);
+
+    // 2) connected components from that match mask
+    const components = extractConnectedComponents(
+      legendMatchMask,
+      canvas.width,
+      canvas.height
     );
-    if (!components || components.length === 0) {
-    alert("No symbol detected inside legend selection.");
-    return;
-  }
-
-    // Pick the largest component as the reference shape
-    components.sort((a, b) => b.length - a.length);
-    referenceLegendComponent = components[0];
-    
-    console.log("Reference legend shape set:", referenceLegendComponent.length);
 
     if (!components || components.length === 0) {
-    alert("No symbol detected inside legend selection.");
-    return;
-  }
-  
-  // Pick the largest component as the reference shape
-  components.sort((a, b) => b.length - a.length);
-  referenceLegendComponent = components[0];
-  
-  console.log("Reference legend shape set:", referenceLegendComponent.length);
+      alert("No matching components found in the map area.");
+      return;
+    }
 
+    // 3) Build a reference-shape mask ONLY inside the user selection (dark pixels)
+    const w = canvas.width;
+    const h = canvas.height;
+    const img = ctx.getImageData(0, 0, w, h).data;
+    const refMask = new Uint8Array(w * h);
 
-  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const x0 = Math.max(0, Math.floor(legendSelection.x));
+    const y0 = Math.max(0, Math.floor(legendSelection.y));
+    const x1 = Math.min(w, Math.floor(legendSelection.x + legendSelection.w));
+    const y1 = Math.min(h, Math.floor(legendSelection.y + legendSelection.h));
 
-  // Build reference components ONLY from dark ink pixels inside selection
-  const w = canvas.width;
-  const h = canvas.height;
-  const img = ctx.getImageData(0, 0, w, h).data;
-  
-  const refMask = new Uint8Array(w * h);
-  
-  for (
-    let y = Math.floor(legendSelection.y);
-    y < legendSelection.y + legendSelection.h;
-    y++
-  ) {
-    for (
-      let x = Math.floor(legendSelection.x);
-      x < legendSelection.x + legendSelection.w;
-      x++
-    ) {
-      if (x < 0 || y < 0 || x >= w || y >= h) continue;
-  
-      const i = (y * w + x) * 4;
-      const r = img[i];
-      const g = img[i + 1];
-      const b = img[i + 2];
-  
-      const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-  
-      // ✅ ONLY dark pixels become reference shape
-      if (brightness < 160) {
-        refMask[y * w + x] = 1;
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const i = (y * w + x) * 4;
+        const r = img[i], g = img[i + 1], b = img[i + 2];
+        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        // ONLY dark pixels define the symbol shape
+        if (brightness < 160) refMask[y * w + x] = 1;
       }
     }
-  }
-  
-  const refComponents = extractConnectedComponents(refMask, w, h);
 
-  
-  if (!refComponents || refComponents.length === 0) {
-    alert("Could not determine reference legend shape.");
-    return;
-  }
-  
-  // ✅ Always pick the largest connected component inside selection
-  const referenceComponent = refComponents.sort((a, b) => b.length - a.length)[0];
-  
-  console.log("Reference legend shape pixels:", referenceComponent.length);
+    const refComponents = extractConnectedComponents(refMask, w, h);
+    if (!refComponents || refComponents.length === 0) {
+      alert("Could not determine reference legend shape.");
+      return;
+    }
 
+    const referenceComponent = refComponents.sort((a, b) => b.length - a.length)[0];
+    console.log("Reference legend shape pixels:", referenceComponent.length);
 
-  
-  const filteredComponents = filterLegendComponentsByConvexity(
-    components,
-    canvas.width,
-    referenceComponent
-  );
+    // 4) Shape-filter the map components using your convexity-ish descriptor
+    const filteredComponents = filterLegendComponentsByConvexity(
+      components,
+      canvas.width,
+      referenceComponent
+    );
 
-  // Rebuild mask
-  legendMatchMask = new Uint8Array(canvas.width * canvas.height);
-  filteredComponents.forEach(comp => {
-    comp.forEach(i => legendMatchMask[i] = 1);
+    // 5) rebuild the mask from filtered components
+    legendMatchMask = new Uint8Array(canvas.width * canvas.height);
+    filteredComponents.forEach(comp => comp.forEach(i => (legendMatchMask[i] = 1)));
+
+    console.log(
+      "Legend components:",
+      components.length,
+      "→ kept:",
+      filteredComponents.length
+    );
+
+    redrawBase();
   });
+}
 
-  console.log(
-    "Legend components:",
-    components.length,
-    "→ kept:",
-    filteredComponents.length
-  );
-
-  redrawBase();
-};
 
 
 </script>
