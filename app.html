@@ -478,10 +478,10 @@ function detectLegendRegion(ocrBoxes, mapBoundary, w, h) {
     };
 }
 
-
-/* -----------------------------------------------------
-   OCR — Extract text bounding boxes
------------------------------------------------------ */
+/* === PAUSED: OCR + LEGEND EXTRACTION ========
+//
+//  OCR — Extract text bounding boxes
+//
 async function extractTextBoxes() {
 
     statusEl.textContent = "Detecting text… (OCR)";
@@ -525,9 +525,9 @@ async function extractTextBoxes() {
     return boxes;
 }
 
-/* -----------------------------------------------------
-   Compute symbol color/shape signature
------------------------------------------------------ */
+// -----------------------------------------------------
+//   Compute symbol color/shape signature
+//----------------------------------------------------- 
 function computeSymbolSignature(box, imageData, w, h) {
     const x = box.x;
     const y = box.y;
@@ -870,9 +870,9 @@ function isValidLegendRow(entry) {
   return true;
 }
 
-/* -----------------------------------------------------
-   Merge OCR word boxes into row-level text boxes
------------------------------------------------------ */
+// -----------------------------------------------------
+//   Merge OCR word boxes into row-level text boxes
+//----------------------------------------------------- 
 function mergeWordsIntoRows(ocrBoxes) {
   if (!ocrBoxes || ocrBoxes.length === 0) return [];
 
@@ -955,9 +955,9 @@ function isInkPixel(r, g, b, x, y) {
     return isDarkInk || isColoredStrong || pastelBlue || borderHit;
 }
   
-/* -----------------------------------------------------
-   Detect legend symbols located near OCR text labels
------------------------------------------------------ */
+// -----------------------------------------------------
+//   Detect legend symbols located near OCR text labels
+//----------------------------------------------------- 
 function detectLegendSymbols(ocrResults, image, w, h) {
 
   legendEntries = [];
@@ -1075,9 +1075,9 @@ function filterRowsByVerticalRhythm(rows) {
     );
   });
 }
-/* -----------------------------------------------------
-   Tighten legend row text around its symbol
------------------------------------------------------ */
+// -----------------------------------------------------
+//   Tighten legend row text around its symbol
+//----------------------------------------------------- 
 function cropRowToSymbol(row, symbol, maxTextWidth = 220) {
   // Determine reading direction
   const symbolCenterX = symbol.x + symbol.width / 2;
@@ -1109,9 +1109,9 @@ function cropRowToSymbol(row, symbol, maxTextWidth = 220) {
   };
 }
 
-/* -----------------------------------------------------
-   STEP C — Geometric classification of legend symbols
------------------------------------------------------ */
+// -----------------------------------------------------
+//   STEP C — Geometric classification of legend symbols
+//----------------------------------------------------- 
   
 function classifyLegendEntries(entries, image, w, h) {
 
@@ -1153,9 +1153,9 @@ function classifyLegendEntries(entries, image, w, h) {
 </script>
 
 <script>
-/* ------------------------------------------------------------------------------------------------
 
------------------------------------------------------ */
+
+
 /* ---------- Instructions Toggle ---------- */
 const instrToggle = document.getElementById("instructions-toggle");
 const instrContent = document.getElementById("instructions-content");
@@ -1220,80 +1220,9 @@ function fitPoly2(gcps){
 
 
 
-btnOCRTest.onclick = async () => {
-  if (!renderedImage) {
-    alert("Load a PDF first.");
-    return;
-  }
-
-  const boxes = await extractTextBoxes();
-  const mergedRows = mergeWordsIntoRows(boxes);
-  ocrBoxesGlobal = mergedRows;
-
-
-  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-  // 1️⃣ Detect symbols near OCR text
-  detectLegendSymbols(
-    mergedRows,
-    imgData.data,
-    canvas.width,
-    canvas.height
-  );
-
-  // 2️⃣ Filter to VALID legend rows only
-  let legendRows = legendEntries.filter(isValidLegendRow);
-
-  console.log("🧪 Valid legend rows:", legendRows.length);
-
-  if (legendRows.length < 3) {
-    console.warn("Legend rejected — not enough valid legend rows");
-    legendRegion = null;
-    redrawBase();
-    return;
-  }
-
-  // 3️⃣ Sort top → bottom
-  legendRows.sort((a, b) => a.textBox.y - b.textBox.y);
-
-  // 4️⃣ Compute vertical rhythm
-  const gaps = [];
-  for (let i = 1; i < legendRows.length; i++) {
-    gaps.push(
-      legendRows[i].textBox.y -
-      legendRows[i - 1].textBox.y
-    );
-  }
-
-  gaps.sort((a, b) => a - b);
-  const medianGap = gaps[Math.floor(gaps.length / 2)] || 20;
-
-  // 5️⃣ Keep rows that follow the rhythm
-  const rhythmicRows = legendRows.filter((row, i) => {
-    if (i === 0 || i === legendRows.length - 1) return true;
-    const dy = row.textBox.y - legendRows[i - 1].textBox.y;
-    return Math.abs(dy - medianGap) < medianGap * 0.9;
-  });
-
-  if (rhythmicRows.length < 3) {
-    console.warn("Legend rejected — rows not rhythmic");
-    legendRegion = null;
-    redrawBase();
-    return;
-  }
-
-  // 6️⃣ Build TIGHT bounding box from rows only
-  const xs = [], ys = [], xe = [], ye = [];
-
-  rhythmicRows.forEach(e => {
-    const s = e.symbolBox;
-    const t = e.textBox;
-
-    xs.push(s.x, t.x);
-    ys.push(s.y, t.y);
-    xe.push(s.x + s.width, t.x + t.width);
-    ye.push(s.y + s.height, t.y + t.height);
-  });
+btnOCRTest.onclick = () => {
+  alert("Legend extraction is paused in this branch.");
+};
 
   const topY = Math.min(...ys);
   const bottomY = Math.max(...ye);
@@ -1383,29 +1312,23 @@ function drawWaterOverlay(){
 function redrawBase() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // Draw the PDF image
   if (renderedImage) {
     ctx.drawImage(renderedImage, 0, 0, canvas.width, canvas.height);
   }
+
+  // Darken everything outside the detected map interior
   drawExclusionMask();
-  
-  if (
-    legendMatchMask &&
-    legendMatchMask.length === canvas.width * canvas.height
-  ) {
-    ctx.save();
-    ctx.fillStyle = "rgba(255, 215, 0, 0.75)";
-    const w = canvas.width;
-  
-    for (let i = 0; i < legendMatchMask.length; i++) {
-      if (legendMatchMask[i] === 1) {
-        const x = i % w;
-        const y = (i / w) | 0;
-        ctx.fillRect(x, y, 1.5, 1.5);
-      }
-    }
-  
-    ctx.restore();
-  }
+
+  // Draw GCP markers
+  gcps.forEach(g => {
+    ctx.fillStyle = "rgba(0, 120, 255, 0.9)";
+    ctx.beginPath();
+    ctx.arc(g.x, g.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
 
       
 
