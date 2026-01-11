@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Map Extract — App</title>
+<title>Map Extract — Georeferencing</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
   :root { --accent:#0077ff; }
@@ -13,58 +13,40 @@
     color:#222;
     line-height:1.6;
   }
-  nav {
+
+  .header {
     position: sticky;
     top: 0;
-    z-index: 999;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid #eee;
-    padding: 14px 32px;
+    background: white;
+    border-bottom: 1px solid #ddd;
+    padding: 12px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    z-index: 10;
   }
-  nav h1 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-    color: #222;
+
+  .logo {
+    font-size: 22px;
+    font-weight: bold;
+    color: #000;
   }
-.header {
-  position: sticky;
-  top: 0;
-  background: white;
-  border-bottom: 1px solid #ddd;
-  padding: 12px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  z-index: 10;
-}
 
-.logo {
-  font-size: 22px;
-  font-weight: bold;
-  color: #000;
-}
+  .logo a {
+    text-decoration: none;
+    color: #000;
+  }
 
-.logo a {
-  text-decoration: none;
-  color: #000;
-}
+  .nav a {
+    margin-left: 20px;
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+  }
 
-.nav a {
-  margin-left: 20px;
-  text-decoration: none;
-  color: #333;
-  font-weight: bold;
-}
-
-.nav a:hover {
-  color: #0077ff;
-}
+  .nav a:hover {
+    color: #0077ff;
+  }
 
   .container {
     max-width:1200px;
@@ -74,23 +56,27 @@
     padding:18px;
     box-shadow:0 6px 30px rgba(10,20,40,0.06);
   }
+
   header {
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:12px;
   }
+
   header h2 {
     margin:0;
     font-size:20px;
     color:#06345a;
   }
+
   .controls {
     display:flex;
     gap:8px;
     align-items:center;
     flex-wrap:wrap;
   }
+
   button {
     background:var(--accent);
     color:#fff;
@@ -100,6 +86,7 @@
     cursor:pointer;
     font-weight:600;
   }
+
   .muted-btn { background:#eef4ff; color:#06345a; border:1px solid #dbeafe; }
   .secondary { background:#f2f6fb; color:#06345a; border:1px solid #dbeafe; }
   .danger { background:#ffe9ec; color:#7a1220; border:1px solid #e9b5be; }
@@ -110,6 +97,7 @@
     gap:18px;
     margin-top:16px;
   }
+
   #left {
     position: relative;
     z-index: 5;
@@ -119,7 +107,6 @@
     position: relative;
     z-index: 1;
   }
-
 
   .upload-box {
     border:2px dashed var(--accent);
@@ -131,6 +118,8 @@
     margin:0 auto 8px;
     position: relative;
   }
+
+  /* Keep input programmatically clickable; also allow direct click on box if desired */
   #file-input {
     position: absolute;
     inset: 0;
@@ -152,27 +141,14 @@
   td,th { padding:6px; border-bottom:1px solid #f0f2f6; font-size:13px; }
   .small { font-size:13px; color:#666; }
   .status { margin-top:8px; color:#333; }
+
   input[type="number"] {
     width:110px;
     padding:6px;
     border-radius:6px;
     border:1px solid #dbe3ee;
   }
-
-    .visually-hidden {
-    position:absolute;
-    width:1px;
-    height:1px;
-    padding:0;
-    margin:-1px;
-    overflow:hidden;
-    clip:rect(0,0,0,0);
-    white-space:nowrap;
-    border:0;
-  }
-
 </style>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -186,20 +162,13 @@
   </div>
 </div>
 
-
-
 <div class="container">
   <header>
-    <h2>Water Extraction & Georeferencing</h2>
+    <h2>Georeferencing</h2>
     <div class="controls">
       <button id="btn-georef" class="muted-btn">Georeference Mode</button>
       <button id="btn-clear-gcps" class="secondary">Clear GCPs</button>
       <button id="btn-compute" class="secondary">Compute Transform</button>
-      <button id="btn-export-geojson" class="secondary">Export Water GeoJSON</button>
-      <button id="btn-ocr-test" class="secondary">Run OCR Test</button>
-      <button id="btn-legend-mode" class="secondary">
-  Select Legend Item
-</button>
     </div>
   </header>
 
@@ -207,7 +176,7 @@
     <section id="left">
       <div class="upload-box">
         <label for="file-input" id="select-pdf" class="file-btn">Select PDF</label>
-        <input type="file" id="file-input" accept="application/pdf" style="display:none" />
+        <input type="file" id="file-input" accept="application/pdf" />
       </div>
 
       <div class="status" id="status">No map uploaded</div>
@@ -222,17 +191,12 @@
 
         <div id="instructions-content" style="margin-top:10px; font-size:13px; line-height:1.45;">
           <p><strong>1️⃣ Upload your map</strong><br>Click “Select PDF”.</p>
-          <p><strong>2️⃣ Georeference</strong><br>Toggle Georeference Mode, click points on the map, and enter lon/lat.</p>
-          <p><strong>3️⃣ Compute transform</strong><br>Choose affine or polynomial, then click Compute Transform.</p>
-          <p><strong>4️⃣ Extract water</strong><br>Click Extract Water to detect water bodies inside the map area.</p>
-          <hr style="margin:20px 0"/>
-          
-          <h3>Legend Extraction</h3>
-          <button id="btn-extract-legend" class="secondary">
-            Extract Selected Legend Item
-          </button>
-
-          <p><strong>5️⃣ Export</strong><br>Export water polygons as GeoJSON for GIS tools.</p>
+          <p><strong>2️⃣ Add GCPs</strong><br>Toggle Georeference Mode, then click points on the map.</p>
+          <p><strong>3️⃣ Enter lon/lat</strong><br>Fill in longitude/latitude for each GCP in the table.</p>
+          <p><strong>4️⃣ Compute transform</strong><br>Select affine or polynomial, then click Compute Transform.</p>
+          <p class="small" style="margin-top:10px;">
+            Tip: The darkened area is ignored; only clicks inside the map interior are meaningful for accurate control points.
+          </p>
         </div>
       </div>
 
@@ -259,24 +223,9 @@
 
       <hr style="margin:20px 0"/>
 
-      <div>
-        <h3>Water Extraction</h3>
-        <button id="btn-extract-water" class="secondary" style="margin-bottom:6px;">Extract Water</button>
-        <button id="btn-clear-water" class="secondary">Clear Water</button>
-
-        <div style="margin-top:12px;">
-          <label>
-            <input type="checkbox" id="chk-water-overlay" checked />
-            Show Water Overlay
-          </label>
-        </div>
-
-        <div class="small" style="margin-top:8px;">
-          Water features detected:
-          <span id="water-count" style="font-weight:bold;">0</span>
-        </div>
+      <div class="small">
+        <div><strong>Build:</strong> georeferencing-only</div>
       </div>
-
     </aside>
   </main>
 </div>
@@ -287,40 +236,51 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = "./libs/pdf.worker.js";
 
 /* ---------- State ---------- */
-const canvas=document.getElementById("pdf-canvas");
+const canvas = document.getElementById("pdf-canvas");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
-const fileInput=document.getElementById("file-input");
-const selectPdf=document.getElementById("select-pdf");
-const btnGeoref=document.getElementById("btn-georef");
-const btnClear=document.getElementById("btn-clear-gcps");
-const btnCompute=document.getElementById("btn-compute");
-const btnExtract=document.getElementById("btn-extract-water");
-const btnClearWater=document.getElementById("btn-clear-water");
-const btnExport=document.getElementById("btn-export-geojson");
-const chkOverlay=document.getElementById("chk-water-overlay");
-const waterCount=document.getElementById("water-count");
-const statusEl=document.getElementById("status");
-const gcpTable=document.querySelector("#gcp-table tbody");
-const rmsEl=document.getElementById("rms");
-const modelSelect=document.getElementById("model-select");
 
-const btnOCRTest = document.getElementById("btn-ocr-test");
+const fileInput = document.getElementById("file-input");
+const selectPdf = document.getElementById("select-pdf");
+
+const btnGeoref = document.getElementById("btn-georef");
+const btnClear = document.getElementById("btn-clear-gcps");
+const btnCompute = document.getElementById("btn-compute");
+
+const statusEl = document.getElementById("status");
+const gcpTable = document.querySelector("#gcp-table tbody");
+const rmsEl = document.getElementById("rms");
+const modelSelect = document.getElementById("model-select");
+
+/* ---------- Instructions Toggle ---------- */
+const instrToggle = document.getElementById("instructions-toggle");
+const instrContent = document.getElementById("instructions-content");
+instrToggle.onclick = () => {
+  const hidden = instrContent.style.display === "none";
+  instrContent.style.display = hidden ? "block" : "none";
+  instrToggle.textContent = hidden ? "📘 Instructions ▼" : "📘 Instructions ▲";
+};
 
 selectPdf.onclick = () => {
-  console.log("Select PDF clicked");
   fileInput.click();
 };
 
-/* ---------- PDF Loading ---------- */
+/* ---------- App Variables ---------- */
+let renderedImage = null;
+let georefMode = false;
+let gcps = [];
+let lastComputed = null;
+let mapBoundary = null; // {left,right,top,bottom}
 
+/* ---------- PDF Loading ---------- */
 fileInput.onchange = async () => {
   const f = fileInput.files[0];
   if (!f) return;
 
   statusEl.textContent = "Loading PDF…";
-  waterPixelPolys = [];
-  waterFeatures = [];
-  waterCount.textContent = "0";
+  gcps = [];
+  lastComputed = null;
+  rmsEl.textContent = "—";
+  refreshTable();
 
   const ab = await f.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
@@ -342,855 +302,142 @@ fileInput.onchange = async () => {
   redrawBase();
 };
 
+/* ---------- Drawing ---------- */
+function drawExclusionMask() {
+  if (!mapBoundary) return;
+  const {left, right, top, bottom} = mapBoundary;
 
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillRect(0, 0, canvas.width, top);
+  ctx.fillRect(0, bottom, canvas.width, canvas.height - bottom);
+  ctx.fillRect(0, top, left, bottom - top);
+  ctx.fillRect(right, top, canvas.width - right, bottom - top);
+  ctx.restore();
+}
 
-function sampleLegendSignature(box) {
-  const img = ctx.getImageData(
-    Math.floor(box.x),
-    Math.floor(box.y),
-    Math.floor(box.w),
-    Math.floor(box.h)
-  ).data;
+function redrawBase() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  let r = 0, g = 0, b = 0, n = 0;
-
-  for (let i = 0; i < img.length; i += 4) {
-    const R = img[i];
-    const G = img[i + 1];
-    const B = img[i + 2];
-
-    const brightness = 0.299 * R + 0.587 * G + 0.114 * B;
-
-    // ✅ ONLY sample dark / ink pixels
-    if (brightness < 160) {
-      r += R;
-      g += G;
-      b += B;
-      n++;
-    }
+  // Draw the PDF image
+  if (renderedImage) {
+    ctx.drawImage(renderedImage, 0, 0, canvas.width, canvas.height);
   }
 
-  if (n === 0) return null;
+  // Darken everything outside the detected map interior
+  drawExclusionMask();
 
-  return {
-    r: r / n,
-    g: g / n,
-    b: b / n
-  };
-}
-
-
-/* -----------------------------------------------------
-   STEP C1 — Detect Legend Region (boxed OR unboxed)
------------------------------------------------------ */
-/* -----------------------------------------------------
-   STEP C2A — Improved Legend Region Detection
-   Using clustering of OCR text to isolate true legend.
------------------------------------------------------ */
-function detectLegendRegion(ocrBoxes, mapBoundary, w, h) {
-
-    // 1. Keep only OCR outside the map interior
-    let outside = ocrBoxes.filter(b => {
-        const cx = b.x + b.w/2;
-        const cy = b.y + b.h/2;
-        if (!mapBoundary) return true;
-        return !(
-            cx > mapBoundary.left &&
-            cx < mapBoundary.right &&
-            cy > mapBoundary.top &&
-            cy < mapBoundary.bottom
-        );
-    });
-
-    if (outside.length === 0) return null;
-
-    // 2. Compute mean text height to detect large titles
-    const meanTextHeight = outside.reduce((s,b)=>s+b.h,0) / outside.length;
-
-    // 3. Remove oversized text (titles / metadata headers)
-    outside = outside.filter(b => b.h < meanTextHeight * 1.8);
-
-    if (outside.length === 0) return null;
-
-    // 4. Cluster OCR boxes spatially (DBSCAN-like)
-    const clusters = [];
-    const visited = new Set();
-
-    function dist(a, b) {
-        const ax = a.x + a.w/2, ay = a.y + a.h/2;
-        const bx = b.x + b.w/2, by = b.y + b.h/2;
-        return Math.hypot(ax - bx, ay - by);
-    }
-
-    const radius = 120;  // distance threshold
-    const minClusterSize = 3;
-
-    for (let i = 0; i < outside.length; i++) {
-        if (visited.has(i)) continue;
-
-        const cluster = [];
-        const stack = [i];
-        visited.add(i);
-
-        while (stack.length) {
-            const idx = stack.pop();
-            cluster.push(outside[idx]);
-
-            for (let j = 0; j < outside.length; j++) {
-                if (!visited.has(j) && dist(outside[idx], outside[j]) < radius) {
-                    visited.add(j);
-                    stack.push(j);
-                }
-            }
-        }
-
-        if (cluster.length >= minClusterSize)
-            clusters.push(cluster);
-    }
-
-    if (clusters.length === 0) return null;
-
-    // 5. Select cluster most likely to be the legend
-    let bestCluster = null;
-    let bestScore = -Infinity;
-
-    for (const cluster of clusters) {
-
-        const count = cluster.length;
-
-        // Compute bounding box
-        const xs = cluster.map(b => b.x);
-        const ys = cluster.map(b => b.y);
-        const xe = cluster.map(b => b.x + b.w);
-        const ye = cluster.map(b => b.y + b.h);
-
-        const width = Math.max(...xe) - Math.min(...xs);
-        const height = Math.max(...ye) - Math.min(...ys);
-
-        const aspect = width / (height || 1);
-
-        // score: legend clusters tend to:
-        // - have several entries (count)
-        // - have moderate aspect ratio
-        // - be compact
-        const score =
-            count * 2 +
-            (aspect > 0.4 && aspect < 4 ? 4 : 0) +
-            (1 / (width * height + 1)) * 20000;
-
-        if (score > bestScore) {
-            bestScore = score;
-            bestCluster = cluster;
-        }
-    }
-
-    if (!bestCluster) return null;
-
-    // Compute final bounding box
-    const xs = bestCluster.map(b => b.x);
-    const ys = bestCluster.map(b => b.y);
-    const xe = bestCluster.map(b => b.x + b.w);
-    const ye = bestCluster.map(b => b.y + b.h);
-
-    return {
-        left: Math.max(0, Math.min(...xs) - 20),
-        top: Math.max(0, Math.min(...ys) - 20),
-        right: Math.min(w, Math.max(...xe) + 20),
-        bottom: Math.min(h, Math.max(...ye) + 20)
-    };
-}
-
-/* === PAUSED: OCR + LEGEND EXTRACTION ========
-//
-//  OCR — Extract text bounding boxes
-//
-async function extractTextBoxes() {
-
-    statusEl.textContent = "Detecting text… (OCR)";
-
-    const dataUrl = canvas.toDataURL("image/png");
-
-    const result = await Tesseract.recognize(dataUrl, 'eng', {
-        logger: m => console.log(m)
-    });
-
-    const boxes = result.data.words
-      .map(w => ({
-        x: w.bbox.x0,
-        y: w.bbox.y0,
-        w: w.bbox.x1 - w.bbox.x0,
-        h: w.bbox.y1 - w.bbox.y0,
-        text: (w.text || "").trim(),
-        conf: w.conf
-      }))
-      // 🚫 remove OCR "words" that are actually symbols
-      .filter(b => {
-        if (b.text.length === 0) return false;
-    
-        // single-character junk (▲ ■ ● | etc)
-        if (b.text.length === 1 && !/[A-Za-z0-9]/.test(b.text)) {
-          return false;
-        }
-    
-        // very small boxes are almost always symbols
-        if (b.w < 8 && b.h < 8) {
-          return false;
-        }
-    
-        return true;
-      });
-
-
-    console.log("OCR boxes:", boxes);
-    statusEl.textContent = "OCR complete.";
-
-    return boxes;
-}
-
-// -----------------------------------------------------
-//   Compute symbol color/shape signature
-//----------------------------------------------------- 
-function computeSymbolSignature(box, imageData, w, h) {
-    const x = box.x;
-    const y = box.y;
-    const width = box.width ?? box.w;
-    const height = box.height ?? box.h;
-
-    let total = 0;
-    let sumR = 0, sumG = 0, sumB = 0;
-    let darkPix = 0;
-
-    for (let py = y; py < y + height; py++) {
-        for (let px = x; px < x + width; px++) {
-            const idx = (py * w + px) * 4;
-            const r = imageData[idx];
-            const g = imageData[idx + 1];
-            const b = imageData[idx + 2];
-
-            total++;
-            sumR += r; sumG += g; sumB += b;
-
-            const brightness = 0.299*r + 0.587*g + 0.114*b;
-            if (brightness < 120) darkPix++;
-        }
-    }
-
-    return {
-        avgColor: [sumR / total, sumG / total, sumB / total],
-        darkness: darkPix / total,
-        sampleCount: total
-    };
-}
-function detectLegendRowCandidates(ocrBoxes, image, w, h) {
-  const candidates = [];
-
-  function detectCompactInkBox(x1, y1, x2, y2) {
-    let minX = Infinity, minY = Infinity;
-    let maxX = -Infinity, maxY = -Infinity;
-    let count = 0;
-
-    for (let y = y1; y < y2; y++) {
-      for (let x = x1; x < x2; x++) {
-        if (x < 0 || y < 0 || x >= w || y >= h) continue;
-        const i = (y * w + x) * 4;
-        const r = image[i], g = image[i+1], b = image[i+2];
-        const br = 0.299*r + 0.587*g + 0.114*b;
-
-        if (br < 200) {
-          count++;
-          minX = Math.min(minX, x);
-          minY = Math.min(minY, y);
-          maxX = Math.max(maxX, x);
-          maxY = Math.max(maxY, y);
-        }
-      }
-    }
-
-    if (count < 10) return null;
-
-    const bw = maxX - minX;
-    const bh = maxY - minY;
-
-    if (bw < 4 || bh < 4) return null;
-    if (bw > 40 || bh > 40) return null;
-
-    return { x: minX, y: minY, w: bw, h: bh };
-  }
-
-  for (const item of ocrBoxes) {
-    // Skip text inside map interior
-    if (mapBoundary) {
-      const cx = item.x + item.w / 2;
-      const cy = item.y + item.h / 2;
-      if (cx > mapBoundary.left && cx < mapBoundary.right &&
-          cy > mapBoundary.top  && cy < mapBoundary.bottom) {
-        continue;
-      }
-    }
-
-    const t = { x: item.x, y: item.y, w: item.w, h: item.h };
-    const midY = t.y + t.h / 2;
-    const midX = t.x + t.w / 2;
-
-    const padX = 32;
-    const padY = Math.round(t.h * 0.4);
-
-    const regions = [
-      { dir: "left",   x1: t.x - padX,     x2: t.x,             y1: midY - padY, y2: midY + padY },
-      { dir: "right",  x1: t.x + t.w,      x2: t.x + t.w + padX,y1: midY - padY, y2: midY + padY },
-      { dir: "top",    x1: midX - padY,    x2: midX + padY,     y1: t.y - padX,  y2: t.y },
-      { dir: "bottom", x1: midX - padY,    x2: midX + padY,     y1: t.y + t.h,   y2: t.y + t.h + padX }
-    ];
-
-    for (const r of regions) {
-      const box = detectCompactInkBox(
-        Math.floor(r.x1),
-        Math.floor(r.y1),
-        Math.ceil(r.x2),
-        Math.ceil(r.y2)
-      );
-
-      if (box) {
-        candidates.push({
-          textBox: t,
-          direction: r.dir,
-          symbolBox: box
-        });
-        break; // important: one candidate per text box
-      }
-    }
-  }
-
-  return candidates;
-}
-function detectLegendRegionFromLegendRows(rows, w, h) {
-  if (!rows || rows.length < 2) {
-    console.warn("Legend detection failed — not enough symbol rows");
-    return null;
-  }
-
-  const xs = [];
-  const ys = [];
-  const xe = [];
-  const ye = [];
-
-  rows.forEach(r => {
-    const t = r.textBox;
-    const s = r.symbolBox;
-
-    xs.push(t.x, s.x);
-    ys.push(t.y, s.y);
-    xe.push(t.x + t.w, s.x + s.w);
-    ye.push(t.y + t.h, s.y + s.h);
+  // Draw GCP markers
+  gcps.forEach(g => {
+    ctx.fillStyle = "rgba(0, 120, 255, 0.9)";
+    ctx.beginPath();
+    ctx.arc(g.x, g.y, 4, 0, Math.PI * 2);
+    ctx.fill();
   });
-
-  return {
-    left: Math.max(0, Math.min(...xs) - 20),
-    top: Math.max(0, Math.min(...ys) - 20),
-    right: Math.min(w, Math.max(...xe) + 20),
-    bottom: Math.min(h, Math.max(...ye) + 20)
-  };
 }
 
-function extractLegendMatchMask(signature, tolerance = 35) {
-  const w = canvas.width;
-  const h = canvas.height;
+/* ---------- Map Boundary Detection (Connected Components) ---------- */
+function detectMapBoundaryFromCanvas() {
+  const w = canvas.width, h = canvas.height;
+  if (!w || !h) return;
 
-  const imgData = ctx.getImageData(0, 0, w, h).data;
-  const mask = new Uint8Array(w * h);
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
 
-  let count = 0;
+  // 1) Build ink mask
+  const inkMask = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const di = i * 4;
+    const r = d[di], g = d[di + 1], b = d[di + 2];
+    const bright = 0.299 * r + 0.587 * g + 0.114 * b;
+    inkMask[i] = (bright < 245) ? 1 : 0;
+  }
+
+  // 2) Connected components
+  const visited = new Uint8Array(w * h);
+  let bestSize = 0, bestMinX = 0, bestMinY = 0, bestMaxX = 0, bestMaxY = 0;
+  const stack = [];
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
+      const idx = y * w + x;
+      if (!inkMask[idx] || visited[idx]) continue;
 
-      // Respect map interior only
-      if (mapBoundary) {
-        if (
-          x < mapBoundary.left ||
-          x >= mapBoundary.right ||
-          y < mapBoundary.top ||
-          y >= mapBoundary.bottom
-        ) {
-          continue;
-        }
-      }
+      let size = 0;
+      let minX = x, maxX = x, minY = y, maxY = y;
 
-      const i = (y * w + x) * 4;
-      const r = imgData[i];
-      const g = imgData[i + 1];
-      const b = imgData[i + 2];
+      stack.push(idx);
+      visited[idx] = 1;
 
-      const dr = Math.abs(r - signature.r);
-      const dg = Math.abs(g - signature.g);
-      const db = Math.abs(b - signature.b);
+      while (stack.length) {
+        const i = stack.pop();
+        const py = (i / w) | 0;
+        const px = i % w;
+        size++;
 
-      if (dr < tolerance && dg < tolerance && db < tolerance) {
-        mask[y * w + x] = 1;
-        count++;
-      }
-    }
-  }
+        if (px < minX) minX = px;
+        if (px > maxX) maxX = px;
+        if (py < minY) minY = py;
+        if (py > maxY) maxY = py;
 
-  console.log("Legend match pixel count:", count);
-  return mask;
-}
-
-
-function detectLegendRegionFromRows(rows, w, h) {
-
-    if (!rows || rows.length < 3) {
-        console.warn("Legend detection failed — not enough row candidates");
-        return null;
-    }
-
-    // Sort top to bottom
-    rows.sort((a, b) => a.textBox.y - b.textBox.y);
-    const meanHeight =
-      rows.reduce((s, r) => s + r.textBox.h, 0) / rows.length;
-    
-    rows = rows.filter(r =>
-      r.textBox.h < meanHeight * 1.6 &&
-      r.textBox.h > meanHeight * 0.5
-    );
-    
-    if (rows.length < 3) {
-      console.warn("Legend detection failed — rows filtered too aggressively");
-      return null;
-    }
-    
-    rows.sort((a, b) => a.textBox.y - b.textBox.y);
-    // Cluster rows by vertical spacing
-    const clusters = [];
-    let current = [rows[0]];
-
-    for (let i = 1; i < rows.length; i++) {
-        const prev = rows[i-1].textBox;
-        const curr = rows[i].textBox;
-
-        const dy = Math.abs(curr.y - prev.y);
-
-        if (dy < prev.h * 2.5) {
-            current.push(rows[i]);
-        } else {
-            if (current.length >= 3) clusters.push(current);
-            current = [rows[i]];
-        }
-    }
-    if (current.length >= 3) clusters.push(current);
-
-    if (clusters.length === 0) return null;
-    function verticalOverlap(a, b) {
-      const aTop = Math.min(...a.map(r => r.textBox.y));
-      const aBot = Math.max(...a.map(r => r.textBox.y + r.textBox.h));
-      const bTop = Math.min(...b.map(r => r.textBox.y));
-      const bBot = Math.max(...b.map(r => r.textBox.y + r.textBox.h));
-      return Math.min(aBot, bBot) - Math.max(aTop, bTop);
-    }
-    
-    let merged = [...clusters];
-    
-    for (let i = 0; i < merged.length; i++) {
-      for (let j = i + 1; j < merged.length; j++) {
-        if (verticalOverlap(merged[i], merged[j]) > 20) {
-          merged[i] = merged[i].concat(merged[j]);
-          merged.splice(j, 1);
-          j--;
-        }
-      }
-    }
-    // Choose cluster with most consistent layout
-    const best = clusters.sort((a,b)=>b.length-a.length)[0];
-
-    const xs = [];
-    const ys = [];
-    const xe = [];
-    const ye = [];
-
-    best.forEach(r => {
-        const t = r.textBox;
-        xs.push(t.x);
-        ys.push(t.y);
-        xe.push(t.x + t.w);
-        ye.push(t.y + t.h);
-    });
-
-    return {
-      left: Math.max(0, Math.min(...xs) - 60),
-      top: Math.max(0, Math.min(...ys) - 30),
-      right: Math.min(w, Math.max(...xe) + 60),
-      bottom: Math.min(h, Math.max(...ye) + 30)
-    };
-}
-function filterLegendRowsBySymbolConsistency(rows) {
-  const withSymbols = rows.filter(r => r.symbolBox);
-  if (withSymbols.length < 3) return [];
-
-  const areas = withSymbols.map(r => r.symbolBox.w * r.symbolBox.h);
-  areas.sort((a, b) => a - b);
-
-  const median = areas[Math.floor(areas.length / 2)];
-
-  return withSymbols.filter(r => {
-    const area = r.symbolBox.w * r.symbolBox.h;
-    return area > median * 0.5 && area < median * 2.0;
-  });
-}
-
-function isValidLegendRow(entry) {
-  if (!entry.symbolBox || !entry.textBox) return false;
-
-  const s = entry.symbolBox;
-  const t = entry.textBox;
-
-  // Absolute size guard (kills scale bars & arrows)
-  if (s.width > 40 || s.height > 40) return false;
-  if (s.width < 3 || s.height < 3) return false;
-  
-  // 1️⃣ Symbol must be SMALL (reject arrows, logos, scale bars)
-  if (s.width > t.height * 2.5) return false;
-  if (s.height > t.height * 2.5) return false;
-
-  // 2️⃣ Symbol must be horizontally adjacent to text
-  const dxLeft  = Math.abs((s.x + s.width) - t.x);
-  const dxRight = Math.abs((t.x + t.width) - s.x);
-  const minDx = Math.min(dxLeft, dxRight);
-
-  if (minDx > t.height * 3.5) return false;
-
-  // 3️⃣ Vertical alignment must overlap
-  const vOverlap =
-    Math.min(s.y + s.height, t.y + t.height) -
-    Math.max(s.y, t.y);
-
-  if (vOverlap < t.height * 0.4) return false;
-
-
-  // Symbol must be closest to this text, not another OCR label
-  const symbolCx = s.x + s.width / 2;
-  const symbolCy = s.y + s.height / 2;
-  
-  let minOtherDist = Infinity;
-  
-  for (const other of legendEntries) {
-    if (other === entry || !other.textBox) continue;
-  
-    const o = other.textBox;
-    const ox = o.x + o.width / 2;
-    const oy = o.y + o.height / 2;
-  
-    const d = Math.hypot(symbolCx - ox, symbolCy - oy);
-    minOtherDist = Math.min(minOtherDist, d);
-  }
-  
-  const ownCx = t.x + t.width / 2;
-  const ownCy = t.y + t.height / 2;
-  const ownDist = Math.hypot(symbolCx - ownCx, symbolCy - ownCy);
-  
-  if (ownDist > minOtherDist * 0.85) return false;
-
-  return true;
-}
-
-// -----------------------------------------------------
-//   Merge OCR word boxes into row-level text boxes
-//----------------------------------------------------- 
-function mergeWordsIntoRows(ocrBoxes) {
-  if (!ocrBoxes || ocrBoxes.length === 0) return [];
-
-  // sort top-to-bottom
-  const sorted = [...ocrBoxes].sort((a, b) => a.y - b.y);
-
-  const rows = [];
-  const yTolerance = 0.6; // fraction of text height
-
-  for (const box of sorted) {
-    let placed = false;
-
-    for (const row of rows) {
-      const dy = Math.abs(box.y - row.y);
-
-      if (dy < row.h * yTolerance) {
-        // merge into row
-        row.x = Math.min(row.x, box.x);
-        row.y = Math.min(row.y, box.y);
-        row.w = Math.max(row.x + row.w, box.x + box.w) - row.x;
-        row.h = Math.max(row.h, box.h);
-        row.text += " " + box.text;
-        placed = true;
-        break;
-      }
-    }
-
-    if (!placed) {
-      rows.push({
-        x: box.x,
-        y: box.y,
-        w: box.w,
-        h: box.h,
-        text: box.text
-      });
-    }
-  }
-
-  return rows;
-}
-
-function isInkPixel(r, g, b, x, y) {
-    const brightness = 0.299*r + 0.587*g + 0.114*b;
-
-    // --- Detect light / pastel blue water symbol ---
-    const pastelBlue =
-        b > g + 10 && b > r + 10 &&   // still blue-ish
-        brightness > 140 && brightness < 230; // not dark, not white
-
-    // --- Detect hollow road symbols (white interior + dark border) ---
-    const dark = brightness < 140;
-    let borderHit = false;
-
-    if (!dark) {
-        // Check neighbors for a "dark border" pattern
-        // (no bounds check needed; caller loop is inside bounds)
-        function darkAt(nx, ny) {
-              if (nx < 0 || ny < 0 || nx >= w || ny >= h) return false;
-              const i = ny * w + nx;
-              const di = i * 4;
-              const br = 0.299*image[di] + 0.587*image[di+1] + 0.114*image[di+2];
-              return br < 140;
-          }
-          
-          if (
-              darkAt(x, y - 1) ||
-              darkAt(x, y + 1) ||
-              darkAt(x + 1, y) ||
-              darkAt(x - 1, y)
-          ) {
-              borderHit = true;
-          }
-    }
-    const isDarkInk = dark;
-    const isColoredStrong =
-        (b > r + 35 && b > g + 35) ||     // strong blue
-        (r > g + 35 && r > b + 35) ||     // strong red
-        (g > r + 35 && g > b + 35);       // strong green
-
-    return isDarkInk || isColoredStrong || pastelBlue || borderHit;
-}
-  
-// -----------------------------------------------------
-//   Detect legend symbols located near OCR text labels
-//----------------------------------------------------- 
-function detectLegendSymbols(ocrResults, image, w, h) {
-
-  legendEntries = [];
-  legendSymbolBoxes = [];
-
-  for (const item of ocrResults) {
-
-    // Skip text inside map interior
-    if (mapBoundary) {
-      const cx = item.x + item.w / 2;
-      const cy = item.y + item.h / 2;
-      if (
-        cx > mapBoundary.left &&
-        cx < mapBoundary.right &&
-        cy > mapBoundary.top &&
-        cy < mapBoundary.bottom
-      ) continue;
-    }
-
-    // Reject long or non-legend text early
-    if (!item.text || item.text.length > 30) continue;
-
-    const t = {
-      x: item.x,
-      y: item.y,
-      width: item.w,
-      height: item.h
-    };
-
-    const midY = t.y + t.height / 2;
-    const vertPad = Math.round(t.height * 0.8);
-    const padX = Math.round(t.height * 2.5);
-
-    const searchRegions = [
-      { x1: t.x - padX, x2: t.x, y1: midY - vertPad, y2: midY + vertPad },
-      { x1: t.x + t.width, x2: t.x + t.width + padX, y1: midY - vertPad, y2: midY + vertPad }
-    ];
-
-    let symbol = null;
-
-    for (const r of searchRegions) {
-      let minX = Infinity, minY = Infinity;
-      let maxX = -Infinity, maxY = -Infinity;
-      let count = 0;
-
-      for (let y = Math.max(0, r.y1); y < Math.min(h, r.y2); y++) {
-        for (let x = Math.max(0, r.x1); x < Math.min(w, r.x2); x++) {
-          const idx = (y * w + x) * 4;
-          const br =
-            0.299 * image[idx] +
-            0.587 * image[idx + 1] +
-            0.114 * image[idx + 2];
-
-          if (br < 200) {
-            count++;
-            minX = Math.min(minX, x);
-            minY = Math.min(minY, y);
-            maxX = Math.max(maxX, x);
-            maxY = Math.max(maxY, y);
+        for (const [dx, dy] of dirs) {
+          const nx = px + dx, ny = py + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const ni = ny * w + nx;
+          if (inkMask[ni] && !visited[ni]) {
+            visited[ni] = 1;
+            stack.push(ni);
           }
         }
       }
 
-      if (count < 8) continue;
-
-      const width = maxX - minX;
-      const height = maxY - minY;
-
-      if (width < 3 || height < 3) continue;
-      if (width > t.height * 2.5) continue;
-      if (height > t.height * 2.5) continue;
-
-      symbol = { x: minX, y: minY, width, height };
-      break;
+      if (size > bestSize) {
+        bestSize = size;
+        bestMinX = minX; bestMaxX = maxX;
+        bestMinY = minY; bestMaxY = maxY;
+      }
     }
-
-    if (!symbol) continue;
-
-    legendEntries.push({
-      text: item.text,
-      textBox: t,
-      symbolBox: symbol,
-      type: "unknown"
-    });
-
-    legendSymbolBoxes.push(symbol);
   }
 
-  console.log("Legend symbol candidates:", legendEntries.length);
-}
-
-function filterRowsByVerticalRhythm(rows) {
-  if (rows.length < 4) return [];
-
-  rows.sort((a, b) => a.textBox.y - b.textBox.y);
-
-  const gaps = [];
-  for (let i = 1; i < rows.length; i++) {
-    gaps.push(rows[i].textBox.y - rows[i - 1].textBox.y);
+  if (bestSize === 0) {
+    console.warn("No ink regions found; using full image.");
+    mapBoundary = null;
+    return;
   }
 
-  gaps.sort((a, b) => a - b);
-  const medianGap = gaps[Math.floor(gaps.length / 2)];
+  // 3) Convert to bounding box
+  let left = bestMinX;
+  let right = bestMaxX + 1;
+  let top = bestMinY;
+  let bottom = bestMaxY + 1;
 
-  // Keep rows that align to the dominant rhythm
-  return rows.filter((r, i) => {
-    if (i === 0 || i === rows.length - 1) return true;
+  // 4) Shrink inward slightly
+  const shrinkX = Math.max(3, Math.round((right - left) * 0.005));
+  const shrinkY = Math.max(3, Math.round((bottom - top) * 0.005));
 
-    const prevGap = r.textBox.y - rows[i - 1].textBox.y;
-    const nextGap = rows[i + 1].textBox.y - r.textBox.y;
+  left = Math.min(Math.max(0, left + shrinkX), w);
+  right = Math.max(Math.min(w, right - shrinkX), 0);
+  top = Math.min(Math.max(0, top + shrinkY), h);
+  bottom = Math.max(Math.min(h, bottom - shrinkY), 0);
 
-    return (
-      Math.abs(prevGap - medianGap) < medianGap * 0.6 ||
-      Math.abs(nextGap - medianGap) < medianGap * 0.6
-    );
-  });
-}
-// -----------------------------------------------------
-//   Tighten legend row text around its symbol
-//----------------------------------------------------- 
-function cropRowToSymbol(row, symbol, maxTextWidth = 220) {
-  // Determine reading direction
-  const symbolCenterX = symbol.x + symbol.width / 2;
-  const rowCenterX = row.x + row.w / 2;
-
-  let newX = row.x;
-  let newW = row.w;
-
-  if (rowCenterX > symbolCenterX) {
-    // text is to the RIGHT of symbol
-    newX = symbol.x + symbol.width;
-    newW = Math.min(
-      maxTextWidth,
-      row.x + row.w - newX
-    );
-  } else {
-    // text is to the LEFT of symbol (rare, but handle it)
-    newX = Math.max(
-      row.x,
-      symbol.x - maxTextWidth
-    );
-    newW = symbol.x - newX;
+  if (left >= right || top >= bottom) {
+    console.warn("Boundary collapsed; using full image.");
+    mapBoundary = null;
+    return;
   }
 
-  return {
-    ...row,
-    x: newX,
-    w: Math.max(10, newW)
-  };
+  mapBoundary = { left, right, top, bottom };
+  console.log("Final map interior boundary:", mapBoundary);
 }
-
-// -----------------------------------------------------
-//   STEP C — Geometric classification of legend symbols
-//----------------------------------------------------- 
-  
-function classifyLegendEntries(entries, image, w, h) {
-
-    function classify(box) {
-        const { x, y, width, height } = box;
-
-        const aspect = width > height ? width/height : height/width;
-
-        let total = 0;
-        let ink = 0;
-
-        for (let py = y; py < y + height; py++) {
-            for (let px = x; px < x + width; px++) {
-                const idx = (py * w + px) * 4;
-                const r = image[idx], g = image[idx+1], b = image[idx+2];
-
-                total++;
-                const bright = 0.299*r + 0.587*g + 0.114*b;
-                if (bright < 200) ink++;
-            }
-        }
-
-        const fill = ink / total;
-
-        if (width < 25 && height < 25 && aspect < 1.8) return "point";
-        if (aspect > 3 && (width < 60 || height < 60)) return "line";
-        if (fill > 0.15) return "polygon";
-
-        return "unknown";
-    }
-
-    entries.forEach(e => {
-        if (!e.symbolBox) e.type = "unknown";
-        else e.type = classify(e.symbolBox);
-    });
-}
-
-
-</script>
-
-<script>
-
-
-
-/* ---------- Instructions Toggle ---------- */
-const instrToggle = document.getElementById("instructions-toggle");
-const instrContent = document.getElementById("instructions-content");
-instrToggle.onclick = () => {
-  const hidden = instrContent.style.display === "none";
-  instrContent.style.display = hidden ? "block" : "none";
-  instrToggle.textContent = hidden ? "📘 Instructions ▼" : "📘 Instructions ▲";
-};
 
 /* ---------- Math Helpers ---------- */
 function transpose(A){return A[0].map((_,i)=>A.map(r=>r[i]));}
-function matMul(A,B){const R=Array.from({length:A.length},()=>Array(B[0].length).fill(0));
-  for(let i=0;i<A.length;i++)for(let j=0;j<B[0].length;j++)for(let k=0;k<B.length;k++)R[i][j]+=A[i][k]*B[k][j];return R;}
+function matMul(A,B){
+  const R=Array.from({length:A.length},()=>Array(B[0].length).fill(0));
+  for(let i=0;i<A.length;i++)for(let j=0;j<B[0].length;j++)for(let k=0;k<B.length;k++)R[i][j]+=A[i][k]*B[k][j];
+  return R;
+}
 function matVecMul(A,v){return A.map(r=>r.reduce((s,x,i)=>s+x*v[i],0));}
 function solveLinear(A,b){
   A=A.map(r=>r.slice()); b=b.slice(); const n=A.length;
@@ -1240,370 +487,70 @@ function fitPoly2(gcps){
   return {mapFn,rms};
 }
 
-
-
-btnOCRTest.onclick = () => {
-  alert("Legend extraction is paused in this branch.");
-};
-
-  const topY = Math.min(...ys);
-  const bottomY = Math.max(...ye);
-  const height = bottomY - topY;
-
-  legendRegion = {
-    left: Math.max(0, Math.min(...xs) - 10),
-    top: Math.max(0, topY + height * 0.05),
-    right: Math.min(canvas.width, Math.max(...xe) + 10),
-    bottom: Math.min(canvas.height, bottomY - height * 0.05)
-  };
-
-  console.log("🟣 FINAL legend region:", legendRegion);
-  redrawBase();
-};
-
-
-
-  
-let renderedImage=null;
-let georefMode=false;
-let gcps=[];
-let lastComputed=null;
-let waterPixelPolys=[];
-let waterFeatures=[];
-let showWaterOverlay=true;
-let mapBoundary=null; // {left,right,top,bottom}
-let legendSelectMode = false;
-let legendSelection = null; // { x, y, w, h }
-let referenceLegendComponent = null;
-
-let isDraggingLegend = false;
-let legendStart = null;
-
-  
-// generic extracted geometry holders
-let extractedPolygons = [];   // polygon features from any extraction
-let extractedLines = [];      // line features (future)
-let extractedPoints = [];     // point features (future)
-let nextFeatureId = 1;        // auto increment ID
-  // ---------- LEGEND EXTRACTION (STEP B) ----------
-let legendMatchMask = null; // Uint8Array of matching pixels
-let legendSignature = null; // sampled RGB signature of selected legend item
-
-
-
-// ---------- LEGEND DETECTION STATE ----------
-let legendEntries = [];      // { text, textBox, symbolBox }
-let legendSymbolBoxes = [];  // boxes we draw on canvas
-let ocrBoxesGlobal = [];   // <-- store OCR rectangles so redrawBase() can show them
-let legendRegion = null;     // <-- bounding box of legend
-
-const btnLegendMode = document.getElementById("btn-legend-mode");
-
-btnLegendMode.onclick = () => {
-  legendSelectMode = !legendSelectMode;
-  btnLegendMode.className = legendSelectMode ? "danger" : "secondary";
-  btnLegendMode.textContent = legendSelectMode
-    ? "Exit Legend Selection"
-    : "Select Legend Item";
-};
-
-/* ---------- Drawing ---------- */
-function drawExclusionMask(){
-  if(!mapBoundary) return;
-  const {left,right,top,bottom}=mapBoundary;
-  ctx.save();
-  ctx.fillStyle="rgba(0,0,0,0.35)";
-  ctx.fillRect(0,0,canvas.width,top);
-  ctx.fillRect(0,bottom,canvas.width,canvas.height-bottom);
-  ctx.fillRect(0,top,left, bottom-top);
-  ctx.fillRect(right,top,canvas.width-right, bottom-top);
-  ctx.restore();
-}
-function drawWaterOverlay(){
-  if(!waterPixelPolys.length) return;
-  ctx.strokeStyle="rgba(0,120,255,0.9)";
-  ctx.fillStyle="rgba(0,120,255,0.18)";
-  ctx.lineWidth=2;
-  for(const poly of waterPixelPolys){
-    ctx.beginPath();
-    ctx.moveTo(poly[0][0], poly[0][1]);
-    for(let i=1;i<poly.length;i++) ctx.lineTo(poly[i][0], poly[i][1]);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-  }
-}
-function redrawBase() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Draw the PDF image
-  if (renderedImage) {
-    ctx.drawImage(renderedImage, 0, 0, canvas.width, canvas.height);
-  }
-
-  // Darken everything outside the detected map interior
-  drawExclusionMask();
-
-  // Draw GCP markers
-  gcps.forEach(g => {
-    ctx.fillStyle = "rgba(0, 120, 255, 0.9)";
-    ctx.beginPath();
-    ctx.arc(g.x, g.y, 4, 0, Math.PI * 2);
-    ctx.fill();
-  });
-}
-
-
-      
-
-  // Draw legend selection rectangle (manual selection)
-  if (legendSelection) {
-    ctx.save();
-    ctx.strokeStyle = "rgba(255, 165, 0, 0.9)";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(
-      legendSelection.x,
-      legendSelection.y,
-      legendSelection.w,
-      legendSelection.h
-    );
-    ctx.restore();
-  }
-
-  // Draw GCP points
-  gcps.forEach(g => {
-    ctx.fillStyle = "rgba(0,120,255,0.9)";
-    ctx.beginPath();
-    ctx.arc(g.x, g.y, 4, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  // Draw water overlay
-  if (showWaterOverlay) {
-    drawWaterOverlay();
-  }
-
-  ctx.save();
-
-  // Draw OCR boxes (red)
-  ctx.strokeStyle = "rgba(255,0,0,0.75)";
-  ctx.lineWidth = 2;
-  ocrBoxesGlobal.forEach(b => {
-    ctx.strokeRect(b.x, b.y, b.w, b.h);
-  });
-
-  // Draw detected legend region (purple dashed)
-  if (legendRegion) {
-    ctx.strokeStyle = "rgba(180, 0, 255, 0.6)";
-    ctx.lineWidth = 3;
-    ctx.setLineDash([8, 4]);
-    ctx.strokeRect(
-      legendRegion.left,
-      legendRegion.top,
-      legendRegion.right - legendRegion.left,
-      legendRegion.bottom - legendRegion.top
-    );
-    ctx.setLineDash([]);
-  }
-
-  // Draw legend symbol boxes (classified)
-  legendEntries.forEach(entry => {
-    const b = entry.symbolBox;
-    if (!b) return;
-
-    let color = "yellow";
-    if (entry.type === "point") color = "rgba(180, 0, 255, 0.9)";
-    else if (entry.type === "line") color = "rgba(0, 200, 0, 0.9)";
-    else if (entry.type === "polygon") color = "rgba(0, 150, 255, 0.9)";
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(b.x, b.y, b.width, b.height);
-  });
-
-  ctx.restore();
-
-  // Draw legend match overlay (yellow mask)
-
-}
-
-  
-/* ---------- NEW: Connected Component Map Detection ---------- */
-function detectMapBoundaryFromCanvas(){
-  const w = canvas.width, h = canvas.height;
-  if (!w || !h) return;
-
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-
-  // 1. Build ink mask
-  const inkMask = new Uint8Array(w * h);
-  for (let i = 0; i < w * h; i++) {
-    const di = i * 4;
-    const r = d[di], g = d[di+1], b = d[di+2];
-    const bright = 0.299*r + 0.587*g + 0.114*b;
-    inkMask[i] = (bright < 245) ? 1 : 0;
-  }
-
-  // 2. Connected components
-  const visited = new Uint8Array(w * h);
-  let bestSize = 0, bestMinX=0, bestMinY=0, bestMaxX=0, bestMaxY=0;
-  const stack = [];
-  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const idx = y * w + x;
-      if (!inkMask[idx] || visited[idx]) continue;
-
-      let size = 0;
-      let minX = x, maxX = x, minY = y, maxY = y;
-
-      stack.push(idx);
-      visited[idx] = 1;
-
-      while (stack.length) {
-        const i = stack.pop();
-        const py = (i / w) | 0;
-        const px = i % w;
-        size++;
-
-        if (px < minX) minX = px;
-        if (px > maxX) maxX = px;
-        if (py < minY) minY = py;
-        if (py > maxY) maxY = py;
-
-        for (const [dx,dy] of dirs) {
-          const nx = px + dx, ny = py + dy;
-          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-          const ni = ny * w + nx;
-          if (inkMask[ni] && !visited[ni]) {
-            visited[ni] = 1;
-            stack.push(ni);
-          }
-        }
-      }
-
-      if (size > bestSize) {
-        bestSize = size;
-        bestMinX = minX; bestMaxX = maxX;
-        bestMinY = minY; bestMaxY = maxY;
-      }
-    }
-  }
-
-  if (bestSize === 0) {
-    console.warn("No ink regions found; using full image.");
-    mapBoundary = null;
-    return;
-  }
-
-  // 3. Convert to bounding box
-  let left   = bestMinX;
-  let right  = bestMaxX + 1;
-  let top    = bestMinY;
-  let bottom = bestMaxY + 1;
-
-  // 4. Shrink inward slightly (Option 2)
-  const shrinkX = Math.max(3, Math.round((right-left) * 0.005));
-  const shrinkY = Math.max(3, Math.round((bottom-top) * 0.005));
-
-  left   = Math.min(Math.max(0, left   + shrinkX), w);
-  right  = Math.max(Math.min(w, right  - shrinkX), 0);
-  top    = Math.min(Math.max(0, top    + shrinkY), h);
-  bottom = Math.max(Math.min(h, bottom - shrinkY), 0);
-
-  if (left >= right || top >= bottom) {
-    console.warn("Boundary collapsed; using full image.");
-    mapBoundary = null;
-    return;
-  }
-
-  mapBoundary = {left, right, top, bottom};
-  console.log("Final map interior boundary:", mapBoundary);
-}
-
-
-
 /* ---------- GCPs ---------- */
-btnGeoref.onclick=()=>{
-  georefMode=!georefMode;
-  btnGeoref.textContent=georefMode?"Exit Georeference Mode":"Georeference Mode";
-  btnGeoref.className=georefMode?"danger":"muted-btn";
+btnGeoref.onclick = () => {
+  georefMode = !georefMode;
+  btnGeoref.textContent = georefMode ? "Exit Georeference Mode" : "Georeference Mode";
+  btnGeoref.className = georefMode ? "danger" : "muted-btn";
   redrawBase();
 };
 
-canvas.addEventListener("click",e=>{
-  if(!georefMode || !renderedImage) return;
-  const r=canvas.getBoundingClientRect();
-  const x=(e.clientX-r.left)*(canvas.width/r.width);
-  const y=(e.clientY-r.top)*(canvas.height/r.height);
-  gcps.push({x,y,X:null,Y:null});
-  refreshTable(); redrawBase();
-});
+btnClear.onclick = () => {
+  gcps = [];
+  lastComputed = null;
+  rmsEl.textContent = "—";
+  refreshTable();
+  redrawBase();
+  statusEl.textContent = "GCPs cleared.";
+};
 
-canvas.addEventListener("mousedown", e => {
-  if (!legendSelectMode) return;
-
-  const r = canvas.getBoundingClientRect();
-  const x = (e.clientX - r.left) * (canvas.width / r.width);
-  const y = (e.clientY - r.top) * (canvas.height / r.height);
-
-  isDraggingLegend = true;
-  legendStart = { x, y };
-  legendSelection = null;
-});
-
-canvas.addEventListener("mousemove", e => {
-  if (!isDraggingLegend || !legendSelectMode) return;
+canvas.addEventListener("click", e => {
+  if (!georefMode || !renderedImage) return;
 
   const r = canvas.getBoundingClientRect();
   const x = (e.clientX - r.left) * (canvas.width / r.width);
   const y = (e.clientY - r.top) * (canvas.height / r.height);
 
-  legendSelection = {
-    x: Math.min(legendStart.x, x),
-    y: Math.min(legendStart.y, y),
-    w: Math.abs(x - legendStart.x),
-    h: Math.abs(y - legendStart.y)
-  };
-
+  gcps.push({ x, y, X: null, Y: null });
+  refreshTable();
   redrawBase();
 });
 
-canvas.addEventListener("mouseup", () => {
-  if (!legendSelectMode) return;
-  isDraggingLegend = false;
-});
-
-  
 function refreshTable(){
-  gcpTable.innerHTML="";
-  gcps.forEach((g,i)=>{
-    const tr=document.createElement("tr");
+  gcpTable.innerHTML = "";
+  gcps.forEach((g, i) => {
+    const tr = document.createElement("tr");
 
-    const t1=document.createElement("td"); t1.textContent=g.x.toFixed(1);
-    const t2=document.createElement("td"); t2.textContent=g.y.toFixed(1);
+    const t1 = document.createElement("td"); t1.textContent = g.x.toFixed(1);
+    const t2 = document.createElement("td"); t2.textContent = g.y.toFixed(1);
 
-    const lonTD=document.createElement("td");
-    const lon=document.createElement("input");
-    lon.type="number"; lon.step="any"; lon.value=g.X ?? "";
-    lon.onchange=()=>g.X=parseFloat(lon.value);
+    const lonTD = document.createElement("td");
+    const lon = document.createElement("input");
+    lon.type="number"; lon.step="any"; lon.value = g.X ?? "";
+    lon.onchange = () => g.X = parseFloat(lon.value);
     lonTD.appendChild(lon);
 
-    const latTD=document.createElement("td");
-    const lat=document.createElement("input");
-    lat.type="number"; lat.step="any"; lat.value=g.Y ?? "";
-    lat.onchange=()=>g.Y=parseFloat(lat.value);
+    const latTD = document.createElement("td");
+    const lat = document.createElement("input");
+    lat.type="number"; lat.step="any"; lat.value = g.Y ?? "";
+    lat.onchange = () => g.Y = parseFloat(lat.value);
     latTD.appendChild(lat);
 
-    const del=document.createElement("td");
-    const btn=document.createElement("button");
-    btn.textContent="X"; btn.className="secondary";
-    btn.onclick=()=>{gcps.splice(i,1); refreshTable(); redrawBase();};
+    const del = document.createElement("td");
+    const btn = document.createElement("button");
+    btn.textContent = "X";
+    btn.className = "secondary";
+    btn.onclick = () => {
+      gcps.splice(i, 1);
+      refreshTable();
+      redrawBase();
+    };
     del.appendChild(btn);
 
-    tr.appendChild(t1); tr.appendChild(t2);
-    tr.appendChild(lonTD); tr.appendChild(latTD);
+    tr.appendChild(t1);
+    tr.appendChild(t2);
+    tr.appendChild(lonTD);
+    tr.appendChild(latTD);
     tr.appendChild(del);
 
     gcpTable.appendChild(tr);
@@ -1611,499 +558,22 @@ function refreshTable(){
 }
 
 /* ---------- Compute Transform ---------- */
-btnCompute.onclick=()=>{
-  const valid=gcps.filter(g=>typeof g.X==="number" && typeof g.Y==="number");
-  if(modelSelect.value==="affine" && valid.length<3) return alert("Affine requires ≥3 GCPs");
-  if(modelSelect.value==="poly2" && valid.length<6) return alert("Poly2 requires ≥6 GCPs");
+btnCompute.onclick = () => {
+  const valid = gcps.filter(g => typeof g.X === "number" && typeof g.Y === "number");
 
-  try{
-    lastComputed=modelSelect.value==="affine" ? 
-      fitAffine(valid) : fitPoly2(valid);
+  if (modelSelect.value === "affine" && valid.length < 3) return alert("Affine requires ≥3 GCPs");
+  if (modelSelect.value === "poly2" && valid.length < 6) return alert("Poly2 requires ≥6 GCPs");
 
-    rmsEl.textContent=lastComputed.rms.toFixed(3);
-    statusEl.textContent="Transform computed.";
+  try {
+    lastComputed = (modelSelect.value === "affine") ? fitAffine(valid) : fitPoly2(valid);
+    rmsEl.textContent = lastComputed.rms.toFixed(3);
+    statusEl.textContent = "Transform computed.";
     redrawBase();
-  }catch(err){
-    alert("Failed: "+err);
+  } catch (err) {
+    alert("Failed: " + err);
   }
 };
-
-/* ---------- Water Extraction ---------- */
-function isWaterPixel(r,g,b){
-  return (b > 120 && b > r+25 && b > g+15);
-}
-// ---------- LEGEND COLOR MATCHING ----------
-function filterLegendComponentsByConvexity(components, w, referenceShape) {
-
-    if (!referenceShape || !Array.isArray(referenceShape)) {
-    console.warn("No reference shape provided — skipping shape filtering.");
-    return [];
-  }
-  function shapeDescriptor(comp) {
-    let minX = Infinity, minY = Infinity;
-    let maxX = -Infinity, maxY = -Infinity;
-
-    comp.forEach(i => {
-      const y = (i / w) | 0;
-      const x = i % w;
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
-    });
-
-    const width = maxX - minX + 1;
-    const height = maxY - minY + 1;
-    const area = comp.length;
-
-    const boxArea = width * height;
-    const fillRatio = area / boxArea;
-    const aspect = width / height;
-    const compactness = (area * 4 * Math.PI) / ((width + height) ** 2);
-
-    return { width, height, area, fillRatio, aspect, compactness };
-  }
-
-  const ref = shapeDescriptor(referenceShape);
-  const kept = [];
-
-  components.forEach(comp => {
-    if (comp.length < 25) return;
-
-    const s = shapeDescriptor(comp);
-
-    const areaRatio = Math.min(s.area, ref.area) / Math.max(s.area, ref.area);
-    if (areaRatio < 0.25) return;
-
-    // Aspect ratio: triangles vary more
-    if (Math.abs(s.aspect - ref.aspect) > 1.0) return;
-    
-    // Fill ratio: triangles vs rasterization noise
-    if (Math.abs(s.fillRatio - ref.fillRatio) > 0.35) return;
-    
-    // Compactness guard — only reject EXTREMELY elongated things
-    if (s.compactness < 0.03) return;
-
-
-    kept.push(comp);
-  });
-
-  console.log(
-    `Legend components: ${components.length} → kept: ${kept.length}`
-  );
-
-  return kept;
-}
-
-
-
-function extractConnectedComponents(mask, w, h) {
-  const visited = new Uint8Array(w * h);
-  const components = [];
-  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const idx = y * w + x;
-      if (!mask[idx] || visited[idx]) continue;
-
-      const stack = [idx];
-      visited[idx] = 1;
-      const pixels = [];
-
-      while (stack.length) {
-        const i = stack.pop();
-        pixels.push(i);
-
-        const py = (i / w) | 0;
-        const px = i % w;
-
-        for (const [dx,dy] of dirs) {
-          const nx = px + dx, ny = py + dy;
-          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-          const ni = ny * w + nx;
-          if (mask[ni] && !visited[ni]) {
-            visited[ni] = 1;
-            stack.push(ni);
-          }
-        }
-      }
-
-      if (pixels.length > 20) { // ignore tiny noise
-        components.push(pixels);
-      }
-    }
-  }
-
-  return components;
-}
-
-
-function computeComponentShape(component, w) {
-  let minX = Infinity, minY = Infinity;
-  let maxX = -Infinity, maxY = -Infinity;
-
-  component.forEach(i => {
-    const y = (i / w) | 0;
-    const x = i % w;
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x);
-    maxY = Math.max(maxY, y);
-  });
-
-  const width = maxX - minX + 1;
-  const height = maxY - minY + 1;
-  const area = component.length;
-  const aspect = width / height;
-
-  return { width, height, area, aspect };
-}
-  
-function filterComponentsByShape(components, w, image) {
-  return components.filter(c => {
-    const s = computeComponentShape(c, w);
-    const entropy = computeOrientationEntropy(c, image, w);
-
-    // Size sanity
-    if (s.area < 40 || s.area > 1200) return false;
-
-    // Reject elongated things
-    if (s.aspect > 2.2 || s.aspect < 0.45) return false;
-
-    // 🚨 THIS is the key line
-    // Roads ≈ low entropy, symbols ≈ high entropy
-    if (entropy < 1.2) return false;
-
-    return true;
-  });
-}
-
-
-function computeOrientationEntropy(component, image, w) {
-  const bins = new Array(12).fill(0); // 15° bins
-
-  component.forEach(i => {
-    const y = (i / w) | 0;
-    const x = i % w;
-    const idx = (y * w + x) * 4;
-
-    // Sobel-like gradient (cheap)
-    const gx =
-      image[idx + 4] - image[idx - 4] || 0;
-    const gy =
-      image[idx + w * 4] - image[idx - w * 4] || 0;
-
-    const mag = Math.hypot(gx, gy);
-    if (mag < 15) return;
-
-    let angle = Math.atan2(gy, gx);
-    if (angle < 0) angle += Math.PI;
-
-    const bin = Math.floor((angle / Math.PI) * bins.length);
-    bins[bin]++;
-  });
-
-  const total = bins.reduce((a,b)=>a+b,0);
-  if (total === 0) return 0;
-
-  let entropy = 0;
-  bins.forEach(c => {
-    if (!c) return;
-    const p = c / total;
-    entropy -= p * Math.log2(p);
-  });
-
-  return entropy;
-}
-
-
-function getWaterMask(){
-  if(!renderedImage){
-    return new Uint8Array(canvas.width*canvas.height);
-  }
-  const w=canvas.width, h=canvas.height;
-
-  const off=document.createElement("canvas");
-  off.width=w; off.height=h;
-  const octx=off.getContext("2d");
-  octx.drawImage(renderedImage,0,0,w,h);
-
-  const img=octx.getImageData(0,0,w,h);
-  const d=img.data;
-  const mask=new Uint8Array(w*h);
-
-  const useBoundary=!!mapBoundary;
-  const left  = useBoundary? mapBoundary.left   : 0;
-  const right = useBoundary? mapBoundary.right  : w;
-  const top   = useBoundary? mapBoundary.top    : 0;
-  const bottom= useBoundary? mapBoundary.bottom : h;
-
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
-      const idx=y*w+x;
-
-      // outside map interior → no water
-      if(x < left || x >= right || y < top || y >= bottom){
-        mask[idx]=0; continue;
-      }
-
-      const di=idx*4;
-      const r=d[di], g=d[di+1], b=d[di+2];
-      mask[idx] = isWaterPixel(r,g,b) ? 1 : 0;
-    }
-  }
-  return mask;
-}
-
-function perpendicularDistance(pt, lineStart, lineEnd){
-  const [x,y]=pt;
-  const [x1,y1]=lineStart;
-  const [x2,y2]=lineEnd;
-  const dx=x2-x1, dy=y2-y1;
-  if(dx===0 && dy===0) return Math.hypot(x-x1,y-y1);
-  const t=((x-x1)*dx+(y-y1)*dy)/(dx*dx+dy*dy);
-  const projX=x1+t*dx, projY=y1+t*dy;
-  return Math.hypot(x-projX,y-projY);
-}
-function simplifyRDP(points,epsilon){
-  if(points.length<=2) return points.slice();
-  let maxDist=0, index=-1;
-  for(let i=1;i<points.length-1;i++){
-    const d=perpendicularDistance(points[i],
-      points[0], points[points.length-1]);
-    if(d>maxDist){maxDist=d; index=i;}
-  }
-  if(maxDist>epsilon){
-    const left=simplifyRDP(points.slice(0,index+1),epsilon);
-    const right=simplifyRDP(points.slice(index),epsilon);
-    return left.slice(0,left.length-1).concat(right);
-  }
-  return [points[0], points[points.length-1]];
-}
-
-function extractWaterRegions(mask,w,h){
-  const visited=new Uint8Array(w*h);
-  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
-  const regions=[];
-
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
-      const idx=y*w+x;
-      if(mask[idx]===1 && !visited[idx]){
-        const stack=[idx];
-        visited[idx]=1;
-        const region=[];
-        while(stack.length){
-          const i=stack.pop();
-          region.push(i);
-          const py=(i/w)|0, px=i%w;
-          for(const[dx,dy] of dirs){
-            const nx=px+dx, ny=py+dy;
-            if(nx<0||ny<0||nx>=w||ny>=h) continue;
-            const ni=ny*w+nx;
-            if(mask[ni]===1 && !visited[ni]){
-              visited[ni]=1; stack.push(ni);
-            }
-          }
-        }
-
-        if(region.length < 50) continue;
-        const set=new Set(region);
-        const boundary=[];
-        for(const i of region){
-          const py=(i/w)|0, px=i%w;
-          let isB=false;
-          for(const[dx,dy] of dirs){
-            const nx=px+dx, ny=py+dy;
-            if(nx<0||ny<0||nx>=w||ny>=h){isB=true; break;}
-            if(!set.has(ny*w+nx)){isB=true; break;}
-          }
-          if(isB) boundary.push([px+0.5,py+0.5]);
-        }
-        if(boundary.length < 3) continue;
-
-        let cx=0,cy=0;
-        for(const p of boundary){cx+=p[0];cy+=p[1];}
-        cx/=boundary.length; cy/=boundary.length;
-
-        boundary.sort((a,b)=>{
-          const aa=Math.atan2(a[1]-cy,a[0]-cx);
-          const bb=Math.atan2(b[1]-cy,b[0]-cx);
-          return aa-bb;
-        });
-
-        let simple=simplifyRDP(boundary,1.5);
-        if(simple.length>2){
-          const f=simple[0], l=simple[simple.length-1];
-          if(f[0]!==l[0] || f[1]!==l[1]) simple.push([f[0],f[1]]);
-          regions.push(simple);
-        }
-      }
-    }
-  }
-  return regions;
-}
-
-function pixelPolyToFeature(poly,mapFn){
-  const coords=poly.map(([x,y])=>{
-    const g=mapFn({x,y});
-    return [g.X,g.Y];
-  });
-  return {
-    type:"Feature",
-    properties:{type:"water"},
-    geometry:{type:"Polygon",coordinates:[coords]}
-  };
-}
-function createFeatureRecord(type, geometry) {
-    return {
-        id: nextFeatureId++,
-        type,     // "polygon", "line", or "point"
-        geometry, // raw pixel coordinates OR georeferenced later
-        name: null  // user will rename later
-    };
-}
-  
-btnExtract.onclick = () => {
-  if (!renderedImage) return alert("Load a PDF first.");
-  if (!lastComputed) return alert("Compute transform first.");
-
-  statusEl.textContent = "Extracting water…";
-
-  const mask = getWaterMask();
-  const polys = extractWaterRegions(mask, canvas.width, canvas.height);
-
-  waterPixelPolys = polys;
-  waterFeatures = polys.map(p => pixelPolyToFeature(p, lastComputed.mapFn));
-  waterCount.textContent = polys.length.toString();
-
-  // NEW: store polygons generically
-  polys.forEach(poly => {
-    extractedPolygons.push(
-      createFeatureRecord("polygon", poly)
-    );
-  });
-
-  redrawBase();
-  statusEl.textContent = `Water extraction complete (${polys.length} regions).`;
-};
-
-
-btnClearWater.onclick=()=>{
-  waterPixelPolys=[];
-  waterFeatures=[];
-  waterCount.textContent="0";
-  redrawBase();
-  statusEl.textContent="Water cleared.";
-};
-
-chkOverlay.onchange=e=>{
-  showWaterOverlay=e.target.checked;
-  redrawBase();
-};
-
-btnExport.onclick=()=>{
-  if(waterFeatures.length===0) return alert("No water features.");
-  const fc={type:"FeatureCollection",features:waterFeatures};
-  const blob=new Blob([JSON.stringify(fc,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url; a.download="water.geojson"; a.click();
-  URL.revokeObjectURL(url);
-};
-  
-const btnExtractLegend = document.getElementById("btn-extract-legend");
-console.log("btn-extract-legend found?", !!btnExtractLegend);
-
-if (btnExtractLegend) {
-  btnExtractLegend.addEventListener("click", () => {
-    console.log("✅ Extract Selected Legend Item clicked");
-
-    if (!legendSelection) {
-      alert("Please select a legend item first.");
-      return;
-    }
-
-    const signature = sampleLegendSignature(legendSelection);
-    if (!signature) {
-      alert("Could not sample legend item.");
-      return;
-    }
-
-    legendSignature = signature;
-    console.log("Legend signature:", legendSignature);
-
-    // 1) color match across map interior
-    legendMatchMask = extractLegendMatchMask(legendSignature, 35);
-
-    // 2) connected components from that match mask
-    const components = extractConnectedComponents(
-      legendMatchMask,
-      canvas.width,
-      canvas.height
-    );
-
-    if (!components || components.length === 0) {
-      alert("No matching components found in the map area.");
-      return;
-    }
-
-    // 3) Build a reference-shape mask ONLY inside the user selection (dark pixels)
-    const w = canvas.width;
-    const h = canvas.height;
-    const img = ctx.getImageData(0, 0, w, h).data;
-    const refMask = new Uint8Array(w * h);
-
-    const x0 = Math.max(0, Math.floor(legendSelection.x));
-    const y0 = Math.max(0, Math.floor(legendSelection.y));
-    const x1 = Math.min(w, Math.floor(legendSelection.x + legendSelection.w));
-    const y1 = Math.min(h, Math.floor(legendSelection.y + legendSelection.h));
-
-    for (let y = y0; y < y1; y++) {
-      for (let x = x0; x < x1; x++) {
-        const i = (y * w + x) * 4;
-        const r = img[i], g = img[i + 1], b = img[i + 2];
-        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-
-        // ONLY dark pixels define the symbol shape
-        if (brightness < 160) refMask[y * w + x] = 1;
-      }
-    }
-
-    const refComponents = extractConnectedComponents(refMask, w, h);
-    if (!refComponents || refComponents.length === 0) {
-      alert("Could not determine reference legend shape.");
-      return;
-    }
-
-    const referenceComponent = refComponents.sort((a, b) => b.length - a.length)[0];
-    console.log("Reference legend shape pixels:", referenceComponent.length);
-
-    // 4) Shape-filter the map components using your convexity-ish descriptor
-    const filteredComponents = filterLegendComponentsByConvexity(
-      components,
-      canvas.width,
-      referenceComponent
-    );
-
-    // 5) rebuild the mask from filtered components
-    legendMatchMask = new Uint8Array(canvas.width * canvas.height);
-    filteredComponents.forEach(comp => comp.forEach(i => (legendMatchMask[i] = 1)));
-
-    console.log(
-      "Legend components:",
-      components.length,
-      "→ kept:",
-      filteredComponents.length
-    );
-
-    redrawBase();
-  });
-}
-
-
-
 </script>
+
 </body>
 </html>
