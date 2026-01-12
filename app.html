@@ -292,7 +292,7 @@ fileInput.onchange = async () => {
 
   await page.render({ canvasContext: ctx, viewport }).promise;
 
-  detectMapBoundaryFromCanvas();
+  //detectMapBoundaryFromCanvas();
 
   renderedImage = new Image();
   renderedImage.src = canvas.toDataURL();
@@ -325,7 +325,7 @@ function redrawBase() {
   }
 
   // Darken everything outside the detected map interior
-  drawExclusionMask();
+  //drawExclusionMask();
 
   // Draw GCP markers
   gcps.forEach(g => {
@@ -336,7 +336,7 @@ function redrawBase() {
   });
 }
 
-/* ---------- Map Boundary Detection (Connected Components) ---------- */
+/*
 function detectMapBoundaryFromCanvas() {
   const w = canvas.width, h = canvas.height;
   if (!w || !h) return;
@@ -431,7 +431,7 @@ function detectMapBoundaryFromCanvas() {
   console.log("Final map interior boundary:", mapBoundary);
 }
 
-/* ---------- Math Helpers ---------- */
+------ */
 function transpose(A){return A[0].map((_,i)=>A.map(r=>r[i]));}
 function matMul(A,B){
   const R=Array.from({length:A.length},()=>Array(B[0].length).fill(0));
