@@ -550,43 +550,48 @@ function updateGcpWarning() {
   const model = modelSelect.value;
 
   const minRequired = (model === "affine") ? 3 : 6;
-  const recommended = (model === "affine") ? 4 : 8;
+  const fair = (model === "affine") ? 4 : 7;
+  const recommended = (model === "affine") ? 6 : 10;
 
   const filled = gcps.filter(
     g => typeof g.lon === "number" && typeof g.lat === "number"
   ).length;
 
-  // No warning if no points yet
+  // No points yet → no message
   if (filled === 0) {
     warningEl.textContent = "";
     return;
   }
 
-  // Not enough to even compute
+  // Not enough to compute
   if (filled < minRequired) {
     const needed = minRequired - filled;
     warningEl.textContent =
       `⚠️ This transform requires ${needed} more GCP${needed > 1 ? "s" : ""} before it can be computed.`;
+    warningEl.style.color = "#7a1220";
     return;
   }
 
-  // Exact-fit case (danger zone)
+  // Exact-fit case → misleading RMSE
   if (filled === minRequired) {
     warningEl.textContent =
       "⚠️ RMSE is not meaningful with the minimum number of control points. Add more GCPs to validate accuracy.";
+    warningEl.style.color = "#7a1220";
     return;
   }
 
-  // Weakly constrained
+  // Just enough to be meaningful (new case)
   if (filled < recommended) {
     warningEl.textContent =
-      "ℹ️ Transform computed, but adding more GCPs will improve reliability.";
+      "✅ You now have a fair number of control points to proceed.";
+    warningEl.style.color = "#355e3b";
     return;
   }
 
-  // All good
+  // Well constrained → hide message
   warningEl.textContent = "";
 }
+
 
 
 /* ---------- Transform Functions ---------- */
