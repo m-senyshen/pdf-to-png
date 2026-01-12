@@ -316,6 +316,45 @@ function drawExclusionMask() {
   ctx.restore();
 }
 
+function parseLatLonPair(text) {
+  if (!text) return null;
+
+  // Accept formats like:
+  // "45.45636,-74.52523"
+  // "45.45636, -74.52523"
+  // "45.45636 -74.52523"
+  const cleaned = String(text).trim();
+
+  // Split on comma OR whitespace
+  const parts = cleaned.includes(",")
+    ? cleaned.split(",")
+    : cleaned.split(/\s+/);
+
+  if (parts.length < 2) return null;
+
+  const a = parseFloat(parts[0].trim());
+  const b = parseFloat(parts[1].trim());
+
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+
+  // Heuristic:
+  // If first looks like latitude and second looks like longitude => treat as (lat, lon)
+  // Otherwise treat as (lon, lat)
+  const aLooksLat = Math.abs(a) <= 90;
+  const bLooksLon = Math.abs(b) <= 180;
+
+  const aLooksLon = Math.abs(a) <= 180;
+  const bLooksLat = Math.abs(b) <= 90;
+
+  if (aLooksLat && bLooksLon && !(aLooksLon && bLooksLat)) {
+    return { lat: a, lon: b }; // Google Maps typical: lat,lon
+  }
+
+  // Default to lon,lat
+  return { lon: a, lat: b };
+}
+
+
 function redrawBase() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -533,26 +572,109 @@ canvas.addEventListener("click", e => {
   redrawBase();
 });
 
-function refreshTable(){
+function parseLatLonPair(text) {
+  if (!text) return null;
+
+  const cleaned = String(text).trim();
+
+  // Split on comma OR whitespace
+  const parts = cleaned.includes(",")
+    ? cleaned.split(",")
+    : cleaned.split(/\s+/);
+
+  if (parts.length < 2) return null;
+
+  const a = parseFloat(parts[0].trim());
+  const b = parseFloat(parts[1].trim());
+
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+
+  const aLooksLat = Math.abs(a) <= 90;
+  const bLooksLon = Math.abs(b) <= 180;
+
+  const aLooksLon = Math.abs(a) <= 180;
+  const bLooksLat = Math.abs(b) <= 90;
+
+  // Google Maps style: lat,lon
+  if (aLooksLat && bLooksLon && !(aLooksLon && bLooksLat)) {
+    return { lat: a, lon: b };
+  }
+
+  // Default: lon,lat
+  return { lon: a, lat: b };
+}
+
+
+function refreshTable() {
   gcpTable.innerHTML = "";
+
   gcps.forEach((g, i) => {
     const tr = document.createElement("tr");
 
-    const t1 = document.createElement("td"); t1.textContent = g.x.toFixed(1);
-    const t2 = document.createElement("td"); t2.textContent = g.y.toFixed(1);
+    const t1 = document.createElement("td");
+    t1.textContent = g.x.toFixed(1);
 
+    const t2 = document.createElement("td");
+    t2.textContent = g.y.toFixed(1);
+
+    // --- Lon input ---
     const lonTD = document.createElement("td");
     const lon = document.createElement("input");
-    lon.type="number"; lon.step="any"; lon.value = g.lon ?? "";
-    lon.onchange = () => g.lon = parseFloat(lon.value);
-    lonTD.appendChild(lon);
+    lon.type = "number";
+    lon.step = "any";
+    lon.value = g.lon ?? "";
 
+    // --- Lat input ---
     const latTD = document.createElement("td");
     const lat = document.createElement("input");
-    lat.type="number"; lat.step="any"; lat.value = g.lat ?? "";
-    lat.onchange = () => g.lat = parseFloat(lat.value);
+    lat.type = "number";
+    lat.step = "any";
+    lat.value = g.lat ?? "";
+
+    // Helper to set both values + update UI
+    function setLonLat(lonVal, latVal) {
+      g.lon = lonVal;
+      g.lat = latVal;
+      lon.value = Number.isFinite(lonVal) ? lonVal : "";
+      lat.value = Number.isFinite(latVal) ? latVal : "";
+    }
+
+    // If user types/pastes into LON and it looks like "a,b" or "a b"
+    lon.addEventListener("input", () => {
+      const val = lon.value;
+
+      if (val.includes(",") || /\s/.test(val.trim())) {
+        const parsed = parseLatLonPair(val);
+        if (parsed) {
+          setLonLat(parsed.lon, parsed.lat);
+          return;
+        }
+      }
+
+      const n = parseFloat(val);
+      g.lon = Number.isFinite(n) ? n : null;
+    });
+
+    // Make paste into LON clean + immediate
+    lon.addEventListener("paste", (e) => {
+      const text = (e.clipboardData || window.clipboardData).getData("text");
+      const parsed = parseLatLonPair(text);
+      if (parsed) {
+        e.preventDefault(); // prevents raw "lat,lon" from appearing in lon field
+        setLonLat(parsed.lon, parsed.lat);
+      }
+    });
+
+    // Lat behaves normally
+    lat.addEventListener("input", () => {
+      const n = parseFloat(lat.value);
+      g.lat = Number.isFinite(n) ? n : null;
+    });
+
+    lonTD.appendChild(lon);
     latTD.appendChild(lat);
 
+    // --- Delete button ---
     const del = document.createElement("td");
     const btn = document.createElement("button");
     btn.textContent = "X";
@@ -573,6 +695,7 @@ function refreshTable(){
     gcpTable.appendChild(tr);
   });
 }
+
 
 /* ---------- Compute Transform ---------- */
 btnCompute.onclick = () => {
