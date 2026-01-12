@@ -203,7 +203,7 @@
       <h3>Ground Control Points</h3>
       <table id="gcp-table">
         <thead>
-          <tr><th>px X</th><th>px Y</th><th>lon</th><th>lat</th><th></th></tr>
+          <tr><th>px X</th><th>px Y</th><th>lon</th><th>lat</th><th>err (m)</th><th></th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -518,6 +518,27 @@ function lonLatToWebMercatorMeters(lonDeg, latDeg) {
   return { X: x, Y: y };
 }
 
+function computeGcpErrorsMeters() {
+  if (!lastComputed || !lastComputed.mapFn) return;
+
+  // For each GCP with lon/lat, compute predicted mercator (meters) and compare
+  gcps.forEach(g => {
+    if (typeof g.lon !== "number" || typeof g.lat !== "number") {
+      g.errM = null;
+      return;
+    }
+
+    const target = lonLatToWebMercatorMeters(g.lon, g.lat);   // true meters
+    const pred = lastComputed.mapFn({ x: g.x, y: g.y });       // predicted meters
+
+    const dx = pred.X - target.X;
+    const dy = pred.Y - target.Y;
+
+    g.errM = Math.hypot(dx, dy); // meters
+  });
+}
+
+
 
 /* ---------- Transform Functions ---------- */
 function fitAffine(gcps){
@@ -630,6 +651,20 @@ function refreshTable() {
     lat.type = "number";
     lat.step = "any";
     lat.value = g.lat ?? "";
+    // --- Error display ---
+    const errTD = document.createElement("td");
+
+    if (typeof g.errM === "number") {
+      errTD.textContent = g.errM.toFixed(1);
+    } else {
+      errTD.textContent = "—";
+    if (typeof g.errM === "number") {
+      if (g.errM > 200) tr.style.background = "rgba(255, 0, 0, 0.08)";      // bad
+      else if (g.errM > 75) tr.style.background = "rgba(255, 165, 0, 0.10)"; // warning
+      else tr.style.background = "rgba(0, 200, 0, 0.06)";                    // good
+    }
+
+    }
 
     // Helper to set both values + update UI
     function setLonLat(lonVal, latVal) {
@@ -684,6 +719,7 @@ function refreshTable() {
       refreshTable();
       redrawBase();
     };
+    tr.appendChild(errTD);
     del.appendChild(btn);
 
     tr.appendChild(t1);
@@ -713,6 +749,9 @@ btnCompute.onclick = () => {
 
   try {
     lastComputed = (modelSelect.value === "affine") ? fitAffine(valid) : fitPoly2(valid);
+    computeGcpErrorsMeters();
+    refreshTable();
+
     const rmseM = lastComputed.rms;
     rmsEl.textContent = `${rmseM.toFixed(2)} m`;
     statusEl.textContent = "Transform computed.";
