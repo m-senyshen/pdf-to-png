@@ -632,41 +632,48 @@ function refreshTable() {
   gcps.forEach((g, i) => {
     const tr = document.createElement("tr");
 
+    // px X
     const t1 = document.createElement("td");
     t1.textContent = g.x.toFixed(1);
 
+    // px Y
     const t2 = document.createElement("td");
     t2.textContent = g.y.toFixed(1);
 
-    // --- Lon input ---
+    // lon input
     const lonTD = document.createElement("td");
     const lon = document.createElement("input");
     lon.type = "number";
     lon.step = "any";
     lon.value = g.lon ?? "";
+    lonTD.appendChild(lon);
 
-    // --- Lat input ---
+    // lat input
     const latTD = document.createElement("td");
     const lat = document.createElement("input");
     lat.type = "number";
     lat.step = "any";
     lat.value = g.lat ?? "";
-    // --- Error display ---
-    const errTD = document.createElement("td");
+    latTD.appendChild(lat);
 
+    // err (m) cell (NOT an input)
+    const errTD = document.createElement("td");
     if (typeof g.errM === "number") {
       errTD.textContent = g.errM.toFixed(1);
     } else {
       errTD.textContent = "—";
+    }
+
+    // row coloring based on per-point error
     if (typeof g.errM === "number") {
-      if (g.errM > 200) tr.style.background = "rgba(255, 0, 0, 0.08)";      // bad
+      if (g.errM > 200) tr.style.background = "rgba(255, 0, 0, 0.08)";       // bad
       else if (g.errM > 75) tr.style.background = "rgba(255, 165, 0, 0.10)"; // warning
-      else tr.style.background = "rgba(0, 200, 0, 0.06)";                    // good
+      else tr.style.background = "rgba(0, 200, 0, 0.06)";                     // good
+    } else {
+      tr.style.background = ""; // no color until computed
     }
 
-    }
-
-    // Helper to set both values + update UI
+    // helper to set both lon/lat
     function setLonLat(lonVal, latVal) {
       g.lon = lonVal;
       g.lat = latVal;
@@ -674,7 +681,7 @@ function refreshTable() {
       lat.value = Number.isFinite(latVal) ? latVal : "";
     }
 
-    // If user types/pastes into LON and it looks like "a,b" or "a b"
+    // lon input handlers (supports paste "lat,lon" or "lon,lat")
     lon.addEventListener("input", () => {
       const val = lon.value;
 
@@ -690,26 +697,22 @@ function refreshTable() {
       g.lon = Number.isFinite(n) ? n : null;
     });
 
-    // Make paste into LON clean + immediate
     lon.addEventListener("paste", (e) => {
       const text = (e.clipboardData || window.clipboardData).getData("text");
       const parsed = parseLatLonPair(text);
       if (parsed) {
-        e.preventDefault(); // prevents raw "lat,lon" from appearing in lon field
+        e.preventDefault();
         setLonLat(parsed.lon, parsed.lat);
       }
     });
 
-    // Lat behaves normally
+    // lat input handler
     lat.addEventListener("input", () => {
       const n = parseFloat(lat.value);
       g.lat = Number.isFinite(n) ? n : null;
     });
 
-    lonTD.appendChild(lon);
-    latTD.appendChild(lat);
-
-    // --- Delete button ---
+    // delete button
     const del = document.createElement("td");
     const btn = document.createElement("button");
     btn.textContent = "X";
@@ -719,18 +722,20 @@ function refreshTable() {
       refreshTable();
       redrawBase();
     };
-    tr.appendChild(errTD);
     del.appendChild(btn);
 
+    // append cells in correct column order
     tr.appendChild(t1);
     tr.appendChild(t2);
     tr.appendChild(lonTD);
     tr.appendChild(latTD);
+    tr.appendChild(errTD);
     tr.appendChild(del);
 
     gcpTable.appendChild(tr);
   });
 }
+
 
 
 /* ---------- Compute Transform ---------- */
