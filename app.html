@@ -202,6 +202,11 @@
 
       <h3>Ground Control Points</h3>
       <table id="gcp-table">
+        <div
+          id="gcp-warning"
+          class="small"
+          style="margin-top:8px; color:#7a1220;"
+        ></div>
         <thead>
           <tr><th>px X</th><th>px Y</th><th>lon</th><th>lat</th><th>err (m)</th><th></th></tr>
         </thead>
@@ -538,6 +543,50 @@ function computeGcpErrorsMeters() {
   });
 }
 
+function updateGcpWarning() {
+  const warningEl = document.getElementById("gcp-warning");
+  if (!warningEl) return;
+
+  const model = modelSelect.value;
+
+  const minRequired = (model === "affine") ? 3 : 6;
+  const recommended = (model === "affine") ? 4 : 8;
+
+  const filled = gcps.filter(
+    g => typeof g.lon === "number" && typeof g.lat === "number"
+  ).length;
+
+  // No warning if no points yet
+  if (filled === 0) {
+    warningEl.textContent = "";
+    return;
+  }
+
+  // Not enough to even compute
+  if (filled < minRequired) {
+    const needed = minRequired - filled;
+    warningEl.textContent =
+      `⚠️ This transform requires ${needed} more GCP${needed > 1 ? "s" : ""} before it can be computed.`;
+    return;
+  }
+
+  // Exact-fit case (danger zone)
+  if (filled === minRequired) {
+    warningEl.textContent =
+      "⚠️ RMSE is not meaningful with the minimum number of control points. Add more GCPs to validate accuracy.";
+    return;
+  }
+
+  // Weakly constrained
+  if (filled < recommended) {
+    warningEl.textContent =
+      "ℹ️ Transform computed, but adding more GCPs will improve reliability.";
+    return;
+  }
+
+  // All good
+  warningEl.textContent = "";
+}
 
 
 /* ---------- Transform Functions ---------- */
@@ -733,6 +782,7 @@ function refreshTable() {
     tr.appendChild(del);
 
     gcpTable.appendChild(tr);
+    updateGcpWarning();
   });
 }
 
@@ -756,6 +806,10 @@ btnCompute.onclick = () => {
     lastComputed = (modelSelect.value === "affine") ? fitAffine(valid) : fitPoly2(valid);
     computeGcpErrorsMeters();
     refreshTable();
+    updateGcpWarning();
+    modelSelect.addEventListener("change", () => {
+      updateGcpWarning();
+    });
 
     const rmseM = lastComputed.rms;
     rmsEl.textContent = `${rmseM.toFixed(2)} m`;
