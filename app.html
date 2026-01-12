@@ -463,6 +463,23 @@ function leastSquares(M,y){
   return solveLinear(MTM,MTy);
 }
 
+// --- EPSG:3857 (Web Mercator) conversion helpers ---
+const EARTH_RADIUS_M = 6378137;
+
+function lonLatToWebMercatorMeters(lonDeg, latDeg) {
+  // Clamp latitude to Web Mercator's valid range
+  const maxLat = 85.05112878;
+  const lat = Math.max(Math.min(latDeg, maxLat), -maxLat);
+
+  const lonRad = lonDeg * Math.PI / 180;
+  const latRad = lat * Math.PI / 180;
+
+  const x = EARTH_RADIUS_M * lonRad;
+  const y = EARTH_RADIUS_M * Math.log(Math.tan(Math.PI / 4 + latRad / 2));
+  return { X: x, Y: y };
+}
+
+
 /* ---------- Transform Functions ---------- */
 function fitAffine(gcps){
   const M=gcps.map(g=>[1,g.x,g.y]);
@@ -511,7 +528,7 @@ canvas.addEventListener("click", e => {
   const x = (e.clientX - r.left) * (canvas.width / r.width);
   const y = (e.clientY - r.top) * (canvas.height / r.height);
 
-  gcps.push({ x, y, X: null, Y: null });
+  gcps.push({ x, y, lon: null, lat: null });
   refreshTable();
   redrawBase();
 });
@@ -526,14 +543,14 @@ function refreshTable(){
 
     const lonTD = document.createElement("td");
     const lon = document.createElement("input");
-    lon.type="number"; lon.step="any"; lon.value = g.X ?? "";
-    lon.onchange = () => g.X = parseFloat(lon.value);
+    lon.type="number"; lon.step="any"; lon.value = g.lon ?? "";
+    lon.onchange = () => g.lon = parseFloat(lon.value);
     lonTD.appendChild(lon);
 
     const latTD = document.createElement("td");
     const lat = document.createElement("input");
-    lat.type="number"; lat.step="any"; lat.value = g.Y ?? "";
-    lat.onchange = () => g.Y = parseFloat(lat.value);
+    lat.type="number"; lat.step="any"; lat.value = g.lat ?? "";
+    lat.onchange = () => g.lat = parseFloat(lat.value);
     latTD.appendChild(lat);
 
     const del = document.createElement("td");
@@ -559,14 +576,22 @@ function refreshTable(){
 
 /* ---------- Compute Transform ---------- */
 btnCompute.onclick = () => {
-  const valid = gcps.filter(g => typeof g.X === "number" && typeof g.Y === "number");
+    // 1) keep only GCPs with lon/lat filled
+  const validLL = gcps.filter(g => typeof g.lon === "number" && typeof g.lat === "number");
+
+  // 2) convert to Web Mercator meters for the solver
+  const valid = validLL.map(g => {
+    const m = lonLatToWebMercatorMeters(g.lon, g.lat);
+    return { x: g.x, y: g.y, X: m.X, Y: m.Y };
+  });
 
   if (modelSelect.value === "affine" && valid.length < 3) return alert("Affine requires ≥3 GCPs");
   if (modelSelect.value === "poly2" && valid.length < 6) return alert("Poly2 requires ≥6 GCPs");
 
   try {
     lastComputed = (modelSelect.value === "affine") ? fitAffine(valid) : fitPoly2(valid);
-    rmsEl.textContent = lastComputed.rms.toFixed(3);
+    const rmseM = lastComputed.rms;
+    rmsEl.textContent = `${rmseM.toFixed(2)} m`;
     statusEl.textContent = "Transform computed.";
     redrawBase();
   } catch (err) {
