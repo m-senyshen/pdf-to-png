@@ -55,6 +55,7 @@
     border-radius:10px;
     padding:18px;
     box-shadow:0 6px 30px rgba(10,20,40,0.06);
+    overflow: hidden;     /* ensures nothing paints outside the rounded white card */
   }
 
   header {
@@ -92,10 +93,15 @@
   .danger { background:#ffe9ec; color:#7a1220; border:1px solid #e9b5be; }
 
   main {
-    display:grid;
-    grid-template-columns:1fr 360px;
-    gap:18px;
-    margin-top:16px;
+    display: grid;
+    grid-template-columns: 1fr 420px; /* give the sidebar more room */
+    gap: 18px;
+    margin-top: 16px;
+    align-items: start;              /* prevents weird stretching */
+  }
+
+  #right {
+    min-width: 0;                    /* important for grid overflow issues */
   }
 
   #left {
@@ -141,6 +147,10 @@
   td,th { padding:6px; border-bottom:1px solid #f0f2f6; font-size:13px; }
   .small { font-size:13px; color:#666; }
   .status { margin-top:8px; color:#333; }
+  #gcp-table {
+  display: block;
+  overflow-x: auto;     /* horizontal scroll if it can’t fit */
+  }
 
   input[type="number"] {
     width:110px;
@@ -194,8 +204,7 @@
           <p><strong>2️⃣ Add GCPs</strong><br>Toggle Georeference Mode, then click points on the map.</p>
           <p><strong>3️⃣ Enter lon/lat</strong><br>Fill in longitude/latitude for each GCP in the table.</p>
           <p><strong>4️⃣ Compute transform</strong><br>Click Compute Transform to calculate an Affine transform.</p>
-          <p class="small" style="margin-top:10px;">
-            Tip: The darkened area is ignored; only clicks inside the map interior are meaningful for accurate control points.
+          <p><strong>5️⃣ Review accuracy</strong><br>Check RMS error and per-point errors in the table.
           </p>
         </div>
       </div>
@@ -233,7 +242,7 @@
       <hr style="margin:16px 0"/>
 
       <div class="small" style="line-height:1.45;">
-        <strong>Georeferencing method:</strong> This MVP uses an <strong>Affine</strong> transform.
+        <strong>Georeferencing method:</strong> This site uses an <strong>Affine</strong> transform.
         Affine is a stable, industry-standard approach that corrects global shift, rotation, scale, and skew
         without “bending” the map. A <strong>2nd-degree polynomial</strong> transform can warp the image to fit local
         distortions (like folds or stretching), but it can also introduce unwanted bending and distort shapes or
@@ -584,7 +593,7 @@ function updateGcpWarning() {
 
   if (filled < recommended) {
     warningEl.textContent =
-      "✅ You now have a fair number of control points to proceed.";
+      "You now have a fair number of control points to proceed!";
     warningEl.style.color = "#355e3b";
     return;
   }
