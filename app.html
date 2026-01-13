@@ -401,45 +401,6 @@ function initLeafletIfNeeded() {
 }
 
 
-function parseLatLonPair(text) {
-  if (!text) return null;
-
-  // Accept formats like:
-  // "45.45636,-74.52523"
-  // "45.45636, -74.52523"
-  // "45.45636 -74.52523"
-  const cleaned = String(text).trim();
-
-  // Split on comma OR whitespace
-  const parts = cleaned.includes(",")
-    ? cleaned.split(",")
-    : cleaned.split(/\s+/);
-
-  if (parts.length < 2) return null;
-
-  const a = parseFloat(parts[0].trim());
-  const b = parseFloat(parts[1].trim());
-
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
-
-  // Heuristic:
-  // If first looks like latitude and second looks like longitude => treat as (lat, lon)
-  // Otherwise treat as (lon, lat)
-  const aLooksLat = Math.abs(a) <= 90;
-  const bLooksLon = Math.abs(b) <= 180;
-
-  const aLooksLon = Math.abs(a) <= 180;
-  const bLooksLat = Math.abs(b) <= 90;
-
-  if (aLooksLat && bLooksLon && !(aLooksLon && bLooksLat)) {
-    return { lat: a, lon: b }; // Google Maps typical: lat,lon
-  }
-
-  // Default to lon,lat
-  return { lon: a, lat: b };
-}
-
-
 function redrawBase() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -602,13 +563,6 @@ function lonLatToWebMercatorMeters(lonDeg, latDeg) {
   const y = EARTH_RADIUS_M * Math.log(Math.tan(Math.PI / 4 + latRad / 2));
   return { X: x, Y: y };
 }
-
-function webMercatorMetersToLonLat(X, Y) {
-  const lon = (X / EARTH_RADIUS_M) * 180 / Math.PI;
-  const lat = (2 * Math.atan(Math.exp(Y / EARTH_RADIUS_M)) - Math.PI / 2) * 180 / Math.PI;
-  return { lon, lat };
-}
-
 
 function computeGcpErrorsMeters() {
   if (!lastComputed || !lastComputed.mapFn) return;
@@ -775,6 +729,12 @@ function parseLatLonPair(text) {
   return { lon: a, lat: b };
 }
 
+function webMercatorMetersToLonLat(X, Y) {
+  const lon = (X / EARTH_RADIUS_M) * (180 / Math.PI);
+  const lat = (2 * Math.atan(Math.exp(Y / EARTH_RADIUS_M)) - Math.PI / 2) * (180 / Math.PI);
+  return { lon, lat };
+}
+
 
 function refreshTable() {
   gcpTable.innerHTML = "";
@@ -794,16 +754,16 @@ function refreshTable() {
     const lonTD = document.createElement("td");
     const lon = document.createElement("input");
     lon.type = "text";
-    lon.step = "decimal";
-    lon.value = g.lon ?? "";
+    lon.inputMode = "decimal";  // mobile keyboard hint
+    lon.value = (g.lon ?? "") === null ? "" : String(g.lon ?? "");
     lonTD.appendChild(lon);
 
     // lat input
     const latTD = document.createElement("td");
     const lat = document.createElement("input");
     lat.type = "text";
-    lat.step = "decimal";
-    lat.value = g.lat ?? "";
+    lat.inputMode = "decimal";
+    lat.value = (g.lat ?? "") === null ? "" : String(g.lat ?? "");
     latTD.appendChild(lat);
 
     // err (m) cell (NOT an input)
@@ -854,6 +814,7 @@ function refreshTable() {
       if (parsed) {
         e.preventDefault();
         setLonLat(parsed.lon, parsed.lat);
+        updateGcpWarning();
       }
     });
 
@@ -912,44 +873,12 @@ btnCompute.onclick = () => {
   try {
     // Affine only
     lastComputed = fitAffine(valid);
-    // Build overlay bounds from the transformed image corners
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // corners in pixel space
-    const cornersPx = [
-      { x: 0, y: 0 },
-      { x: w, y: 0 },
-      { x: w, y: h },
-      { x: 0, y: h }
-    ];
-
-    // transform corners to Web Mercator meters using your mapFn
-    const cornersMeters = cornersPx.map(p => lastComputed.mapFn(p));
-
-    // convert meters -> lat/lon
-    const cornersLatLng = cornersMeters.map(m => {
-      const ll = webMercatorMetersToLonLat(m.X, m.Y);
-      return L.latLng(ll.lat, ll.lon);
-    });
-
-    // get bounds
-    const bounds = L.latLngBounds(cornersLatLng);
-
-    // remove old overlay if present
-    if (pdfOverlay) {
-      map.removeLayer(pdfOverlay);
-      pdfOverlay = null;
-    }
-
-    // create new overlay from your rendered PDF image (dataURL)
-    pdfOverlay = L.imageOverlay(renderedImage.src, bounds, {
-      opacity: parseFloat(pdfOpacityEl?.value ?? "0.85"),
-      interactive: false
-    }).addTo(map);
-
-    // zoom map to the overlay area
-    map.fitBounds(bounds, { padding: [20, 20] });
+    
+        // --- FIT BASEMAP VIEW TO GCP EXTENT (MVP-safe) ---
+    // Zoom to the area the user entered (their control points)
+    const latLngs = validLL.map(g => L.latLng(g.lat, g.lon));
+    const bounds = L.latLngBounds(latLngs);
+    map.fitBounds(bounds.pad(0.25)); // pad gives a nicer view
 
 
     computeGcpErrorsMeters();
