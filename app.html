@@ -159,6 +159,11 @@
     border:1px solid #dbe3ee;
   }
 </style>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -190,7 +195,14 @@
       </div>
 
       <div class="status" id="status">No map uploaded</div>
-      <canvas id="pdf-canvas"></canvas>
+
+      <div id="map-wrap" style="position:relative; width:100%;">
+        <div id="leaflet-map" style="width:100%; height:70vh; border:1px solid #e6e9ef; border-radius:8px;"></div>
+
+        <!-- Keep your canvas on top for GCP clicking BEFORE compute -->
+        <canvas id="pdf-canvas"
+                style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; border:none; background:transparent;"></canvas>
+      </div>
     </section>
 
     <aside id="right">
@@ -233,6 +245,16 @@
         <div class="small">RMS error:</div>
         <div id="rms" style="font-weight:700;margin-top:4px">—</div>
       </div>
+      <hr style="margin:16px 0"/>
+
+      <div class="small" style="margin-bottom:6px;"><strong>Overlay controls</strong></div>
+
+      <div class="small" style="margin-top:8px;">Basemap opacity</div>
+      <input id="basemap-opacity" type="range" min="0" max="1" step="0.05" value="1" style="width:100%;">
+
+      <div class="small" style="margin-top:10px;">Uploaded map opacity</div>
+      <input id="pdf-opacity" type="range" min="0" max="1" step="0.05" value="0.85" style="width:100%;">
+
 
       <hr style="margin:20px 0"/>
 
@@ -272,6 +294,14 @@ const statusEl = document.getElementById("status");
 const gcpTable = document.querySelector("#gcp-table tbody");
 const rmsEl = document.getElementById("rms");
 
+// --- Leaflet map state ---
+let map = null;
+let basemapLayer = null;
+let pdfOverlay = null;
+
+const basemapOpacityEl = document.getElementById("basemap-opacity");
+const pdfOpacityEl = document.getElementById("pdf-opacity");
+
 /* ---------- Instructions Toggle ---------- */
 const instrToggle = document.getElementById("instructions-toggle");
 const instrContent = document.getElementById("instructions-content");
@@ -298,6 +328,7 @@ fileInput.onchange = async () => {
   if (!f) return;
 
   statusEl.textContent = "Loading PDF…";
+  initLeafletIfNeeded();
   gcps = [];
   lastComputed = null;
   rmsEl.textContent = "—";
@@ -336,6 +367,34 @@ function drawExclusionMask() {
   ctx.fillRect(right, top, canvas.width - right, bottom - top);
   ctx.restore();
 }
+
+function initLeafletIfNeeded() {
+  if (map) return;
+
+  map = L.map("leaflet-map", { zoomControl: true }).setView([0, 0], 2);
+
+  basemapLayer = L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    { maxZoom: 19, attribution: "© OpenStreetMap contributors" }
+  ).addTo(map);
+
+  // slider wiring
+  basemapOpacityEl?.addEventListener("input", () => {
+    basemapLayer.setOpacity(parseFloat(basemapOpacityEl.value));
+  });
+
+  pdfOpacityEl?.addEventListener("input", () => {
+    const op = parseFloat(pdfOpacityEl.value);
+    // Before compute, this affects the canvas overlay (what the user clicks)
+    canvas.style.opacity = op;
+    // After compute, this affects the georeferenced overlay
+    if (pdfOverlay) pdfOverlay.setOpacity(op);
+  });
+
+  // default opacity for canvas
+  canvas.style.opacity = parseFloat(pdfOpacityEl?.value ?? "0.85");
+}
+
 
 function parseLatLonPair(text) {
   if (!text) return null;
@@ -539,6 +598,13 @@ function lonLatToWebMercatorMeters(lonDeg, latDeg) {
   return { X: x, Y: y };
 }
 
+function webMercatorMetersToLonLat(X, Y) {
+  const lon = (X / EARTH_RADIUS_M) * 180 / Math.PI;
+  const lat = (2 * Math.atan(Math.exp(Y / EARTH_RADIUS_M)) - Math.PI / 2) * 180 / Math.PI;
+  return { lon, lat };
+}
+
+
 function computeGcpErrorsMeters() {
   if (!lastComputed || !lastComputed.mapFn) return;
 
@@ -619,6 +685,9 @@ btnGeoref.onclick = () => {
   georefMode = !georefMode;
   btnGeoref.textContent = georefMode ? "Exit Georeference Mode" : "Georeference Mode";
   btnGeoref.className = georefMode ? "danger" : "muted-btn";
+  // When georef mode is ON, user clicks the canvas to add GCPs.
+  // When OFF, let Leaflet handle panning/zooming.
+  canvas.style.pointerEvents = georefMode ? "auto" : "none";
   redrawBase();
 };
 
@@ -812,6 +881,45 @@ btnCompute.onclick = () => {
   try {
     // Affine only
     lastComputed = fitAffine(valid);
+    // Build overlay bounds from the transformed image corners
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // corners in pixel space
+    const cornersPx = [
+      { x: 0, y: 0 },
+      { x: w, y: 0 },
+      { x: w, y: h },
+      { x: 0, y: h }
+    ];
+
+    // transform corners to Web Mercator meters using your mapFn
+    const cornersMeters = cornersPx.map(p => lastComputed.mapFn(p));
+
+    // convert meters -> lat/lon
+    const cornersLatLng = cornersMeters.map(m => {
+      const ll = webMercatorMetersToLonLat(m.X, m.Y);
+      return L.latLng(ll.lat, ll.lon);
+    });
+
+    // get bounds
+    const bounds = L.latLngBounds(cornersLatLng);
+
+    // remove old overlay if present
+    if (pdfOverlay) {
+      map.removeLayer(pdfOverlay);
+      pdfOverlay = null;
+    }
+
+    // create new overlay from your rendered PDF image (dataURL)
+    pdfOverlay = L.imageOverlay(renderedImage.src, bounds, {
+      opacity: parseFloat(pdfOpacityEl?.value ?? "0.85"),
+      interactive: false
+    }).addTo(map);
+
+    // zoom map to the overlay area
+    map.fitBounds(bounds, { padding: [20, 20] });
+
 
     computeGcpErrorsMeters();
     refreshTable();
