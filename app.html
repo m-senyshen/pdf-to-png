@@ -201,7 +201,7 @@
 
         <!-- Keep your canvas on top for GCP clicking BEFORE compute -->
         <canvas id="pdf-canvas"
-                style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; border:none; background:transparent;"></canvas>
+                style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; border:none; z-index: 10; background:transparent;"></canvas>
       </div>
     </section>
 
@@ -683,13 +683,38 @@ function fitAffine(gcps){
 /* ---------- GCPs ---------- */
 btnGeoref.onclick = () => {
   georefMode = !georefMode;
-  btnGeoref.textContent = georefMode ? "Exit Georeference Mode" : "Georeference Mode";
+
+  btnGeoref.textContent = georefMode
+    ? "Exit Georeference Mode"
+    : "Georeference Mode";
+
   btnGeoref.className = georefMode ? "danger" : "muted-btn";
-  // When georef mode is ON, user clicks the canvas to add GCPs.
-  // When OFF, let Leaflet handle panning/zooming.
+
+  // Canvas should receive clicks only in georef mode
   canvas.style.pointerEvents = georefMode ? "auto" : "none";
+
+  // Disable Leaflet interactions while placing GCPs
+  if (map) {
+    if (georefMode) {
+      map.dragging.disable();
+      map.scrollWheelZoom.disable();
+      map.doubleClickZoom.disable();
+      map.boxZoom.disable();
+      map.keyboard.disable();
+      map.tap?.disable();
+    } else {
+      map.dragging.enable();
+      map.scrollWheelZoom.enable();
+      map.doubleClickZoom.enable();
+      map.boxZoom.enable();
+      map.keyboard.enable();
+      map.tap?.enable();
+    }
+  }
+
   redrawBase();
 };
+
 
 btnClear.onclick = () => {
   gcps = [];
