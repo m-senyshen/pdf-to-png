@@ -13,6 +13,11 @@
     color:#222;
     line-height:1.6;
   }
+  /* Crosshair cursor while placing GCPs */
+  .georef-cursor,
+  .georef-cursor * {
+    cursor: crosshair !important;
+  }
 
   .header {
     position: sticky;
@@ -683,6 +688,7 @@ function fitAffine(gcps){
 /* ---------- GCPs ---------- */
 btnGeoref.onclick = () => {
   georefMode = !georefMode;
+  document.body.classList.toggle("georef-cursor", georefMode);
 
   btnGeoref.textContent = georefMode
     ? "Exit Georeference Mode"
