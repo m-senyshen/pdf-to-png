@@ -193,7 +193,7 @@
           <p><strong>1️⃣ Upload your map</strong><br>Click “Select PDF”.</p>
           <p><strong>2️⃣ Add GCPs</strong><br>Toggle Georeference Mode, then click points on the map.</p>
           <p><strong>3️⃣ Enter lon/lat</strong><br>Fill in longitude/latitude for each GCP in the table.</p>
-          <p><strong>4️⃣ Compute transform</strong><br>Select affine or polynomial, then click Compute Transform.</p>
+          <p><strong>4️⃣ Compute transform</strong><br>Click Compute Transform to calculate an Affine transform.</p>
           <p class="small" style="margin-top:10px;">
             Tip: The darkened area is ignored; only clicks inside the map interior are meaningful for accurate control points.
           </p>
@@ -201,24 +201,23 @@
       </div>
 
       <h3>Ground Control Points</h3>
+
       <table id="gcp-table">
-        <div
-          id="gcp-warning"
-          class="small"
-          style="margin-top:8px; color:#7a1220;"
-        ></div>
         <thead>
           <tr><th>px X</th><th>px Y</th><th>lon</th><th>lat</th><th>err (m)</th><th></th></tr>
         </thead>
         <tbody></tbody>
       </table>
 
+      <div
+        id="gcp-warning"
+        class="small"
+        style="margin-top:8px; color:#7a1220;"
+      ></div>
+
+
       <div style="margin-top:10px">
-        <label class="small">Transform Model:</label><br>
-        <select id="model-select">
-          <option value="affine">Affine (3+ points)</option>
-          <option value="poly2">2nd-degree Polynomial (6+ points)</option>
-        </select>
+        <div class="small"><strong>Transform Model:</strong> Affine</div>
       </div>
 
       <div style="margin-top:12px">
@@ -230,6 +229,15 @@
 
       <div class="small">
         <div><strong>Build:</strong> georeferencing-only</div>
+      </div>
+      <hr style="margin:16px 0"/>
+
+      <div class="small" style="line-height:1.45;">
+        <strong>Georeferencing method:</strong> This MVP uses an <strong>Affine</strong> transform.
+        Affine is a stable, industry-standard approach that corrects global shift, rotation, scale, and skew
+        without “bending” the map. A <strong>2nd-degree polynomial</strong> transform can warp the image to fit local
+        distortions (like folds or stretching), but it can also introduce unwanted bending and distort shapes or
+        distances. For most scanned maps (about 90% of cases), Affine is the safest and most predictable choice.
       </div>
     </aside>
   </main>
@@ -254,7 +262,6 @@ const btnCompute = document.getElementById("btn-compute");
 const statusEl = document.getElementById("status");
 const gcpTable = document.querySelector("#gcp-table tbody");
 const rmsEl = document.getElementById("rms");
-const modelSelect = document.getElementById("model-select");
 
 /* ---------- Instructions Toggle ---------- */
 const instrToggle = document.getElementById("instructions-toggle");
@@ -547,32 +554,27 @@ function updateGcpWarning() {
   const warningEl = document.getElementById("gcp-warning");
   if (!warningEl) return;
 
-  const model = modelSelect.value;
-
-  const minRequired = (model === "affine") ? 3 : 6;
-  const fair = (model === "affine") ? 4 : 7;
-  const recommended = (model === "affine") ? 6 : 10;
+  // Affine-only MVP
+  const minRequired = 3;
+  const recommended = 6;
 
   const filled = gcps.filter(
     g => typeof g.lon === "number" && typeof g.lat === "number"
   ).length;
 
-  // No points yet → no message
   if (filled === 0) {
     warningEl.textContent = "";
     return;
   }
 
-  // Not enough to compute
   if (filled < minRequired) {
     const needed = minRequired - filled;
     warningEl.textContent =
-      `⚠️ This transform requires ${needed} more GCP${needed > 1 ? "s" : ""} before it can be computed.`;
+      `⚠️ Affine requires ${needed} more GCP${needed > 1 ? "s" : ""} before it can be computed.`;
     warningEl.style.color = "#7a1220";
     return;
   }
 
-  // Exact-fit case → misleading RMSE
   if (filled === minRequired) {
     warningEl.textContent =
       "⚠️ RMSE is not meaningful with the minimum number of control points. Add more GCPs to validate accuracy.";
@@ -580,7 +582,6 @@ function updateGcpWarning() {
     return;
   }
 
-  // Just enough to be meaningful (new case)
   if (filled < recommended) {
     warningEl.textContent =
       "✅ You now have a fair number of control points to proceed.";
@@ -588,7 +589,6 @@ function updateGcpWarning() {
     return;
   }
 
-  // Well constrained → hide message
   warningEl.textContent = "";
 }
 
@@ -603,20 +603,7 @@ function fitAffine(gcps){
   const rms=Math.sqrt(gcps.reduce((s,g)=>{const p=mapFn(g);return s+(p.X-g.X)**2+(p.Y-g.Y)**2;},0)/gcps.length);
   return {mapFn,rms};
 }
-function fitPoly2(gcps){
-  const M=gcps.map(g=>[1,g.x,g.y,g.x*g.x,g.x*g.y,g.y*g.y]);
-  const X=gcps.map(g=>g.X), Y=gcps.map(g=>g.Y);
-  const a=leastSquares(M,X), b=leastSquares(M,Y);
-  const mapFn=p=>{
-    const v=[1,p.x,p.y,p.x*p.x,p.x*p.y,p.y*p.y];
-    return {
-      X:v.reduce((s,_,i)=>s+v[i]*a[i],0),
-      Y:v.reduce((s,_,i)=>s+v[i]*b[i],0)
-    };
-  };
-  const rms=Math.sqrt(gcps.reduce((s,g)=>{const p=mapFn(g);return s+(p.X-g.X)**2+(p.Y-g.Y)**2;},0)/gcps.length);
-  return {mapFn,rms};
-}
+
 
 /* ---------- GCPs ---------- */
 btnGeoref.onclick = () => {
@@ -697,16 +684,16 @@ function refreshTable() {
     // lon input
     const lonTD = document.createElement("td");
     const lon = document.createElement("input");
-    lon.type = "number";
-    lon.step = "any";
+    lon.type = "text";
+    lon.step = "decimal";
     lon.value = g.lon ?? "";
     lonTD.appendChild(lon);
 
     // lat input
     const latTD = document.createElement("td");
     const lat = document.createElement("input");
-    lat.type = "number";
-    lat.step = "any";
+    lat.type = "text";
+    lat.step = "decimal";
     lat.value = g.lat ?? "";
     latTD.appendChild(lat);
 
@@ -749,6 +736,7 @@ function refreshTable() {
 
       const n = parseFloat(val);
       g.lon = Number.isFinite(n) ? n : null;
+      updateGcpWarning();
     });
 
     lon.addEventListener("paste", (e) => {
@@ -764,6 +752,7 @@ function refreshTable() {
     lat.addEventListener("input", () => {
       const n = parseFloat(lat.value);
       g.lat = Number.isFinite(n) ? n : null;
+      updateGcpWarning();
     });
 
     // delete button
@@ -787,43 +776,47 @@ function refreshTable() {
     tr.appendChild(del);
 
     gcpTable.appendChild(tr);
-    updateGcpWarning();
+    
   });
+  updateGcpWarning();
 }
 
 
 
 /* ---------- Compute Transform ---------- */
 btnCompute.onclick = () => {
-    // 1) keep only GCPs with lon/lat filled
+  // 1) only GCPs with lon/lat filled
   const validLL = gcps.filter(g => typeof g.lon === "number" && typeof g.lat === "number");
 
-  // 2) convert to Web Mercator meters for the solver
+  // 2) affine needs at least 3 points
+  if (validLL.length < 3) {
+    const needed = 3 - validLL.length;
+    return alert(`Affine requires at least 3 GCPs. Add ${needed} more.`);
+  }
+
+  // 3) convert lon/lat -> Web Mercator meters
   const valid = validLL.map(g => {
     const m = lonLatToWebMercatorMeters(g.lon, g.lat);
     return { x: g.x, y: g.y, X: m.X, Y: m.Y };
   });
 
-  if (modelSelect.value === "affine" && valid.length < 3) return alert("Affine requires ≥3 GCPs");
-  if (modelSelect.value === "poly2" && valid.length < 6) return alert("Poly2 requires ≥6 GCPs");
-
   try {
-    lastComputed = (modelSelect.value === "affine") ? fitAffine(valid) : fitPoly2(valid);
+    // Affine only
+    lastComputed = fitAffine(valid);
+
     computeGcpErrorsMeters();
     refreshTable();
-    updateGcpWarning();
-    modelSelect.addEventListener("change", () => {
-      updateGcpWarning();
-    });
 
     const rmseM = lastComputed.rms;
     rmsEl.textContent = `${rmseM.toFixed(2)} m`;
-    statusEl.textContent = "Transform computed.";
+    statusEl.textContent = "Transform computed (Affine).";
     redrawBase();
   } catch (err) {
     alert("Failed: " + err);
   }
 };
+
+
 </script>
 
 </body>
