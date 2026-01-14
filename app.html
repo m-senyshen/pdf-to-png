@@ -219,7 +219,7 @@
         <div id="instructions-content" style="margin-top:10px; font-size:13px; line-height:1.45;">
           <p><strong>1️⃣ Upload your map</strong><br>Click “Select PDF”.</p>
           <p><strong>2️⃣ Add GCPs</strong><br>Toggle Georeference Mode, then click points on the map.</p>
-          <p><strong>3️⃣ Enter lon/lat</strong><br>Fill in longitude/latitude for each GCP in the table.</p>
+          <p><strong>3️⃣ Enter lat/lon</strong><br>Fill in longitude/latitude for each GCP in the table.</p>
           <p><strong>4️⃣ Compute transform</strong><br>Click Compute Transform to calculate an Affine transform.</p>
           <p><strong>5️⃣ Review accuracy</strong><br>Check RMS error and per-point errors in the table.
           </p>
@@ -230,7 +230,7 @@
 
       <table id="gcp-table">
         <thead>
-          <tr><th>px X</th><th>px Y</th><th>lon</th><th>lat</th><th>err (m)</th><th></th></tr>
+          <tr><th>px X</th><th>px Y</th><th>lat</th><th>lon</th><th>err (m)</th><th></th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -372,6 +372,12 @@ function drawExclusionMask() {
   ctx.fillRect(right, top, canvas.width - right, bottom - top);
   ctx.restore();
 }
+
+function isValidLonLat(lon, lat) {
+  return Number.isFinite(lon) && Number.isFinite(lat) &&
+         Math.abs(lon) <= 180 && Math.abs(lat) <= 90;
+}
+
 
 function initLeafletIfNeeded() {
   if (map) return;
@@ -760,21 +766,22 @@ function refreshTable() {
     const t2 = document.createElement("td");
     t2.textContent = g.y.toFixed(1);
 
-    // lon input
-    const lonTD = document.createElement("td");
-    const lon = document.createElement("input");
-    lon.type = "text";
-    lon.inputMode = "decimal";  // mobile keyboard hint
-    lon.value = (g.lon ?? "") === null ? "" : String(g.lon ?? "");
-    lonTD.appendChild(lon);
-
-    // lat input
+    // lat input (FIRST)
     const latTD = document.createElement("td");
     const lat = document.createElement("input");
     lat.type = "text";
     lat.inputMode = "decimal";
     lat.value = (g.lat ?? "") === null ? "" : String(g.lat ?? "");
     latTD.appendChild(lat);
+
+    // lon input (SECOND)
+    const lonTD = document.createElement("td");
+    const lon = document.createElement("input");
+    lon.type = "text";
+    lon.inputMode = "decimal";
+    lon.value = (g.lon ?? "") === null ? "" : String(g.lon ?? "");
+    lonTD.appendChild(lon);
+
 
     // err (m) cell (NOT an input)
     const errTD = document.createElement("td");
@@ -854,6 +861,8 @@ function refreshTable() {
     tr.appendChild(latTD);
     tr.appendChild(errTD);
     tr.appendChild(del);
+
+    
 
     gcpTable.appendChild(tr);
     
