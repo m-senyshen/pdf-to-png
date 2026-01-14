@@ -884,6 +884,10 @@ btnCompute.onclick = () => {
     computeGcpErrorsMeters();
     refreshTable();
 
+    // Ensure basemap stays visible after compute
+    basemapLayer.setOpacity(parseFloat(basemapOpacityEl.value));  // keep basemap as user set it
+    canvas.style.opacity = parseFloat(pdfOpacityEl.value);        // keep pdf as user set it
+
     const rmseM = lastComputed.rms;
     rmsEl.textContent = `${rmseM.toFixed(2)} m`;
     statusEl.textContent = "Transform computed (Affine).";
