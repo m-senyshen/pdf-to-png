@@ -730,20 +730,28 @@ function parseLatLonPair(text) {
 
   if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
 
-  const aLooksLat = Math.abs(a) <= 90;
-  const bLooksLon = Math.abs(b) <= 180;
+  // If the first value cannot be latitude but CAN be longitude, it's probably lon,lat
+  // Example: "-120, 45"  => lon,lat
+  const aCouldBeLat = Math.abs(a) <= 90;
+  const bCouldBeLon = Math.abs(b) <= 180;
 
-  const aLooksLon = Math.abs(a) <= 180;
-  const bLooksLat = Math.abs(b) <= 90;
+  const aCouldBeLon = Math.abs(a) <= 180;
+  const bCouldBeLat = Math.abs(b) <= 90;
 
-  // Google Maps style: lat,lon
-  if (aLooksLat && bLooksLon && !(aLooksLon && bLooksLat)) {
+  // Strong signal for lon,lat: first value outside lat range but within lon range
+  if (!aCouldBeLat && aCouldBeLon && bCouldBeLat) {
+    return { lon: a, lat: b };
+  }
+
+  // Otherwise default to Google Maps style: lat,lon
+  // Example: "44.5973504, -78.206759" => lat,lon
+  if (aCouldBeLat && bCouldBeLon) {
     return { lat: a, lon: b };
   }
 
-  // Default: lon,lat
-  return { lon: a, lat: b };
+  return null;
 }
+
 
 function webMercatorMetersToLonLat(X, Y) {
   const lon = (X / EARTH_RADIUS_M) * (180 / Math.PI);
@@ -876,7 +884,16 @@ btnCompute.onclick = () => {
   initLeafletIfNeeded();
 
   // 1) only GCPs with lon/lat filled
-  const validLL = gcps.filter(g => typeof g.lon === "number" && typeof g.lat === "number");
+  const validLL = gcps.filter(g =>
+    typeof g.lon === "number" &&
+    typeof g.lat === "number" &&
+    Math.abs(g.lon) <= 180 &&
+    Math.abs(g.lat) <= 90
+  );
+
+  if (validLL.length < 3) {
+    return alert("Need at least 3 valid points. Check that lat is within ±90 and lon within ±180.");
+  }
 
   // 2) affine needs at least 3 points
   if (validLL.length < 3) {
