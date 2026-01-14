@@ -390,11 +390,16 @@ function initLeafletIfNeeded() {
 
   pdfOpacityEl?.addEventListener("input", () => {
     const op = parseFloat(pdfOpacityEl.value);
-    // Before compute, this affects the canvas overlay (what the user clicks)
-    canvas.style.opacity = op;
-    // After compute, this affects the georeferenced overlay
+
+    // Only apply to canvas if it's currently being used (georef editing mode)
+    if (canvas.style.display !== "none") {
+      canvas.style.opacity = op;
+    }
+
+    // Apply to georeferenced overlay after compute
     if (pdfOverlay) pdfOverlay.setOpacity(op);
   });
+
 
   // default opacity for canvas
   canvas.style.opacity = parseFloat(pdfOpacityEl?.value ?? "0.85");
@@ -662,6 +667,7 @@ btnGeoref.onclick = () => {
       map.boxZoom.disable();
       map.keyboard.disable();
       map.tap?.disable();
+
     } else {
       map.dragging.enable();
       map.scrollWheelZoom.enable();
@@ -669,6 +675,10 @@ btnGeoref.onclick = () => {
       map.boxZoom.enable();
       map.keyboard.enable();
       map.tap?.enable();
+      // When leaving edit mode: hide pixel canvas (overlay will show after compute)
+      canvas.style.display = "none";
+      if (pdfOverlay) pdfOverlay.addTo(map);
+
     }
   }
 
@@ -852,9 +862,10 @@ function refreshTable() {
 }
 
 
-
 /* ---------- Compute Transform ---------- */
 btnCompute.onclick = () => {
+  initLeafletIfNeeded();
+
   // 1) only GCPs with lon/lat filled
   const validLL = gcps.filter(g => typeof g.lon === "number" && typeof g.lat === "number");
 
@@ -864,38 +875,71 @@ btnCompute.onclick = () => {
     return alert(`Affine requires at least 3 GCPs. Add ${needed} more.`);
   }
 
-  // 3) convert lon/lat -> Web Mercator meters
+  // 3) convert lon/lat -> Web Mercator meters (for solver)
   const valid = validLL.map(g => {
     const m = lonLatToWebMercatorMeters(g.lon, g.lat);
     return { x: g.x, y: g.y, X: m.X, Y: m.Y };
   });
 
   try {
-    // Affine only
+    // 4) Fit affine
     lastComputed = fitAffine(valid);
-    
-        // --- FIT BASEMAP VIEW TO GCP EXTENT (MVP-safe) ---
-    // Zoom to the area the user entered (their control points)
-    const latLngs = validLL.map(g => L.latLng(g.lat, g.lon));
-    const bounds = L.latLngBounds(latLngs);
-    map.fitBounds(bounds.pad(0.25)); // pad gives a nicer view
 
+    // 5) Build overlay bounds by transforming the 4 image corners into lat/lon
+    const w = canvas.width;
+    const h = canvas.height;
 
+    const cornersPx = [
+      { x: 0, y: 0 },
+      { x: w, y: 0 },
+      { x: w, y: h },
+      { x: 0, y: h }
+    ];
+
+    const cornersLatLng = cornersPx.map(p => {
+      const m = lastComputed.mapFn(p);               // meters
+      const ll = webMercatorMetersToLonLat(m.X, m.Y); // lon/lat
+      return L.latLng(ll.lat, ll.lon);
+    });
+
+    const bounds = L.latLngBounds(cornersLatLng);
+
+    // 6) Remove old overlay if it exists
+    if (pdfOverlay) {
+      map.removeLayer(pdfOverlay);
+      pdfOverlay = null;
+    }
+
+    // 7) Create a proper Leaflet image overlay (this is the "georeferenced" PDF)
+    pdfOverlay = L.imageOverlay(renderedImage.src, bounds, {
+      opacity: parseFloat(pdfOpacityEl.value),
+      interactive: false
+    }).addTo(map);
+
+    // Make sure tiles stay visible underneath
+    basemapLayer.setOpacity(parseFloat(basemapOpacityEl.value));
+    pdfOverlay.bringToFront();
+
+    // 8) Hide the pixel-canvas so it doesn't cloud the basemap
+    canvas.style.display = "none";
+    canvas.style.pointerEvents = "none";
+
+    // 9) Zoom map to overlay
+    map.fitBounds(bounds, { padding: [20, 20] });
+
+    // 10) Compute error + refresh UI
     computeGcpErrorsMeters();
     refreshTable();
-
-    // Ensure basemap stays visible after compute
-    basemapLayer.setOpacity(parseFloat(basemapOpacityEl.value));  // keep basemap as user set it
-    canvas.style.opacity = parseFloat(pdfOpacityEl.value);        // keep pdf as user set it
 
     const rmseM = lastComputed.rms;
     rmsEl.textContent = `${rmseM.toFixed(2)} m`;
     statusEl.textContent = "Transform computed (Affine).";
-    redrawBase();
+
   } catch (err) {
     alert("Failed: " + err);
   }
 };
+
 
 
 </script>
