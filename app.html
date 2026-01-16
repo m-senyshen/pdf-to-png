@@ -765,6 +765,20 @@ function enterEditMode() {
 
   // redraw pixels + markers
   redrawBase();
+  if (!georefMode) {
+  georefMode = true;
+  document.body.classList.add("georef-cursor");
+  btnGeoref.textContent = "Exit Georeference Mode";
+  btnGeoref.className = "danger";
+  if (map) {
+    map.dragging.disable();
+    map.scrollWheelZoom.disable();
+    map.doubleClickZoom.disable();
+    map.boxZoom.disable();
+    map.keyboard.disable();
+    map.tap?.disable();
+  }
+
 }
 
 function exitEditMode() {
