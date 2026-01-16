@@ -373,7 +373,7 @@ fileInput.onchange = async () => {
   const ab = await f.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
   const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 2 });
+  const viewport = page.getViewport({ scale: 1 });
 
   canvas.width = viewport.width;
   canvas.height = viewport.height;
