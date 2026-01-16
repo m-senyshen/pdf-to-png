@@ -752,6 +752,33 @@ function parseLatLonPair(text) {
   return null;
 }
 
+function enterEditMode() {
+  // show pixel canvas for clicking
+  canvas.style.display = "block";
+  canvas.style.pointerEvents = georefMode ? "auto" : "none";
+  canvas.style.opacity = parseFloat(pdfOpacityEl.value);
+
+  // hide georeferenced overlay while editing so it doesn't "fight" the canvas
+  if (pdfOverlay && map && map.hasLayer(pdfOverlay)) {
+    map.removeLayer(pdfOverlay);
+  }
+
+  // redraw pixels + markers
+  redrawBase();
+}
+
+function exitEditMode() {
+  // hide pixel canvas so it doesn't cloud the basemap
+  canvas.style.display = "none";
+  canvas.style.pointerEvents = "none";
+
+  // show georeferenced overlay if available
+  if (pdfOverlay && map && !map.hasLayer(pdfOverlay)) {
+    pdfOverlay.addTo(map);
+    pdfOverlay.bringToFront();
+  }
+}
+
 
 function webMercatorMetersToLonLat(X, Y) {
   const lon = (X / EARTH_RADIUS_M) * (180 / Math.PI);
@@ -823,6 +850,7 @@ function refreshTable() {
         e.preventDefault();
         setLonLat(parsed.lon, parsed.lat);
         updateGcpWarning();
+        enterEditMode();
       }
     });
 
@@ -835,6 +863,7 @@ function refreshTable() {
         if (parsed) {
           setLonLat(parsed.lon, parsed.lat);
           updateGcpWarning();
+          enterEditMode();
           return;
         }
       }
@@ -842,6 +871,7 @@ function refreshTable() {
       const n = parseFloat(val);
       g.lat = Number.isFinite(n) ? n : null;
       updateGcpWarning();
+      enterEditMode();
     });
 
     // LON: simple numeric parse
@@ -849,6 +879,7 @@ function refreshTable() {
       const n = parseFloat(lon.value);
       g.lon = Number.isFinite(n) ? n : null;
       updateGcpWarning();
+      enterEditMode();
     });
 
     // delete button
@@ -858,8 +889,11 @@ function refreshTable() {
     btn.className = "secondary";
     btn.onclick = () => {
       gcps.splice(i, 1);
+
+      // if we're currently viewing the computed overlay, go back to edit mode
+      enterEditMode();
+
       refreshTable();
-      redrawBase();
     };
     del.appendChild(btn);
 
@@ -947,8 +981,8 @@ btnCompute.onclick = () => {
     pdfOverlay.bringToFront();
 
     // 8) Hide the pixel-canvas so it doesn't cloud the basemap
-    canvas.style.display = "none";
-    canvas.style.pointerEvents = "none";
+    exitEditMode();
+
 
     // 9) Zoom map to overlay
     map.fitBounds(bounds, { padding: [20, 20] });
