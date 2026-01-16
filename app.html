@@ -242,13 +242,24 @@
         </div>
       </div>
 
-      <h3>Ground Control Points</h3>
+      <div
+        style="
+          display:flex;
+          justify-content:space-between;
+          align-items:baseline;
+          gap:12px;
+        "
+      >
+        <h3 style="margin:0;">Ground Control Points</h3>
+
+        <div class="small">
+          <strong>RMS error:</strong>
+          <span id="rms" style="font-weight:700;">—</span>
+        </div>
+      </div>
 
       <table id="gcp-table">
-        <thead>
-          <tr><th>px X</th><th>px Y</th><th>lat</th><th>lon</th><th>error (m)</th><th></th></tr>
-        </thead>
-        <tbody></tbody>
+        ...
       </table>
 
       <div
@@ -256,36 +267,11 @@
         class="small"
         style="margin-top:8px; color:#7a1220;"
       ></div>
-      
-      <hr style="margin:16px 0"/>
-
-      <h3>Points</h3>
-
-      <table id="points-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>lat</th>
-            <th>lon</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-
-      <div class="small" id="points-hint" style="margin-top:8px; color:#666;">
-        Tip: Click “Create Points”, then click on the map to add points.
-      </div>
-
 
       <div style="margin-top:10px">
         <div class="small"><strong>Transform Model:</strong> Affine</div>
       </div>
 
-      <div style="margin-top:12px">
-        <div class="small">RMS error:</div>
-        <div id="rms" style="font-weight:700;margin-top:4px">—</div>
-      </div>
       <hr style="margin:16px 0"/>
 
       <div class="small" style="margin-bottom:6px;"><strong>Overlay controls</strong></div>
