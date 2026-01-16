@@ -377,14 +377,14 @@ fileInput.onchange = async () => {
 
   canvas.width = viewport.width;
   canvas.height = viewport.height;
+  statusEl.textContent = "Rendering PDF…"; 
+  await new Promise(requestAnimationFrame);
 
   await page.render({ canvasContext: ctx, viewport }).promise;
 
   //detectMapBoundaryFromCanvas();
 
-  renderedImage = new Image();
-  renderedImage.src = canvas.toDataURL();
-  await renderedImage.decode();
+  renderedImage = canvas;
 
   statusEl.textContent = "PDF loaded.";
   redrawBase();
