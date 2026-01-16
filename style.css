@@ -144,9 +144,12 @@ button:hover {
 }
 
 #gcp-table input[type="text"]{
-  width: 80px;
+  width: 40px;
   padding: 4px 6px;
   font-size: 12px;
+}
+#gcp-table td, #gcp-table th{
+  padding: 5px;
 }
 
 
