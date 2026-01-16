@@ -143,4 +143,10 @@ button:hover {
   padding: 6px 0;
 }
 
+#gcp-table input[type="text"]{
+  width: 80px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
 
