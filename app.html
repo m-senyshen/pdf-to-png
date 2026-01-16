@@ -145,6 +145,13 @@
     opacity: 0;
     cursor: pointer;
   }
+  #points-table { width:100%; border-collapse:collapse; margin-top:8px; }
+  #points-table td, #points-table th { padding:6px; border-bottom:1px solid #f0f2f6; font-size:13px; }
+
+  .point-mode,
+  .point-mode * {
+    cursor: crosshair !important;
+  }
 
   canvas {
     display:block;
@@ -195,6 +202,9 @@
       <button id="btn-georef" class="muted-btn">Georeference Mode</button>
       <button id="btn-clear-gcps" class="secondary">Clear GCPs</button>
       <button id="btn-compute" class="secondary">Compute Transform</button>
+
+      <button id="btn-points" class="secondary">Create Points</button>
+      <button id="btn-export-points" class="secondary">Export Points</button>
     </div>
   </header>
 
@@ -246,6 +256,26 @@
         class="small"
         style="margin-top:8px; color:#7a1220;"
       ></div>
+      
+      <hr style="margin:16px 0"/>
+
+      <h3>Points</h3>
+
+      <table id="points-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>lat</th>
+            <th>lon</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="small" id="points-hint" style="margin-top:8px; color:#666;">
+        Tip: Click “Create Points”, then click on the map to add points.
+      </div>
 
 
       <div style="margin-top:10px">
@@ -293,6 +323,11 @@ const btnGeoref = document.getElementById("btn-georef");
 const btnClear = document.getElementById("btn-clear-gcps");
 const btnCompute = document.getElementById("btn-compute");
 
+const btnPoints = document.getElementById("btn-points");
+const btnExportPoints = document.getElementById("btn-export-points");
+const pointsTableBody = document.querySelector("#points-table tbody");
+const pointsHint = document.getElementById("points-hint");
+
 const statusEl = document.getElementById("status");
 const gcpTable = document.querySelector("#gcp-table tbody");
 const rmsEl = document.getElementById("rms");
@@ -325,6 +360,14 @@ let georefMode = false;
 let gcps = [];
 let lastComputed = null;
 let mapBoundary = null; // {left,right,top,bottom}
+
+let pointMode = false;
+let points = [];            // { id, lat, lon }
+let pointsLayer = null;     // Leaflet layerGroup
+let nextPointId = 1;
+
+// Paywall-ready gate (set false later, replace with real billing check)
+let canExport = true;
 
 /* ---------- PDF Loading ---------- */
 fileInput.onchange = async () => {
@@ -391,6 +434,18 @@ function initLeafletIfNeeded() {
     { maxZoom: 19, attribution: "© OpenStreetMap contributors" }
   ).addTo(map);
 
+    // Layer for digitized points
+  pointsLayer = L.layerGroup().addTo(map);
+
+  // Click on map to add point (only when pointMode is on)
+  map.on("click", (e) => {
+    if (!pointMode) return;
+
+    const { lat, lng } = e.latlng;
+    addPoint(lat, lng);
+  });
+
+
   // slider wiring
   basemapOpacityEl?.addEventListener("input", () => {
     basemapLayer.setOpacity(parseFloat(basemapOpacityEl.value));
@@ -411,6 +466,126 @@ function initLeafletIfNeeded() {
 
   // default opacity for canvas
   canvas.style.opacity = parseFloat(pdfOpacityEl?.value ?? "0.85");
+}
+
+function setPointMode(on) {
+  pointMode = on;
+
+  // UI feedback
+  btnPoints.textContent = pointMode ? "Exit Points Mode" : "Create Points";
+  btnPoints.className = pointMode ? "danger" : "secondary";
+  document.body.classList.toggle("point-mode", pointMode);
+
+  // When placing points, user should be able to pan/zoom still
+  // (unlike GCP mode which disables map interactions)
+  // So we DO NOT disable Leaflet dragging here.
+
+  if (pointsHint) {
+    pointsHint.textContent = pointMode
+      ? "Points Mode ON: click on the map to add points."
+      : "Tip: Click “Create Points”, then click on the map to add points.";
+  }
+}
+
+function addPoint(lat, lon) {
+  initLeafletIfNeeded();
+
+  const p = { id: nextPointId++, lat, lon };
+  points.push(p);
+
+  // Add marker
+  const marker = L.circleMarker([lat, lon], {
+    radius: 6,
+    weight: 2,
+    fillOpacity: 0.7
+  });
+
+  // store id on marker so we can delete later
+  marker._pointId = p.id;
+
+  marker.addTo(pointsLayer);
+
+  refreshPointsTable();
+}
+
+function deletePoint(pointId) {
+  points = points.filter(p => p.id !== pointId);
+
+  // Remove marker with matching id
+  pointsLayer.eachLayer(layer => {
+    if (layer._pointId === pointId) {
+      pointsLayer.removeLayer(layer);
+    }
+  });
+
+  refreshPointsTable();
+}
+
+function refreshPointsTable() {
+  if (!pointsTableBody) return;
+
+  pointsTableBody.innerHTML = "";
+
+  points.forEach((p, idx) => {
+    const tr = document.createElement("tr");
+
+    const c1 = document.createElement("td");
+    c1.textContent = String(idx + 1);
+
+    const c2 = document.createElement("td");
+    c2.textContent = p.lat.toFixed(6);
+
+    const c3 = document.createElement("td");
+    c3.textContent = p.lon.toFixed(6);
+
+    const c4 = document.createElement("td");
+    const del = document.createElement("button");
+    del.textContent = "X";
+    del.className = "secondary";
+    del.onclick = () => deletePoint(p.id);
+    c4.appendChild(del);
+
+    tr.appendChild(c1);
+    tr.appendChild(c2);
+    tr.appendChild(c3);
+    tr.appendChild(c4);
+
+    pointsTableBody.appendChild(tr);
+  });
+}
+
+function pointsToGeoJSON() {
+  return {
+    type: "FeatureCollection",
+    features: points.map(p => ({
+      type: "Feature",
+      properties: { id: p.id },
+      geometry: {
+        type: "Point",
+        coordinates: [p.lon, p.lat] // GeoJSON is lon,lat
+      }
+    }))
+  };
+}
+
+function pointsToCSV() {
+  const header = "id,lat,lon\n";
+  const rows = points.map(p => `${p.id},${p.lat},${p.lon}`).join("\n");
+  return header + rows + "\n";
+}
+
+function downloadTextFile(filename, text, mime) {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  URL.revokeObjectURL(url);
 }
 
 
@@ -692,6 +867,30 @@ btnGeoref.onclick = () => {
 
   redrawBase();
 };
+
+btnPoints.onclick = () => {
+  initLeafletIfNeeded();
+  setPointMode(!pointMode);
+};
+
+btnExportPoints.onclick = () => {
+  if (!canExport) {
+    alert("Export is a Pro feature (coming soon).");
+    return;
+  }
+
+  if (points.length === 0) {
+    alert("No points to export yet.");
+    return;
+  }
+
+  const gj = pointsToGeoJSON();
+  downloadTextFile("map-extract-points.geojson", JSON.stringify(gj, null, 2), "application/geo+json");
+
+  const csv = pointsToCSV();
+  downloadTextFile("map-extract-points.csv", csv, "text/csv");
+};
+
 
 
 btnClear.onclick = () => {
