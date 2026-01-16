@@ -255,7 +255,7 @@
       <div class="small" style="margin-bottom:6px;"><strong>Overlay controls</strong></div>
 
       <div class="small" style="margin-top:8px;">Basemap opacity</div>
-      <input id="basemap-opacity" type="range" min="0" max="1" step="0.05" value="1" style="width:100%;">
+      <input id="basemap-opacity" type="range" min="0" max="1" step="0.05" value="0.3" style="width:100%;">
 
       <div class="small" style="margin-top:10px;">Uploaded map opacity</div>
       <input id="pdf-opacity" type="range" min="0" max="1" step="0.05" value="0.85" style="width:100%;">
@@ -316,9 +316,10 @@ instrToggle.onclick = () => {
   instrToggle.textContent = hidden ? "📘 Instructions ▼" : "📘 Instructions ▲";
 };
 
-selectPdf.onclick = () => {
+selectPdf.addEventListener("click", (e) => {
+  e.preventDefault();
   fileInput.click();
-};
+});
 
 /* ---------- App Variables ---------- */
 let renderedImage = null;
@@ -334,6 +335,9 @@ fileInput.onchange = async () => {
 
   statusEl.textContent = "Loading PDF…";
   initLeafletIfNeeded();
+  // Default basemap opacity to 30% when a map is uploaded
+  basemapOpacityEl.value = 0.3;
+  basemapLayer.setOpacity(0.3);
   gcps = [];
   lastComputed = null;
   rmsEl.textContent = "—";
@@ -765,20 +769,23 @@ function enterEditMode() {
 
   // redraw pixels + markers
   redrawBase();
-  if (!georefMode) {
-  georefMode = true;
-  document.body.classList.add("georef-cursor");
-  btnGeoref.textContent = "Exit Georeference Mode";
-  btnGeoref.className = "danger";
-  if (map) {
-    map.dragging.disable();
-    map.scrollWheelZoom.disable();
-    map.doubleClickZoom.disable();
-    map.boxZoom.disable();
-    map.keyboard.disable();
-    map.tap?.disable();
-  }
 
+  // If we're not already in georef mode, enter it and lock Leaflet interactions
+  if (!georefMode) {
+    georefMode = true;
+    document.body.classList.add("georef-cursor");
+    btnGeoref.textContent = "Exit Georeference Mode";
+    btnGeoref.className = "danger";
+
+    if (map) {
+      map.dragging.disable();
+      map.scrollWheelZoom.disable();
+      map.doubleClickZoom.disable();
+      map.boxZoom.disable();
+      map.keyboard.disable();
+      map.tap?.disable();
+    }
+  }
 }
 
 function exitEditMode() {
@@ -792,6 +799,7 @@ function exitEditMode() {
     pdfOverlay.bringToFront();
   }
 }
+
 
 
 function webMercatorMetersToLonLat(X, Y) {
