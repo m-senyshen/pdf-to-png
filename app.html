@@ -356,15 +356,18 @@ let nextPointId = 1;
 let canExport = true;
 
 /* ---------- PDF Loading ---------- */
+/* ---------- PDF Loading ---------- */
 fileInput.onchange = async () => {
   const f = fileInput.files[0];
   if (!f) return;
 
   statusEl.textContent = "Loading PDF…";
   initLeafletIfNeeded();
+
   // Default basemap opacity to 30% when a map is uploaded
   basemapOpacityEl.value = 0.3;
   basemapLayer.setOpacity(0.3);
+
   gcps = [];
   lastComputed = null;
   rmsEl.textContent = "—";
@@ -373,22 +376,31 @@ fileInput.onchange = async () => {
   const ab = await f.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
   const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 1 });
 
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  statusEl.textContent = "Rendering PDF…"; 
+  // CAP RENDER SIZE (biggest performance adjustment)
+  const desiredMaxWidthPx = 1600; // try 1200–1800
+  const rawViewport = page.getViewport({ scale: 1 });
+  const scale = Math.min(1, desiredMaxWidthPx / rawViewport.width);
+  const viewport = page.getViewport({ scale });
+
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+
+  statusEl.textContent = "Rendering PDF…";
   await new Promise(requestAnimationFrame);
 
   await page.render({ canvasContext: ctx, viewport }).promise;
 
-  //detectMapBoundaryFromCanvas();
-
-  renderedImage = canvas;
+  // Convert to an Image so redrawBase() behaves correctly (fast path = toBlob)
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+  renderedImage = new Image();
+  renderedImage.src = URL.createObjectURL(blob);
+  await renderedImage.decode();
 
   statusEl.textContent = "PDF loaded.";
   redrawBase();
 };
+
 
 /* ---------- Drawing ---------- */
 function drawExclusionMask() {
