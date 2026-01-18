@@ -258,9 +258,10 @@
         </div>
       </div>
 
-      <table id="gcp-table">
-        ...
-      </table>
+        <table id="gcp-table">
+          <thead>...</thead>
+          <tbody></tbody>
+        </table>
 
       <div
         id="gcp-warning"
@@ -315,7 +316,18 @@ const pointsTableBody = document.querySelector("#points-table tbody");
 const pointsHint = document.getElementById("points-hint");
 
 const statusEl = document.getElementById("status");
-const gcpTable = document.querySelector("#gcp-table tbody");
+const gcpTable = (() => { 
+  const table = document.getElementById("gcp-table");
+  if (!table) return null;
+
+  let tbody = table.querySelector("tbody");
+  if (!tbody) {
+    tbody = document.createElement("tbody");
+    table.appendChild(tbody);
+  }
+  return tbody;
+})();
+
 const rmsEl = document.getElementById("rms");
 
 // --- Leaflet map state ---
@@ -1013,6 +1025,7 @@ function webMercatorMetersToLonLat(X, Y) {
 
 
 function refreshTable() {
+  if (!gcpTable) return;
   gcpTable.innerHTML = "";
 
   gcps.forEach((g, i) => {
