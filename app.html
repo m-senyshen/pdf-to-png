@@ -844,6 +844,17 @@ function fitAffine(gcps){
   return {mapFn,rms};
 }
 
+// Show basemap immediately on page load
+window.addEventListener("DOMContentLoaded", () => {
+  initLeafletIfNeeded();
+
+  // optional: set initial basemap opacity (matches your slider default)
+  if (basemapOpacityEl && basemapLayer) {
+    basemapLayer.setOpacity(parseFloat(basemapOpacityEl.value || "1"));
+  }
+});
+
+
 
 /* ---------- GCPs ---------- */
 btnGeoref.onclick = () => {
