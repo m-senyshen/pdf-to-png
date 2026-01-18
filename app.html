@@ -363,6 +363,14 @@ fileInput.onchange = async () => {
 
   statusEl.textContent = "Loading PDF…";
   initLeafletIfNeeded();
+  // Always show canvas on new upload
+  canvas.style.display = "block";
+
+  // Remove old overlay if present
+  if (pdfOverlay && map) {
+    map.removeLayer(pdfOverlay);
+    pdfOverlay = null;
+  }
 
   // Default basemap opacity to 30% when a map is uploaded
   basemapOpacityEl.value = 0.3;
