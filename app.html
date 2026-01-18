@@ -277,6 +277,36 @@
 
       <div class="small" style="margin-bottom:6px;"><strong>Overlay controls</strong></div>
 
+      <hr style="margin:16px 0"/>
+
+      <div
+        id="points-section"
+        style="display:none;"
+      >
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px;">
+          <h3 style="margin:0;">Points</h3>
+          <div class="small" id="points-count">0</div>
+        </div>
+
+        <div id="points-hint" class="small" style="margin-top:6px;">
+          Tip: Click “Create Points”, then click on the map to add points.
+        </div>
+
+        <table id="points-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>lat</th>
+              <th>lon</th>
+              <th>Label</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+
       <div class="small" style="margin-top:8px;">Basemap opacity</div>
       <input id="basemap-opacity" type="range" min="0" max="1" step="0.05" value="0.3" style="width:100%;">
 
@@ -312,7 +342,20 @@ const btnCompute = document.getElementById("btn-compute");
 
 const btnPoints = document.getElementById("btn-points");
 const btnExportPoints = document.getElementById("btn-export-points");
-const pointsTableBody = document.querySelector("#points-table tbody");
+const pointsSection = document.getElementById("points-section");
+const pointsCountEl = document.getElementById("points-count");
+
+const pointsTableBody = (() => {
+  const table = document.getElementById("points-table");
+  if (!table) return null;
+
+  let tbody = table.querySelector("tbody");
+  if (!tbody) {
+    tbody = document.createElement("tbody");
+    table.appendChild(tbody);
+  }
+  return tbody;
+})();
 const pointsHint = document.getElementById("points-hint");
 
 const statusEl = document.getElementById("status");
@@ -360,7 +403,7 @@ let lastComputed = null;
 let mapBoundary = null; // {left,right,top,bottom}
 
 let pointMode = false;
-let points = [];            // { id, lat, lon }
+let points = [];            // { id, lat, lon, label }
 let pointsLayer = null;     // Leaflet layerGroup
 let nextPointId = 1;
 
@@ -488,6 +531,9 @@ function initLeafletIfNeeded() {
 
 function setPointMode(on) {
   pointMode = on;
+  if (pointsSection) {
+    pointsSection.style.display = pointMode ? "block" : "none";
+  }
 
   // UI feedback
   btnPoints.textContent = pointMode ? "Exit Points Mode" : "Create Points";
@@ -508,7 +554,7 @@ function setPointMode(on) {
 function addPoint(lat, lon) {
   initLeafletIfNeeded();
 
-  const p = { id: nextPointId++, lat, lon };
+  const p = { id: nextPointId++, lat, lon, label: "" };
   points.push(p);
 
   // Add marker
@@ -544,33 +590,55 @@ function refreshPointsTable() {
 
   pointsTableBody.innerHTML = "";
 
-  points.forEach((p, idx) => {
+  points.forEach((p) => {
     const tr = document.createElement("tr");
 
+    // ID
     const c1 = document.createElement("td");
-    c1.textContent = String(idx + 1);
+    c1.textContent = String(p.id);
 
+    // lat
     const c2 = document.createElement("td");
-    c2.textContent = p.lat.toFixed(6);
+    c2.textContent = Number(p.lat).toFixed(6);
 
+    // lon
     const c3 = document.createElement("td");
-    c3.textContent = p.lon.toFixed(6);
+    c3.textContent = Number(p.lon).toFixed(6);
 
+    // Label (editable)
     const c4 = document.createElement("td");
+    const labelInput = document.createElement("input");
+    labelInput.type = "text";
+    labelInput.placeholder = "e.g., Well #1";
+    labelInput.value = p.label ?? "";
+    labelInput.style.width = "90px";
+    labelInput.style.padding = "4px 6px";
+    labelInput.style.fontSize = "12px";
+    labelInput.addEventListener("input", () => {
+      p.label = labelInput.value;
+    });
+    c4.appendChild(labelInput);
+
+    // Delete
+    const c5 = document.createElement("td");
     const del = document.createElement("button");
     del.textContent = "X";
     del.className = "secondary";
     del.onclick = () => deletePoint(p.id);
-    c4.appendChild(del);
+    c5.appendChild(del);
 
     tr.appendChild(c1);
     tr.appendChild(c2);
     tr.appendChild(c3);
     tr.appendChild(c4);
+    tr.appendChild(c5);
 
     pointsTableBody.appendChild(tr);
   });
+
+  if (pointsCountEl) pointsCountEl.textContent = String(points.length);
 }
+
 
 function pointsToGeoJSON() {
   return {
@@ -900,6 +968,7 @@ btnGeoref.onclick = () => {
 btnPoints.onclick = () => {
   initLeafletIfNeeded();
   setPointMode(!pointMode);
+  refreshPointsTable();
 };
 
 btnExportPoints.onclick = () => {
