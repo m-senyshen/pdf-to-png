@@ -1086,6 +1086,18 @@ btnExportPoints.onclick = async () => {
   );
 };
 
+const MAP_SESSION_ID_KEY = "map_extract_session_id";
+
+function getMapSessionId() {
+  let id = localStorage.getItem(MAP_SESSION_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(MAP_SESSION_ID_KEY, id);
+  }
+  return id;
+}
+
+
 
 
 
