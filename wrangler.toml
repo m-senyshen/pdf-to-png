@@ -4,4 +4,4 @@ compatibility_date = "2025-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "map-extract-db"
-database_id = "REPLACE_WITH_REAL_ID"
+database_id = "587bd59b-8fc5-4567-a747-3e98a3c64bd4"
