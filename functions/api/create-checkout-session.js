@@ -1,72 +1,38 @@
+import Stripe from "stripe";
+
 export async function onRequestPost(context) {
-  const { request, env } = context;
+  const { env, request } = context;
+  const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
-  const STRIPE_SECRET_KEY = env.STRIPE_SECRET_KEY;
-  const PRICE_CENTS_CAD = env.PRICE_CENTS_CAD || "1200"; // $12.00 default
+  const body = await request.json();
+  const mapSessionId = body?.mapSessionId;
 
-  if (!STRIPE_SECRET_KEY) {
-    return new Response("Missing STRIPE_SECRET_KEY", { status: 500 });
+  if (!mapSessionId) {
+    return new Response("Missing mapSessionId", { status: 400 });
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    body = {};
-  }
+  const successUrl = `${env.APP_ORIGIN}/app.html?paid=1`;
+  const cancelUrl = `${env.APP_ORIGIN}/app.html?canceled=1`;
 
-  const workSessionId = body.workSessionId || "unknown";
-  const pointCount = String(body.pointCount || "");
+  const checkout = await stripe.checkout.sessions.create({
+    mode: "payment",
+    line_items: [{ price: env.STRIPE_PRICE_ID, quantity: 1 }],
+    success_url: successUrl,
+    cancel_url: cancelUrl,
 
-  // Use the current site origin so it works on both preview + production
-  const url = new URL(request.url);
-  const origin = `${url.protocol}//${url.host}`;
+    // IMPORTANT: tie Stripe payment to your session id
+    client_reference_id: mapSessionId,
 
-  // Stripe success/cancel URLs (success includes session_id placeholder)
-  const successUrl = `${origin}/app.html?session_id={CHECKOUT_SESSION_ID}`;
-  const cancelUrl = `${origin}/app.html`;
-
-  // Create Checkout Session via Stripe REST API (form-encoded)
-  const params = new URLSearchParams();
-  params.set("mode", "payment");
-  params.set("success_url", successUrl);
-  params.set("cancel_url", cancelUrl);
-
-  // line item: “Map Extract — Export Points”
-  params.set("line_items[0][quantity]", "1");
-  params.set("line_items[0][price_data][currency]", "cad");
-  params.set("line_items[0][price_data][unit_amount]", PRICE_CENTS_CAD);
-  params.set("line_items[0][price_data][product_data][name]", "Map Extract — Export Points (per session)");
-
-  // useful metadata
-  params.set("metadata[work_session_id]", workSessionId);
-  if (pointCount) params.set("metadata[point_count]", pointCount);
-
-  // Create session
-  const resp = await fetch("https://api.stripe.com/v1/checkout/sessions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: params.toString()
+    // Optional: helps receipts + customer lookup
+    // customer_creation: "always",
   });
 
-  const data = await resp.json();
+  // Store “created but not paid yet” record (optional but useful)
+  await env.DB.prepare(
+    `INSERT INTO entitlements (session_id, paid, stripe_checkout_session_id)
+     VALUES (?, 0, ?)
+     ON CONFLICT(session_id) DO UPDATE SET stripe_checkout_session_id=excluded.stripe_checkout_session_id`
+  ).bind(mapSessionId, checkout.id).run();
 
-  if (!resp.ok) {
-    return new Response(JSON.stringify(data), {
-      status: resp.status,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
-
-  // Return the hosted URL (and id if you want it)
-  return new Response(JSON.stringify({ id: data.id, url: data.url }), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*"
-    }
-  });
+  return Response.json({ url: checkout.url });
 }
