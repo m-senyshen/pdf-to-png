@@ -177,6 +177,7 @@
     border:1px solid #dbe3ee;
   }
 </style>
+<script src="https://js.stripe.com/v3/"></script>
 <link
   rel="stylesheet"
   href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -483,6 +484,26 @@ function drawExclusionMask() {
 function isValidLonLat(lon, lat) {
   return Number.isFinite(lon) && Number.isFinite(lat) &&
          Math.abs(lon) <= 180 && Math.abs(lat) <= 90;
+}
+
+/* ---------- Stripe related functions ---------- */
+function getWorkSessionId() {
+  let id = localStorage.getItem("mx_work_session_id");
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+    localStorage.setItem("mx_work_session_id", id);
+  }
+  return id;
+}
+
+function setPaidForThisWorkSession(paid) {
+  const id = getWorkSessionId();
+  localStorage.setItem(`mx_paid_${id}`, paid ? "1" : "0");
+}
+
+function isPaidForThisWorkSession() {
+  const id = getWorkSessionId();
+  return localStorage.getItem(`mx_paid_${id}`) === "1";
 }
 
 
@@ -923,6 +944,34 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+async function verifyStripeReturnIfPresent() {
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get("session_id");
+  if (!sessionId) return;
+
+  try {
+    const res = await fetch(`/api/verify-session?session_id=${encodeURIComponent(sessionId)}`);
+    const data = await res.json();
+
+    if (data && data.paid) {
+      setPaidForThisWorkSession(true);
+
+      // Optional: clean the URL so it doesn’t keep verifying on refresh
+      params.delete("session_id");
+      const newUrl = `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`;
+      window.history.replaceState({}, "", newUrl);
+    }
+  } catch (e) {
+    console.warn("Stripe verify failed:", e);
+  }
+}
+
+// run once on load
+window.addEventListener("DOMContentLoaded", () => {
+  verifyStripeReturnIfPresent();
+});
+
+
 
 
 /* ---------- GCPs ---------- */
@@ -972,23 +1021,71 @@ btnPoints.onclick = () => {
   refreshPointsTable();
 };
 
-btnExportPoints.onclick = () => {
-  if (!canExport) {
-    alert("Export is a Pro feature (coming soon).");
-    return;
-  }
-
+btnExportPoints.onclick = async () => {
+  // basic guard
   if (points.length === 0) {
     alert("No points to export yet.");
     return;
   }
 
+  // If not paid for this work session, send to Checkout
+  if (!isPaidForThisWorkSession()) {
+    try {
+      btnExportPoints.disabled = true;
+      btnExportPoints.textContent = "Redirecting to checkout…";
+
+      const workSessionId = getWorkSessionId();
+
+      const res = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workSessionId,
+          // optional: you can send point count for metadata
+          pointCount: points.length
+        })
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || "Failed to create checkout session");
+      }
+
+      const data = await res.json();
+
+      // Stripe returns a hosted URL — redirect user there
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+
+      throw new Error("No checkout URL returned.");
+    } catch (err) {
+      alert("Checkout failed: " + err.message);
+    } finally {
+      btnExportPoints.disabled = false;
+      btnExportPoints.textContent = "Export Points";
+    }
+
+    return;
+  }
+
+  // Already paid → allow unlimited downloads this session
   const gj = pointsToGeoJSON();
-  downloadTextFile("map-extract-points.geojson", JSON.stringify(gj, null, 2), "application/geo+json");
+  downloadTextFile(
+    "map-extract-points.geojson",
+    JSON.stringify(gj, null, 2),
+    "application/geo+json"
+  );
 
   const csv = pointsToCSV();
-  downloadTextFile("map-extract-points.csv", csv, "text/csv");
+  downloadTextFile(
+    "map-extract-points.csv",
+    csv,
+    "text/csv"
+  );
 };
+
 
 
 
