@@ -709,6 +709,61 @@ function downloadTextFile(filename, text, mime) {
   URL.revokeObjectURL(url);
 }
 
+function showPayStatus(title, msg) {
+  const wrap = document.getElementById("pay-status");
+  const t = document.getElementById("pay-status-title");
+  const m = document.getElementById("pay-status-msg");
+  if (!wrap || !t || !m) return;
+
+  t.textContent = title;
+  m.textContent = msg;
+  wrap.style.display = "block";
+}
+
+// Per-session-ish unlock (browser-based). We'll harden later.
+function setDownloadsUnlocked() {
+  try {
+    localStorage.setItem("mapextract_unlocked_points", "1");
+    localStorage.setItem("mapextract_unlocked_at", String(Date.now()));
+  } catch {}
+}
+
+function hasDownloadsUnlocked() {
+  try {
+    return localStorage.getItem("mapextract_unlocked_points") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function clearUrlQuery() {
+  // Removes ?paid=1 after we process it (nice UX)
+  const url = new URL(window.location.href);
+  url.searchParams.delete("paid");
+  url.searchParams.delete("canceled");
+  window.history.replaceState({}, "", url.toString());
+}
+
+function downloadAllPointFormats() {
+  if (!points || points.length === 0) {
+    showPayStatus("Payment successful ✅", "Downloads unlocked, but you have no points to export yet.");
+    return;
+  }
+
+  // GeoJSON
+  const gj = pointsToGeoJSON();
+  downloadTextFile(
+    "map-extract-points.geojson",
+    JSON.stringify(gj, null, 2),
+    "application/geo+json"
+  );
+
+  // CSV
+  const csv = pointsToCSV();
+  downloadTextFile("map-extract-points.csv", csv, "text/csv");
+}
+
+
 
 function redrawBase() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -957,6 +1012,35 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+window.addEventListener("DOMContentLoaded", () => {
+  initLeafletIfNeeded();
+
+  const url = new URL(window.location.href);
+
+  // Stripe success redirect
+  if (url.searchParams.get("paid") === "1") {
+    setDownloadsUnlocked();
+    showPayStatus("Payment successful ✅", "Downloads unlocked for this session. Your files are downloading now.");
+    clearUrlQuery();
+
+    // Trigger download immediately
+    downloadAllPointFormats();
+  }
+
+  // Stripe canceled
+  if (url.searchParams.get("canceled") === "1") {
+    showPayStatus("Checkout canceled", "No charge was made. You can try again anytime.");
+    clearUrlQuery();
+  }
+
+  // Optional: if already unlocked, show subtle reminder
+  if (hasDownloadsUnlocked()) {
+    // You can keep this quiet if you want.
+    // showPayStatus("Downloads unlocked", "You can export points again without paying (this browser session).");
+  }
+});
+
+
 async function verifyStripeReturnIfPresent() {
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get("session_id");
@@ -1056,31 +1140,34 @@ async function ensurePaid() {
 }
 
 btnExportPoints.onclick = async () => {
+  if (points.length === 0) {
+    alert("No points to export yet.");
+    return;
+  }
+
+  // If already unlocked, just download immediately
+  if (hasDownloadsUnlocked()) {
+    showPayStatus("Downloads unlocked", "Downloading GeoJSON + CSV…");
+    downloadAllPointFormats();
+    return;
+  }
+
+  // Otherwise start Stripe checkout
   try {
-    const res = await fetch("/api/create-checkout-session", {
-      method: "POST"
-    });
-
-    const text = await res.text(); // read body even on errors
-
-    if (!res.ok) {
-      console.error("Checkout start failed:", res.status, text);
-      alert(`Failed to start checkout. (${res.status})\n\n${text}`);
-      return;
-    }
-
-    const data = JSON.parse(text);
-    if (!data.url) {
-      alert("No checkout URL returned:\n\n" + text);
-      return;
-    }
-
+    showPayStatus("Redirecting to payment…", "Opening Stripe Checkout.");
+    // whatever you already do to call /api/create-checkout-session
+    // example:
+    const res = await fetch("/api/create-checkout-session", { method: "POST" });
+    if (!res.ok) throw new Error("create-checkout-session error");
+    const data = await res.json();
+    if (!data.url) throw new Error("missing checkout url");
     window.location.href = data.url;
-  } catch (err) {
-    console.error(err);
-    alert("Failed to start checkout (network/js error). Check console.");
+  } catch (e) {
+    showPayStatus("Payment error", "Failed to start checkout. Please try again.");
+    console.error(e);
   }
 };
+
 
 
 const MAP_SESSION_ID_KEY = "map_extract_session_id";
