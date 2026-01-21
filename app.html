@@ -1021,70 +1021,44 @@ btnPoints.onclick = () => {
   refreshPointsTable();
 };
 
+async function ensurePaid() {
+  const mapSessionId = getMapSessionId();
+
+  // ask server
+  const res = await fetch(`/api/entitlement?mapSessionId=${encodeURIComponent(mapSessionId)}`);
+  const data = await res.json();
+
+  if (data.paid) return true;
+
+  // create checkout session
+  const r2 = await fetch("/api/create-checkout-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mapSessionId })
+  });
+
+  const { url } = await r2.json();
+  window.location.href = url;
+  return false;
+}
+
 btnExportPoints.onclick = async () => {
-  // basic guard
   if (points.length === 0) {
     alert("No points to export yet.");
     return;
   }
 
-  // If not paid for this work session, send to Checkout
-  if (!isPaidForThisWorkSession()) {
-    try {
-      btnExportPoints.disabled = true;
-      btnExportPoints.textContent = "Redirecting to checkout…";
+  const paid = await ensurePaid();
+  if (!paid) return;
 
-      const workSessionId = getWorkSessionId();
-
-      const res = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workSessionId,
-          // optional: you can send point count for metadata
-          pointCount: points.length
-        })
-      });
-
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || "Failed to create checkout session");
-      }
-
-      const data = await res.json();
-
-      // Stripe returns a hosted URL — redirect user there
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-
-      throw new Error("No checkout URL returned.");
-    } catch (err) {
-      alert("Checkout failed: " + err.message);
-    } finally {
-      btnExportPoints.disabled = false;
-      btnExportPoints.textContent = "Export Points";
-    }
-
-    return;
-  }
-
-  // Already paid → allow unlimited downloads this session
+  // ✅ Paid: allow exports
   const gj = pointsToGeoJSON();
-  downloadTextFile(
-    "map-extract-points.geojson",
-    JSON.stringify(gj, null, 2),
-    "application/geo+json"
-  );
+  downloadTextFile("map-extract-points.geojson", JSON.stringify(gj, null, 2), "application/geo+json");
 
   const csv = pointsToCSV();
-  downloadTextFile(
-    "map-extract-points.csv",
-    csv,
-    "text/csv"
-  );
+  downloadTextFile("map-extract-points.csv", csv, "text/csv");
 };
+
 
 const MAP_SESSION_ID_KEY = "map_extract_session_id";
 

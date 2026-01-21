@@ -1,5 +1,7 @@
 name = "map-extract"
 compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
 
 [[d1_databases]]
 binding = "DB"
