@@ -1,38 +1,29 @@
 import Stripe from "stripe";
 
-export async function onRequestPost(context) {
-  const { env, request } = context;
+export async function onRequestPost({ request, env }) {
   const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
-  const body = await request.json();
-  const mapSessionId = body?.mapSessionId;
-
-  if (!mapSessionId) {
-    return new Response("Missing mapSessionId", { status: 400 });
-  }
-
-  const successUrl = `${env.APP_ORIGIN}/app.html?paid=1`;
-  const cancelUrl = `${env.APP_ORIGIN}/app.html?canceled=1`;
-
-  const checkout = await stripe.checkout.sessions.create({
+  const session = await stripe.checkout.sessions.create({
     mode: "payment",
-    line_items: [{ price: env.STRIPE_PRICE_ID, quantity: 1 }],
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-
-    // IMPORTANT: tie Stripe payment to your session id
-    client_reference_id: mapSessionId,
-
-    // Optional: helps receipts + customer lookup
-    // customer_creation: "always",
+    payment_method_types: ["card"],
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: "Map Extract – Point Export",
+            description: "Export points from a georeferenced map"
+          },
+          unit_amount: 1200 // $12.00 USD
+        },
+        quantity: 1
+      }
+    ],
+    success_url: `${env.SITE_URL}/app.html?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${env.SITE_URL}/app.html?payment=cancel`
   });
 
-  // Store “created but not paid yet” record (optional but useful)
-  await env.DB.prepare(
-    `INSERT INTO entitlements (session_id, paid, stripe_checkout_session_id)
-     VALUES (?, 0, ?)
-     ON CONFLICT(session_id) DO UPDATE SET stripe_checkout_session_id=excluded.stripe_checkout_session_id`
-  ).bind(mapSessionId, checkout.id).run();
-
-  return Response.json({ url: checkout.url });
+  return new Response(JSON.stringify({ url: session.url }), {
+    headers: { "Content-Type": "application/json" }
+  });
 }

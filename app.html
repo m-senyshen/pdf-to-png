@@ -1043,21 +1043,20 @@ async function ensurePaid() {
 }
 
 btnExportPoints.onclick = async () => {
-  if (points.length === 0) {
-    alert("No points to export yet.");
+  // For now: always send user to checkout
+  const res = await fetch("/api/create-checkout-session", {
+    method: "POST"
+  });
+
+  if (!res.ok) {
+    alert("Failed to start checkout.");
     return;
   }
 
-  const paid = await ensurePaid();
-  if (!paid) return;
-
-  // ✅ Paid: allow exports
-  const gj = pointsToGeoJSON();
-  downloadTextFile("map-extract-points.geojson", JSON.stringify(gj, null, 2), "application/geo+json");
-
-  const csv = pointsToCSV();
-  downloadTextFile("map-extract-points.csv", csv, "text/csv");
+  const data = await res.json();
+  window.location.href = data.url;
 };
+
 
 
 const MAP_SESSION_ID_KEY = "map_extract_session_id";
