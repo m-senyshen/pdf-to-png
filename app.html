@@ -1043,19 +1043,32 @@ async function ensurePaid() {
 }
 
 btnExportPoints.onclick = async () => {
-  // For now: always send user to checkout
-  const res = await fetch("/api/create-checkout-session", {
-    method: "POST"
-  });
+  try {
+    const res = await fetch("/api/create-checkout-session", {
+      method: "POST"
+    });
 
-  if (!res.ok) {
-    alert("Failed to start checkout.");
-    return;
+    const text = await res.text(); // read body even on errors
+
+    if (!res.ok) {
+      console.error("Checkout start failed:", res.status, text);
+      alert(`Failed to start checkout. (${res.status})\n\n${text}`);
+      return;
+    }
+
+    const data = JSON.parse(text);
+    if (!data.url) {
+      alert("No checkout URL returned:\n\n" + text);
+      return;
+    }
+
+    window.location.href = data.url;
+  } catch (err) {
+    console.error(err);
+    alert("Failed to start checkout (network/js error). Check console.");
   }
-
-  const data = await res.json();
-  window.location.href = data.url;
 };
+
 
 
 
