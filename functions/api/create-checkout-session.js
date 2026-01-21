@@ -17,7 +17,7 @@ export async function onRequestPost({ env }) {
       line_items: [
         {
           price_data: {
-            currency: "usd",
+            currency: "cad",
             product_data: {
               name: "Map Extract – Point Export",
               description: "Export points from a georeferenced map",
