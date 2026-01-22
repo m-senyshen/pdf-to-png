@@ -82,6 +82,23 @@
     align-items:center;
     flex-wrap:wrap;
   }
+  .primary-action {
+    background: linear-gradient(180deg, #2563eb, #1e40af); /* blue gradient */
+    color: #fff;
+    border: 2px solid #1e40af;
+    box-shadow: 0 6px 18px rgba(30, 64, 175, 0.35);
+    font-weight: 700;
+  }
+
+  .primary-action:hover {
+    background: linear-gradient(180deg, #1e40af, #1e3a8a);
+    box-shadow: 0 8px 22px rgba(30, 64, 175, 0.45);
+  }
+
+  .primary-action:active {
+    transform: translateY(1px);
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.35);
+  }
 
   button {
     background:var(--accent);
@@ -206,7 +223,7 @@
       <button id="btn-compute" class="secondary">Compute Transform</button>
 
       <button id="btn-points" class="secondary">Create Points</button>
-      <button id="btn-export-points" class="secondary">Export Points</button>
+      <button id="btn-export-points" class="primary-action">Export Points</button>
     </div>
   </header>
 
