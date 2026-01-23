@@ -83,14 +83,14 @@
     flex-wrap:wrap;
   }
   .primary-action {
-    background: #2563eb;          /* standard blue */
+    background:#3b82f6;          /* standard blue */
     color: #fff;
-    border: 1px solid #1e40af;    /* slightly darker border */
+    border: 1px solid #2563eb;    /* slightly darker border */
     font-weight: 600;
   }
 
   .primary-action:hover {
-    background: #1e40af;
+    background: #2563eb;
   }
 
   .primary-action:active {
@@ -539,6 +539,17 @@ function initLeafletIfNeeded() {
 
   map = L.map("leaflet-map", { zoomControl: true }).setView([0, 0], 2);
 
+    // --- Custom panes so points always render above the georeferenced PDF ---
+    if (!map.getPane("pdfPane")) {
+      map.createPane("pdfPane");
+      map.getPane("pdfPane").style.zIndex = 400; // below points
+    }
+
+    if (!map.getPane("pointsPane")) {
+      map.createPane("pointsPane");
+      map.getPane("pointsPane").style.zIndex = 650; // above pdfPane
+    }
+
   basemapLayer = L.tileLayer(
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     { maxZoom: 19, attribution: "© OpenStreetMap contributors" }
@@ -610,7 +621,8 @@ function addPoint(lat, lon) {
   const marker = L.circleMarker([lat, lon], {
     radius: 6,
     weight: 2,
-    fillOpacity: 0.7
+    fillOpacity: 0.7,
+    pane: "pointsPane"
   });
 
   // store id on marker so we can delete later
@@ -1499,7 +1511,8 @@ btnCompute.onclick = () => {
     // 7) Create a proper Leaflet image overlay (this is the "georeferenced" PDF)
     pdfOverlay = L.imageOverlay(renderedImage.src, bounds, {
       opacity: parseFloat(pdfOpacityEl.value),
-      interactive: false
+      interactive: false,
+      pane: "pdfPane"
     }).addTo(map);
 
     // Make sure tiles stay visible underneath
