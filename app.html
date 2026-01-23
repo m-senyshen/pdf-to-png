@@ -1200,21 +1200,41 @@ btnExportPoints.onclick = async () => {
   }
 
   try {
-    // ✅ Secure gate: ask server/D1, not local state
-    if (await hasDownloadsUnlockedServer()) {
-      showPayStatus("Downloads unlocked", "Downloading GeoJSON + CSV…");
-      downloadAllPointFormats();
-      return;
+    // Ensure the session id exists for this browser tab/session
+    const mapSessionId = getMapSessionId();
+
+    // Secure gate (server/D1): if already paid for this session, unlock + download
+    const checkRes = await fetch(
+      `/api/entitlements?map_session_id=${encodeURIComponent(mapSessionId)}`,
+      { method: "GET" }
+    );
+
+    if (checkRes.ok) {
+      const checkData = await checkRes.json();
+      if (checkData?.unlocked) {
+        // Optional: if you keep a local flag for UX speed, set it here
+        // setDownloadsUnlocked?.();
+
+        showPayStatus("Downloads unlocked", "Downloading GeoJSON + CSV…");
+        downloadAllPointFormats();
+        return;
+      }
+    } else {
+      // Not fatal — fall through to checkout
+      const txt = await checkRes.text().catch(() => "");
+      console.warn("Entitlement check failed:", checkRes.status, txt);
     }
 
+    // Otherwise start Stripe checkout
     showPayStatus("Redirecting to payment…", "Opening Stripe Checkout.");
 
     const res = await fetch("/api/create-checkout-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ map_session_id: getMapSessionId() }),
+      body: JSON.stringify({ map_session_id: mapSessionId }),
     });
 
+    // Read body even on errors so we can see the real cause
     const bodyText = await res.text();
 
     if (!res.ok) {
@@ -1235,10 +1255,14 @@ btnExportPoints.onclick = async () => {
 
     window.location.href = data.url;
   } catch (e) {
-    showPayStatus("Payment error", e.message || "Failed to start checkout. Please try again.");
+    showPayStatus(
+      "Payment error",
+      e?.message || "Failed to start checkout. Please try again."
+    );
     console.error(e);
   }
 };
+
 
 
 const MAP_SESSION_ID_KEY = "map_extract_session_id";

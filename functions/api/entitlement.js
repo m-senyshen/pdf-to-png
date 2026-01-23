@@ -1,13 +1,14 @@
-export async function onRequestGet(context) {
-  const { env, request } = context;
+export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
-  const mapSessionId = url.searchParams.get("mapSessionId");
-
-  if (!mapSessionId) return Response.json({ paid: false });
+  const map_session_id = url.searchParams.get("map_session_id");
+  if (!map_session_id) return new Response("Missing map_session_id", { status: 400 });
 
   const row = await env.DB.prepare(
-    "SELECT paid FROM entitlements WHERE session_id = ?"
-  ).bind(mapSessionId).first();
+    "SELECT unlocked FROM entitlements WHERE map_session_id = ?"
+  ).bind(map_session_id).first();
 
-  return Response.json({ paid: row?.paid === 1 });
+  const unlocked = row?.unlocked === 1;
+  return new Response(JSON.stringify({ unlocked }), {
+    headers: { "Content-Type": "application/json" },
+  });
 }
