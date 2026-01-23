@@ -385,6 +385,13 @@ const pointsTableBody = (() => {
   }
   return tbody;
 })();
+
+const mapSessionId = getMapSessionId();
+const res = await fetch("/api/create-checkout-session", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ mapSessionId }),
+});
 const pointsHint = document.getElementById("points-hint");
 
 const statusEl = document.getElementById("status");
@@ -751,19 +758,37 @@ function showPayStatus(title, msg) {
 
 // Per-session-ish unlock (browser-based). We'll harden later.
 function setDownloadsUnlocked() {
-  try {
-    localStorage.setItem("mapextract_unlocked_points", "1");
-    localStorage.setItem("mapextract_unlocked_at", String(Date.now()));
-  } catch {}
+  localStorage.setItem("mapextract_paid", "1");
 }
 
-function hasDownloadsUnlocked() {
-  try {
-    return localStorage.getItem("mapextract_unlocked_points") === "1";
-  } catch {
-    return false;
-  }
+async function hasDownloadsUnlockedServer() {
+  const id = getMapSessionId();
+  const res = await fetch(`/api/check-entitlement?map_session_id=${encodeURIComponent(id)}`);
+  if (!res.ok) return false;
+  const data = await res.json();
+  return !!data.paid;
 }
+function showPayStatus(title, msg) {
+  alert(`${title}\n${msg}`); // replace with your nicer UI panel if you have it
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const url = new URL(window.location.href);
+  const paid = url.searchParams.get("paid");
+  const canceled = url.searchParams.get("canceled");
+  const sessionId = url.searchParams.get("session_id");
+
+  if (canceled) {
+    showPayStatus("Payment canceled", "You can try again anytime.");
+  }
+
+  if (paid && sessionId) {
+    // Step 2 (basic MVP): trust the redirect and unlock locally
+    // Step 3 (secure): we will *verify sessionId server-side* before unlocking.
+    showPayStatus("Payment successful — download unlocked", "You can now export GeoJSON + CSV.");
+  }
+});
+
 
 function clearUrlQuery() {
   // Removes ?paid=1 after we process it (nice UX)
@@ -775,7 +800,7 @@ function clearUrlQuery() {
 
 function downloadAllPointFormats() {
   if (!points || points.length === 0) {
-    showPayStatus("Payment successful ✅", "Downloads unlocked, but you have no points to export yet.");
+    showPayStatus("Payment successful!", "Downloads unlocked, but you have no points to export yet.");
     return;
   }
 
@@ -1173,6 +1198,16 @@ btnExportPoints.onclick = async () => {
     alert("No points to export yet.");
     return;
   }
+  const MAP_SESSION_ID_KEY = "map_extract_session_id";
+
+  function getMapSessionId() {
+    let id = sessionStorage.getItem(MAP_SESSION_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      sessionStorage.setItem(MAP_SESSION_ID_KEY, id);
+    }
+    return id;
+  }
 
   // If already unlocked, just download immediately
   if (hasDownloadsUnlocked()) {
@@ -1184,8 +1219,11 @@ btnExportPoints.onclick = async () => {
   try {
     showPayStatus("Redirecting to payment…", "Opening Stripe Checkout.");
 
-    const res = await fetch("/api/create-checkout-session", { method: "POST" });
-
+    const res = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ map_session_id: getMapSessionId() }),
+    });
     // read the body even on errors so we can see the real cause
     const bodyText = await res.text();
 
