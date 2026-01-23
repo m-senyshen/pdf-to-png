@@ -231,7 +231,7 @@
         <input type="file" id="file-input" accept="application/pdf" />
       </div>
 
-      <div class="status" id="status">No map uploaded</div>
+      <div class="status" id="status">No Map Uploaded</div>
 
       <div id="map-wrap" style="position:relative; width:100%;">
         <div id="leaflet-map" style="width:100%; height:70vh; border:1px solid #e6e9ef; border-radius:8px;"></div>
@@ -1209,11 +1209,8 @@ btnExportPoints.onclick = async () => {
   } catch (e) {
     showPayStatus("Payment error", e.message || "Failed to start checkout. Please try again.");
     console.error(e);
-  }
+  };
 };
-
-
-
 
 const MAP_SESSION_ID_KEY = "map_extract_session_id";
 
@@ -1224,10 +1221,7 @@ function getMapSessionId() {
     localStorage.setItem(MAP_SESSION_ID_KEY, id);
   }
   return id;
-}
-
-
-
+};
 
 
 btnClear.onclick = () => {
