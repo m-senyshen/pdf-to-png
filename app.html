@@ -1197,45 +1197,23 @@ btnExportPoints.onclick = async () => {
   }
 
   try {
-    // 2) Ensure the session id exists for this browser tab/session
-    const mapSessionId = getMapSessionId();
-
-    // 3) Secure gate (server/D1): check if already paid for this session
-    let unlocked = false;
-    try {
-      const checkRes = await fetch(
-        `/api/entitlements?map_session_id=${encodeURIComponent(mapSessionId)}`,
-        { method: "GET" }
-      );
-
-      if (checkRes.ok) {
-        const checkData = await checkRes.json();
-        unlocked = !!checkData?.unlocked;
-      } else {
-        const txt = await checkRes.text().catch(() => "");
-        console.warn("Entitlement check failed:", checkRes.status, txt);
-      }
-    } catch (err) {
-      console.warn("Entitlement check error:", err);
-    }
-
-    // 4) If unlocked, download immediately
-    if (unlocked) {
+    // 2) Secure gate: ask server/D1, not local state
+    const paid = await hasDownloadsUnlockedServer();
+    if (paid) {
       showPayStatus("Downloads unlocked", "Downloading GeoJSON + CSV…");
       downloadAllPointFormats();
       return;
     }
 
-    // 5) Otherwise start Stripe checkout
+    // 3) Not paid yet → start Stripe Checkout
     showPayStatus("Redirecting to payment…", "Opening Stripe Checkout.");
 
     const res = await fetch("/api/create-checkout-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ map_session_id: mapSessionId }),
+      body: JSON.stringify({ map_session_id: getMapSessionId() }),
     });
 
-    
     const bodyText = await res.text();
 
     if (!res.ok) {
@@ -1263,6 +1241,7 @@ btnExportPoints.onclick = async () => {
     console.error(e);
   }
 };
+
 
 
 
