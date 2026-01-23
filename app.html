@@ -1181,21 +1181,37 @@ btnExportPoints.onclick = async () => {
     return;
   }
 
-  // Otherwise start Stripe checkout
   try {
     showPayStatus("Redirecting to payment…", "Opening Stripe Checkout.");
-    // whatever you already do to call /api/create-checkout-session
-    // example:
+
     const res = await fetch("/api/create-checkout-session", { method: "POST" });
-    if (!res.ok) throw new Error("create-checkout-session error");
-    const data = await res.json();
-    if (!data.url) throw new Error("missing checkout url");
+
+    // read the body even on errors so we can see the real cause
+    const bodyText = await res.text();
+
+    if (!res.ok) {
+      console.error("create-checkout-session failed:", res.status, bodyText);
+      throw new Error(`HTTP ${res.status}: ${bodyText}`);
+    }
+
+    let data;
+    try {
+      data = JSON.parse(bodyText);
+    } catch {
+      throw new Error(`Expected JSON but got: ${bodyText}`);
+    }
+
+    if (!data.url) {
+      throw new Error(`Missing checkout url. Response was: ${bodyText}`);
+    }
+
     window.location.href = data.url;
   } catch (e) {
-    showPayStatus("Payment error", "Failed to start checkout. Please try again.");
+    showPayStatus("Payment error", e.message || "Failed to start checkout. Please try again.");
     console.error(e);
   }
 };
+
 
 
 

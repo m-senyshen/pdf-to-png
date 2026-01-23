@@ -1,5 +1,7 @@
 import Stripe from "stripe";
 
+const origin = env.SITE_URL;
+
 export async function onRequestPost({ env }) {
   try {
     if (!env.STRIPE_SECRET_KEY) {
@@ -27,6 +29,7 @@ export async function onRequestPost({ env }) {
           quantity: 1,
         },
       ],
+      
       success_url: `${env.SITE_URL}/app.html?paid=1`,
       cancel_url: `${env.SITE_URL}/app.html?canceled=1`,
     });
