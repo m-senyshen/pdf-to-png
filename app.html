@@ -607,7 +607,7 @@ function setPointMode(on) {
   if (pointsHint) {
     pointsHint.textContent = pointMode
       ? "Points Mode ON: click on the map to add points."
-      : "Tip: Click “Create Points”, then click on the map to add points.";
+      : "Points Mode OFF: points are visible — turn on to add more.";
   }
 }
 
@@ -647,7 +647,10 @@ function deletePoint(pointId) {
 }
 
 function refreshPointsTable() {
-  if (!pointsTableBody) return;
+    if (pointsSection) {
+      pointsSection.style.display = points.length > 0 ? "block" : "none";
+    }
+    if (!pointsTableBody) return;
 
   pointsTableBody.innerHTML = "";
 
