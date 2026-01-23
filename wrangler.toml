@@ -2,6 +2,8 @@ name = "map-extract"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+# 👇 Required if you want Pages to treat this as a Pages config
+pages_build_output_dir = "."
 
 [[d1_databases]]
 binding = "DB"
