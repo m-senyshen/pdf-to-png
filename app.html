@@ -1198,25 +1198,15 @@ btnExportPoints.onclick = async () => {
     alert("No points to export yet.");
     return;
   }
-  const MAP_SESSION_ID_KEY = "map_extract_session_id";
-
-  function getMapSessionId() {
-    let id = sessionStorage.getItem(MAP_SESSION_ID_KEY);
-    if (!id) {
-      id = crypto.randomUUID();
-      sessionStorage.setItem(MAP_SESSION_ID_KEY, id);
-    }
-    return id;
-  }
-
-  // If already unlocked, just download immediately
-  if (hasDownloadsUnlocked()) {
-    showPayStatus("Downloads unlocked", "Downloading GeoJSON + CSV…");
-    downloadAllPointFormats();
-    return;
-  }
 
   try {
+    // ✅ Secure gate: ask server/D1, not local state
+    if (await hasDownloadsUnlockedServer()) {
+      showPayStatus("Downloads unlocked", "Downloading GeoJSON + CSV…");
+      downloadAllPointFormats();
+      return;
+    }
+
     showPayStatus("Redirecting to payment…", "Opening Stripe Checkout.");
 
     const res = await fetch("/api/create-checkout-session", {
@@ -1224,7 +1214,7 @@ btnExportPoints.onclick = async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ map_session_id: getMapSessionId() }),
     });
-    // read the body even on errors so we can see the real cause
+
     const bodyText = await res.text();
 
     if (!res.ok) {
@@ -1247,8 +1237,9 @@ btnExportPoints.onclick = async () => {
   } catch (e) {
     showPayStatus("Payment error", e.message || "Failed to start checkout. Please try again.");
     console.error(e);
-  };
+  }
 };
+
 
 const MAP_SESSION_ID_KEY = "map_extract_session_id";
 
