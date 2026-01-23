@@ -27,8 +27,8 @@ export async function onRequestPost({ env }) {
           quantity: 1,
         },
       ],
-      success_url: `${origin}/app.html?paid=1`,
-      cancel_url: `${origin}/app.html?canceled=1`,
+      success_url: `${env.SITE_URL}/app.html?paid=1`,
+      cancel_url: `${env.SITE_URL}/app.html?canceled=1`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
