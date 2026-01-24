@@ -2,38 +2,50 @@ import Stripe from "stripe";
 
 export async function onRequestPost({ request, env }) {
   try {
-    if (!env.STRIPE_SECRET_KEY) return new Response("Missing STRIPE_SECRET_KEY", { status: 500 });
-    if (!env.STRIPE_WEBHOOK_SECRET) return new Response("Missing STRIPE_WEBHOOK_SECRET", { status: 500 });
-    if (!env.DB) return new Response("Missing D1 binding DB", { status: 500 });
-
-    // IMPORTANT: Stripe signature verification needs the *raw* body
-    const body = await request.text();
-    const sig = request.headers.get("stripe-signature");
-    if (!sig) return new Response("Missing stripe-signature header", { status: 400 });
+    if (!env.STRIPE_WEBHOOK_SECRET) {
+      return new Response("Missing env.STRIPE_WEBHOOK_SECRET", { status: 500 });
+    }
+    if (!env.STRIPE_SECRET_KEY) {
+      return new Response("Missing env.STRIPE_SECRET_KEY", { status: 500 });
+    }
+    if (!env.DB) {
+      return new Response("Missing D1 binding env.DB", { status: 500 });
+    }
 
     const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
-    let event;
-    try {
-      event = await stripe.webhooks.constructEventAsync(body, sig, env.STRIPE_WEBHOOK_SECRET);
-    } catch (err) {
-      return new Response(`Webhook signature verification failed: ${err?.message || err}`, { status: 400 });
-    }
+    const sig = request.headers.get("stripe-signature");
+    if (!sig) return new Response("Missing stripe-signature header", { status: 400 });
 
-    // We care about successful checkout completion
+    const body = await request.text();
+
+    // IMPORTANT for Cloudflare: use async signature verification
+    const event = await stripe.webhooks.constructEventAsync(
+      body,
+      sig,
+      env.STRIPE_WEBHOOK_SECRET
+    );
+
+    // We only care about successful Checkout completion
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
 
+      // ✅ This is the browser-tab/session identifier you generated in app.html
       const map_session_id = session?.metadata?.map_session_id;
+
       if (!map_session_id) {
-        return new Response("checkout.session.completed missing metadata.map_session_id", { status: 400 });
+        return new Response(
+          "Missing session.metadata.map_session_id (did create-checkout-session send metadata?)",
+          { status: 400 }
+        );
       }
 
-      const stripe_checkout_session_id = session.id;
-      const stripe_payment_intent_id = session.payment_intent || null;
-      const customer_email = session.customer_details?.email || null;
+      const stripe_checkout_session_id = session.id ?? null;
+      const stripe_payment_intent_id = session.payment_intent ?? null;
+      const customer_email =
+        session.customer_details?.email ?? session.customer_email ?? null;
 
-      // Write entitlement (idempotent upsert)
+      // ✅ Write entitlement to D1 (UPSERT)
       await env.DB.prepare(`
         INSERT INTO entitlements (
           session_id,
@@ -42,23 +54,26 @@ export async function onRequestPost({ request, env }) {
           stripe_payment_intent_id,
           customer_email,
           updated_at
-        ) VALUES (?, 1, ?, ?, ?, datetime('now'))
+        )
+        VALUES (?, 1, ?, ?, ?, datetime('now'))
         ON CONFLICT(session_id) DO UPDATE SET
-          paid = 1,
-          stripe_checkout_session_id = excluded.stripe_checkout_session_id,
-          stripe_payment_intent_id = excluded.stripe_payment_intent_id,
-          customer_email = excluded.customer_email,
-          updated_at = datetime('now')
+          paid=1,
+          stripe_checkout_session_id=excluded.stripe_checkout_session_id,
+          stripe_payment_intent_id=excluded.stripe_payment_intent_id,
+          customer_email=excluded.customer_email,
+          updated_at=datetime('now')
       `).bind(
-        sessionId,
-        checkoutSessionId,
-        paymentIntentId,
-        customerEmail
+        map_session_id,
+        stripe_checkout_session_id,
+        stripe_payment_intent_id,
+        customer_email
       ).run();
     }
 
     return new Response("ok", { status: 200 });
   } catch (err) {
-    return new Response(`stripe-webhook error: ${err?.message || String(err)}`, { status: 500 });
+    return new Response(`stripe-webhook error: ${err?.message || String(err)}`, {
+      status: 500,
+    });
   }
 }
