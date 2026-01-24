@@ -524,6 +524,50 @@ function drawExclusionMask() {
   ctx.restore();
 }
 
+// ---- Persist points in this tab/session ----
+const POINTS_STORAGE_KEY = "map_extract_points_v1";
+
+function savePointsToStorage() {
+  try {
+    sessionStorage.setItem(POINTS_STORAGE_KEY, JSON.stringify(points));
+  } catch (e) {
+    console.warn("Could not save points:", e);
+  }
+}
+
+function loadPointsFromStorage() {
+  try {
+    const raw = sessionStorage.getItem(POINTS_STORAGE_KEY);
+    if (!raw) return;
+
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return;
+
+    // Restore points + next id
+    points = arr;
+    nextPointId = (points.reduce((m, p) => Math.max(m, Number(p.id) || 0), 0) || 0) + 1;
+
+    // Rebuild markers + table
+    initLeafletIfNeeded();
+    if (pointsLayer) pointsLayer.clearLayers();
+
+    points.forEach(p => {
+      const marker = L.circleMarker([p.lat, p.lon], {
+        radius: 6,
+        weight: 2,
+        fillOpacity: 0.7
+      });
+      marker._pointId = p.id;
+      marker.addTo(pointsLayer);
+    });
+
+    refreshPointsTable();
+  } catch (e) {
+    console.warn("Could not load points:", e);
+  }
+}
+
+
 function isValidLonLat(lon, lat) {
   return Number.isFinite(lon) && Number.isFinite(lat) &&
          Math.abs(lon) <= 180 && Math.abs(lat) <= 90;
@@ -548,6 +592,40 @@ function isPaidForThisWorkSession() {
   const id = getWorkSessionId();
   return localStorage.getItem(`mx_paid_${id}`) === "1";
 }
+
+const POINTS_STORAGE_KEY = "map_extract_points";
+
+function savePointsToSession() {
+  try {
+    sessionStorage.setItem(POINTS_STORAGE_KEY, JSON.stringify(points));
+  } catch {}
+}
+
+function loadPointsFromSession() {
+  try {
+    const raw = sessionStorage.getItem(POINTS_STORAGE_KEY);
+    if (!raw) return;
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) {
+      points = arr;
+
+      // re-render markers
+      initLeafletIfNeeded();
+      pointsLayer.clearLayers();
+      points.forEach(p => {
+        const marker = L.circleMarker([p.lat, p.lon], { radius: 6, weight: 2, fillOpacity: 0.7 });
+        marker._pointId = p.id;
+        marker.addTo(pointsLayer);
+      });
+
+      // keep nextPointId correct
+      nextPointId = points.reduce((m, p) => Math.max(m, p.id || 0), 0) + 1;
+
+      refreshPointsTable();
+    }
+  } catch {}
+}
+
 
 
 function initLeafletIfNeeded() {
@@ -631,29 +709,20 @@ function setPointMode(on) {
 
 function addPoint(lat, lon) {
   initLeafletIfNeeded();
-
-  const p = { id: nextPointId++, lat, lon, label: "" };
+  const p = { id: nextPointId++, lat, lon };
   points.push(p);
 
-  // Add marker
-  const marker = L.circleMarker([lat, lon], {
-    radius: 6,
-    weight: 2,
-    fillOpacity: 0.7,
-    pane: "pointsPane"
-  });
-
-  // store id on marker so we can delete later
+  const marker = L.circleMarker([lat, lon], { radius: 6, weight: 2, fillOpacity: 0.7 });
   marker._pointId = p.id;
-
   marker.addTo(pointsLayer);
 
   refreshPointsTable();
+  savePointsToSession();
 }
 
 function deletePoint(pointId) {
   points = points.filter(p => p.id !== pointId);
-
+  savePointsToStorage();
   // Remove marker with matching id
   pointsLayer.eachLayer(layer => {
     if (layer._pointId === pointId) {
@@ -662,6 +731,7 @@ function deletePoint(pointId) {
   });
 
   refreshPointsTable();
+  savePointsToSession();
 }
 
 function refreshPointsTable() {
@@ -1070,6 +1140,7 @@ function fitAffine(gcps){
 // Show basemap immediately on page load
 window.addEventListener("DOMContentLoaded", () => {
   initLeafletIfNeeded();
+  loadPointsFromStorage();
 
   // optional: set initial basemap opacity (matches your slider default)
   if (basemapOpacityEl && basemapLayer) {
@@ -1077,6 +1148,35 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+window.addEventListener("DOMContentLoaded", async () => {
+  initLeafletIfNeeded();
+  loadPointsFromStorage();
+
+  const url = new URL(window.location.href);
+
+  // If Stripe sent them back here, we should refresh entitlement state
+  if (url.searchParams.get("paid") === "1") {
+    // If map_session_id is present in URL, ensure our sessionStorage matches it
+    const urlSessionId = url.searchParams.get("map_session_id");
+    if (urlSessionId) {
+      sessionStorage.setItem(MAP_SESSION_ID_KEY, urlSessionId);
+    }
+
+    // Now check server entitlement
+    const unlocked = await hasDownloadsUnlockedServer().catch(() => false);
+    if (unlocked) {
+      showPayStatus("Payment successful — download unlocked", "You can export without paying again.");
+    } else {
+      showPayStatus("Payment received", "Finalizing unlock… (if this persists, your webhook isn’t writing entitlements)");
+    }
+
+    // Optional: remove the paid=1 from URL to keep it clean
+    url.searchParams.delete("paid");
+    history.replaceState({}, "", url.toString());
+  }
+});
+
+// making sure a user paid and that their points are not lost
 window.addEventListener("DOMContentLoaded", () => {
   initLeafletIfNeeded();
 
@@ -1084,24 +1184,52 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Stripe success redirect
   if (url.searchParams.get("paid") === "1") {
-    setDownloadsUnlocked();
-    showPayStatus("Payment successful ✅", "Downloads unlocked for this session. Your files are downloading now.");
-    clearUrlQuery();
+    showPayStatus("Payment received", "Finalizing unlock…");
 
-    // Trigger download immediately
-    downloadAllPointFormats();
+    // We cleared query later; keep it for now in case we need to show status
+    (async () => {
+      // Poll a few times because webhook/D1 write can be slightly delayed
+      const maxAttempts = 8;
+      const delayMs = 600;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const ok = await hasDownloadsUnlockedServer();
+          if (ok) {
+            // Optional local flag for UX only (not the authority)
+            setDownloadsUnlocked?.();
+
+            showPayStatus(
+              "Payment successful!",
+              "Downloads unlocked for this session. Downloading now…"
+            );
+
+            clearUrlQuery();
+
+            downloadAllPointFormats();
+            return;
+          }
+        } catch (e) {
+          console.warn("Entitlement check error:", e);
+        }
+
+        // wait then retry
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+
+      // If we reach here: webhook probably didn't land or wrong session id
+      showPayStatus(
+        "Almost there…",
+        "We didn’t see the unlock yet. If this persists, refresh the page or try Export Points again."
+      );
+      clearUrlQuery();
+    })();
   }
 
   // Stripe canceled
   if (url.searchParams.get("canceled") === "1") {
     showPayStatus("Checkout canceled", "No charge was made. You can try again anytime.");
     clearUrlQuery();
-  }
-
-  // Optional: if already unlocked, show subtle reminder
-  if (hasDownloadsUnlocked()) {
-    // You can keep this quiet if you want.
-    // showPayStatus("Downloads unlocked", "You can export points again without paying (this browser session).");
   }
 });
 
