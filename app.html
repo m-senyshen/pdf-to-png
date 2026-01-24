@@ -429,6 +429,7 @@ selectPdf.addEventListener("click", (e) => {
 
 // ---- Session id (used for Stripe entitlement per "map session") ----
 const MAP_SESSION_ID_KEY = "map_extract_session_id";
+const POINTS_STORAGE_KEY_PREFIX = "map_extract_points_v1:";
 
 function getMapSessionId() {
   let id = sessionStorage.getItem(MAP_SESSION_ID_KEY);
@@ -437,6 +438,11 @@ function getMapSessionId() {
     sessionStorage.setItem(MAP_SESSION_ID_KEY, id);
   }
   return id;
+}
+
+function getPointsStorageKey() {
+  // tie the points to this "map session" in this browser tab
+  return POINTS_STORAGE_KEY_PREFIX + getMapSessionId();
 }
 
 
@@ -522,6 +528,29 @@ function drawExclusionMask() {
   ctx.fillRect(0, top, left, bottom - top);
   ctx.fillRect(right, top, canvas.width - right, bottom - top);
   ctx.restore();
+}
+
+function savePointsToSession() {
+  const key = getPointsStorageKey();
+  const payload = {
+    nextPointId,
+    points
+  };
+  sessionStorage.setItem(key, JSON.stringify(payload));
+}
+
+function loadPointsFromSession() {
+  const key = getPointsStorageKey();
+  const raw = sessionStorage.getItem(key);
+  if (!raw) return;
+
+  try {
+    const parsed = JSON.parse(raw);
+    points = Array.isArray(parsed.points) ? parsed.points : [];
+    nextPointId = Number.isFinite(parsed.nextPointId) ? parsed.nextPointId : (points.length + 1);
+  } catch (e) {
+    console.warn("Failed to load points from sessionStorage:", e);
+  }
 }
 
 
@@ -707,6 +736,7 @@ function setPointMode(on) {
 
 function addPoint(lat, lon) {
   initLeafletIfNeeded();
+  savePointsToStorage();
   const p = { id: nextPointId++, lat, lon };
   points.push(p);
 
@@ -731,6 +761,24 @@ function deletePoint(pointId) {
   refreshPointsTable();
   savePointsToSession();
 }
+
+function restorePointsLayer() {
+  initLeafletIfNeeded();
+  if (!pointsLayer) return;
+
+  pointsLayer.clearLayers();
+
+  points.forEach(p => {
+    const marker = L.circleMarker([p.lat, p.lon], {
+      radius: 6,
+      weight: 2,
+      fillOpacity: 0.7
+    });
+    marker._pointId = p.id;
+    marker.addTo(pointsLayer);
+  });
+}
+
 
 function refreshPointsTable() {
     if (pointsSection) {
@@ -803,6 +851,8 @@ function pointsToGeoJSON() {
     }))
   };
 }
+
+
 
 function pointsToCSV() {
   const header = "id,lat,lon\n";
@@ -1150,7 +1200,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   initLeafletIfNeeded();
   loadPointsFromStorage();
   refreshPointsTable();
-  redrawPointsLayer?.();
+  restorePointsLayer();  
 
   const url = new URL(window.location.href);
 

@@ -8,6 +8,8 @@ export async function onRequestPost({ request, env }) {
     const { map_session_id } = await request.json().catch(() => ({}));
     if (!map_session_id) return new Response("Missing map_session_id", { status: 400 });
 
+    const baseUrl = env.SITE_URL.replace(/\/+$/, "");
+
     const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
     const session = await stripe.checkout.sessions.create({
@@ -16,21 +18,22 @@ export async function onRequestPost({ request, env }) {
       line_items: [
         {
           price_data: {
-            currency: "cad", // switch to CAD if you want
+            currency: "cad",
             product_data: {
               name: "Map Extract – Point Export",
               description: "Export points from a georeferenced map",
             },
-            unit_amount: 1200, // $12.00 CAD
+            unit_amount: 1200,
           },
           quantity: 1,
         },
       ],
-      // IMPORTANT: tie payment to this browser session
+
+      // tie payment to this browser session (useful for webhook/D1 entitlements)
       metadata: { map_session_id },
 
-      success_url: `${env.SITE_URL}/app.html?paid=1`,
-      cancel_url: `${env.SITE_URL}/app.html?canceled=1`,
+      success_url: `${env.SITE_URL}/app.html?paid=1&map_session_id=${encodeURIComponent(map_session_id)}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${env.SITE_URL}/app.html?canceled=1&map_session_id=${encodeURIComponent(map_session_id)}`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
