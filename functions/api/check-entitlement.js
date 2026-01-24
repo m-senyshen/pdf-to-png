@@ -6,7 +6,7 @@ export async function onRequestGet({ request, env }) {
   if (!mapSessionId) return new Response("Missing session_id", { status: 400 });
 
   const row = await env.DB.prepare(
-    "SELECT paid FROM entitlements WHERE session_id = ?"
+    "SELECT paid FROM entitlements WHERE map_session_id = ?"
   )
     .bind(mapSessionId)
     .first();

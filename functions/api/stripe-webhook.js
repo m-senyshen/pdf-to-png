@@ -45,10 +45,10 @@ export async function onRequestPost({ request, env }) {
       const customer_email =
         session.customer_details?.email ?? session.customer_email ?? null;
 
-      // ✅ Write entitlement to D1 (UPSERT)
+      // Write entitlement to D1 (UPSERT)
       await env.DB.prepare(`
         INSERT INTO entitlements (
-          session_id,
+          map_session_id,
           paid,
           stripe_checkout_session_id,
           stripe_payment_intent_id,
@@ -56,17 +56,17 @@ export async function onRequestPost({ request, env }) {
           updated_at
         )
         VALUES (?, 1, ?, ?, ?, datetime('now'))
-        ON CONFLICT(session_id) DO UPDATE SET
-          paid=1,
-          stripe_checkout_session_id=excluded.stripe_checkout_session_id,
-          stripe_payment_intent_id=excluded.stripe_payment_intent_id,
-          customer_email=excluded.customer_email,
-          updated_at=datetime('now')
+        ON CONFLICT(map_session_id) DO UPDATE SET
+          paid = 1,
+          stripe_checkout_session_id = excluded.stripe_checkout_session_id,
+          stripe_payment_intent_id = excluded.stripe_payment_intent_id,
+          customer_email = excluded.customer_email,
+          updated_at = datetime('now')
       `).bind(
         map_session_id,
-        stripe_checkout_session_id,
-        stripe_payment_intent_id,
-        customer_email
+        checkoutSessionId,
+        paymentIntentId,
+        customerEmail
       ).run();
     }
 
