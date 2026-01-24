@@ -386,7 +386,7 @@ const pointsTableBody = (() => {
   return tbody;
 })();
 
-const mapSessionId = getMapSessionId();
+
 
 const pointsHint = document.getElementById("points-hint");
 
@@ -426,6 +426,19 @@ selectPdf.addEventListener("click", (e) => {
   e.preventDefault();
   fileInput.click();
 });
+
+// ---- Session id (used for Stripe entitlement per "map session") ----
+const MAP_SESSION_ID_KEY = "map_extract_session_id";
+
+function getMapSessionId() {
+  let id = sessionStorage.getItem(MAP_SESSION_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem(MAP_SESSION_ID_KEY, id);
+  }
+  return id;
+}
+
 
 /* ---------- App Variables ---------- */
 let renderedImage = null;
@@ -1242,22 +1255,6 @@ btnExportPoints.onclick = async () => {
     );
     console.error(e);
   }
-};
-
-
-
-
-
-
-const MAP_SESSION_ID_KEY = "map_extract_session_id";
-
-function getMapSessionId() {
-  let id = localStorage.getItem(MAP_SESSION_ID_KEY);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(MAP_SESSION_ID_KEY, id);
-  }
-  return id;
 };
 
 
