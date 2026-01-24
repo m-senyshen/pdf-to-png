@@ -30,7 +30,7 @@ export async function onRequestPost({ request, env }) {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
 
-      // ✅ This is the browser-tab/session identifier you generated in app.html
+      // browser-tab/session identifier from app.html
       const map_session_id = session?.metadata?.map_session_id;
 
       if (!map_session_id) {
@@ -40,34 +40,40 @@ export async function onRequestPost({ request, env }) {
         );
       }
 
-      const stripe_checkout_session_id = session.id ?? null;
-      const stripe_payment_intent_id = session.payment_intent ?? null;
+      const stripe_checkout_session_id = session.id ?? null;            // cs_test_...
+      const stripe_payment_intent_id = session.payment_intent ?? null;  // pi_...
       const customer_email =
         session.customer_details?.email ?? session.customer_email ?? null;
 
-      // Write entitlement to D1 (UPSERT)
-      await env.DB.prepare(`
+      // UPSERT entitlement
+      await env.DB.prepare(
+        `
         INSERT INTO entitlements (
           map_session_id,
           paid,
           stripe_checkout_session_id,
           stripe_payment_intent_id,
           customer_email,
+          paid_at,
           updated_at
         )
-        VALUES (?, 1, ?, ?, ?, datetime('now'))
+        VALUES (?, 1, ?, ?, ?, datetime('now'), datetime('now'))
         ON CONFLICT(map_session_id) DO UPDATE SET
           paid = 1,
           stripe_checkout_session_id = excluded.stripe_checkout_session_id,
           stripe_payment_intent_id = excluded.stripe_payment_intent_id,
-          customer_email = excluded.customer_email,
+          customer_email = COALESCE(excluded.customer_email, entitlements.customer_email),
+          paid_at = COALESCE(entitlements.paid_at, excluded.paid_at),
           updated_at = datetime('now')
-      `).bind(
-        map_session_id,
-        checkoutSessionId,
-        paymentIntentId,
-        customerEmail
-      ).run();
+        `
+      )
+        .bind(
+          map_session_id,
+          stripe_checkout_session_id,
+          stripe_payment_intent_id,
+          customer_email
+        )
+        .run();
     }
 
     return new Response("ok", { status: 200 });
