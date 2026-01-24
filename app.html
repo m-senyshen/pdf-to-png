@@ -606,6 +606,8 @@ function setPointMode(on) {
   // When placing points, user should be able to pan/zoom still
   // (unlike GCP mode which disables map interactions)
   // So we DO NOT disable Leaflet dragging here.
+  const panel = document.getElementById("points-panel");
+  if (panel) panel.style.display = pointMode ? "block" : "none";
 
   if (pointsHint) {
     pointsHint.textContent = pointMode
