@@ -3,7 +3,6 @@ import Stripe from "stripe";
 export async function onRequestPost({ request, env }) {
   try {
     if (!env.STRIPE_SECRET_KEY) return new Response("Missing env.STRIPE_SECRET_KEY", { status: 500 });
-    if (!env.SITE_URL) return new Response("Missing env.SITE_URL", { status: 500 });
 
     const { map_session_id } = await request.json().catch(() => ({}));
     if (!map_session_id) return new Response("Missing map_session_id", { status: 400 });
@@ -31,10 +30,11 @@ export async function onRequestPost({ request, env }) {
 
       // tie payment to this browser session (useful for webhook/D1 entitlements)
       metadata: { map_session_id },
+      const origin = new URL(request.url).origin;
 
-      success_url: `${env.SITE_URL}/app.html?paid=1&map_session_id=${encodeURIComponent(map_session_id)}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${env.SITE_URL}/app.html?canceled=1&map_session_id=${encodeURIComponent(map_session_id)}`,
-    });
+      success_url: `${origin}/app?paid=1`,
+      cancel_url: `${origin}/app?canceled=1`
+      });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { "Content-Type": "application/json" },

@@ -29,6 +29,10 @@ export async function onRequestPost({ request, env }) {
         return new Response("checkout.session.completed missing metadata.map_session_id", { status: 400 });
       }
 
+      const stripe_checkout_session_id = session.id;
+      const stripe_payment_intent_id = session.payment_intent || null;
+      const customer_email = session.customer_details?.email || null;
+
       // Write entitlement (idempotent upsert)
       await env.DB.prepare(`
         INSERT INTO entitlements (
