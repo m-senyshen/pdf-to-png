@@ -2,7 +2,7 @@ export async function onRequestGet({ request, env }) {
   if (!env.DB) return new Response("Missing D1 binding env.DB", { status: 500 });
 
   const url = new URL(request.url);
-  const mapSessionId = url.searchParams.get("session_id");
+  const mapSessionId = url.searchParams.get("map_session_id");
   if (!mapSessionId) return new Response("Missing session_id", { status: 400 });
 
   const row = await env.DB.prepare(
