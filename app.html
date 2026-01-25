@@ -1249,6 +1249,44 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+window.addEventListener("DOMContentLoaded", async () => {
+  initLeafletIfNeeded();
+
+  const url = new URL(window.location.href);
+
+  // ✅ If Stripe redirected back with a session id, restore it into sessionStorage
+  const sidFromUrl = url.searchParams.get("map_session_id");
+  if (sidFromUrl) {
+    sessionStorage.setItem(MAP_SESSION_ID_KEY, sidFromUrl);
+  }
+
+  // If user returned from Stripe success:
+  if (url.searchParams.get("paid") === "1") {
+    showPayStatus("Payment successful!", "Finalizing unlock…");
+
+    // ✅ Confirm with server/D1 (not localStorage) before downloading
+    const unlocked = await hasDownloadsUnlockedServer();
+    if (unlocked) {
+      showPayStatus("Downloads unlocked", "Downloading GeoJSON + CSV…");
+      downloadAllPointFormats();
+      clearUrlQuery();
+    } else {
+      showPayStatus(
+        "Payment received",
+        "Still finalizing unlock (webhook may be delayed). Try export again in a few seconds."
+      );
+      // optional: you can poll here
+      clearUrlQuery();
+    }
+  }
+
+  if (url.searchParams.get("canceled") === "1") {
+    showPayStatus("Checkout canceled", "No charge was made. You can try again anytime.");
+    clearUrlQuery();
+  }
+});
+
+
 // making sure a user paid and that their points are not lost
 window.addEventListener("DOMContentLoaded", () => {
   initLeafletIfNeeded();

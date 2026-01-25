@@ -36,8 +36,8 @@ export async function onRequestPost({ request, env }) {
       // tie the payment to this browser tab/session
       metadata: { map_session_id },
 
-      success_url: `${origin}/app.html?paid=1`,
-      cancel_url: `${origin}/app.html?canceled=1`,
+      success_url: `${origin}/app.html?paid=1&map_session_id=${encodeURIComponent(map_session_id)}`,
+      cancel_url: `${origin}/app.html?canceled=1&map_session_id=${encodeURIComponent(map_session_id)}`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
