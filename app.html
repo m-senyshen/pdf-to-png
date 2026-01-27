@@ -430,6 +430,8 @@ selectPdf.addEventListener("click", (e) => {
 // ---- Session id (used for Stripe entitlement per "map session") ----
 const MAP_SESSION_ID_KEY = "map_extract_session_id";
 const POINTS_STORAGE_KEY_PREFIX = "map_extract_points_:";
+const PDF_IMAGE_STORAGE_KEY = "map_extract_pdf_image";
+const CANVAS_DIMS_STORAGE_KEY = "map_extract_canvas_dims";
 
 function getMapSessionId() {
   let id = sessionStorage.getItem(MAP_SESSION_ID_KEY);
@@ -507,12 +509,27 @@ fileInput.onchange = async () => {
 
   // Convert to an Image so redrawBase() behaves correctly (fast path = toBlob)
   const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
-  renderedImage = new Image();
-  renderedImage.src = URL.createObjectURL(blob);
-  await renderedImage.decode();
-
-  statusEl.textContent = "PDF loaded.";
-  redrawBase();
+  
+  // Convert blob to data URL for storage
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const dataUrl = reader.result;
+    
+    renderedImage = new Image();
+    renderedImage.src = dataUrl;
+    await renderedImage.decode();
+    
+    statusEl.textContent = "PDF loaded.";
+    redrawBase();
+    
+    // Save to session for persistence
+    sessionStorage.setItem(PDF_IMAGE_STORAGE_KEY, dataUrl);
+    sessionStorage.setItem(CANVAS_DIMS_STORAGE_KEY, JSON.stringify({ 
+      width: canvas.width, 
+      height: canvas.height 
+    }));
+  };
+  reader.readAsDataURL(blob);
 };
 
 
@@ -556,6 +573,68 @@ function loadPointsFromSession() {
     refreshPointsTable();
   } catch (e) {
     console.warn("Failed loading points:", e);
+  }
+}
+
+function saveRenderedImageToSession() {
+  try {
+    if (!renderedImage || !renderedImage.src) return;
+    
+    // Store the canvas dimensions too so we can restore them
+    const dims = { width: canvas.width, height: canvas.height };
+    sessionStorage.setItem(CANVAS_DIMS_STORAGE_KEY, JSON.stringify(dims));
+    
+    // Store the image data URL
+    sessionStorage.setItem(PDF_IMAGE_STORAGE_KEY, renderedImage.src);
+    console.log("Saved rendered image to session");
+  } catch (e) {
+    console.warn("Failed saving rendered image:", e);
+  }
+}
+
+function loadRenderedImageFromSession() {
+  try {
+    const imageSrc = sessionStorage.getItem(PDF_IMAGE_STORAGE_KEY);
+    const dimsStr = sessionStorage.getItem(CANVAS_DIMS_STORAGE_KEY);
+    
+    if (!imageSrc || !dimsStr) return false;
+    
+    const dims = JSON.parse(dimsStr);
+    
+    // Restore canvas dimensions
+    canvas.width = dims.width;
+    canvas.height = dims.height;
+    
+    // Restore the image
+    renderedImage = new Image();
+    renderedImage.src = imageSrc;
+    
+    renderedImage.onload = () => {
+      console.log("Restored rendered image from session");
+      statusEl.textContent = "Map restored from session.";
+      
+      // Show it on the canvas
+      redrawBase();
+    };
+    
+    // If image is already cached/loaded
+    if (renderedImage.complete) {
+      renderedImage.onload();
+    }
+    
+    return true;
+  } catch (e) {
+    console.warn("Failed loading rendered image:", e);
+    return false;
+  }
+}
+
+function clearStoredImage() {
+  try {
+    sessionStorage.removeItem(PDF_IMAGE_STORAGE_KEY);
+    sessionStorage.removeItem(CANVAS_DIMS_STORAGE_KEY);
+  } catch (e) {
+    console.warn("Failed clearing stored image:", e);
   }
 }
 
@@ -1207,10 +1286,12 @@ function fitAffine(gcps){
   return {mapFn,rms};
 }
 
-// Show basemap immediately on page load
 window.addEventListener("DOMContentLoaded", () => {
   initLeafletIfNeeded();
   loadPointsFromStorage();
+  
+  // Restore the previously uploaded map if it exists
+  loadRenderedImageFromSession();
 
   // optional: set initial basemap opacity (matches your slider default)
   if (basemapOpacityEl && basemapLayer) {
@@ -1498,6 +1579,7 @@ btnExportPoints.onclick = async () => {
 
 
 btnClear.onclick = () => {
+  clearStoredImage();
   gcps = [];
   lastComputed = null;
   rmsEl.textContent = "—";
