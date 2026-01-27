@@ -999,7 +999,14 @@ async function hasDownloadsUnlockedServer() {
   return !!data.paid;
 }
 function showPayStatus(title, msg) {
-  alert(`${title}\n${msg}`); // replace with your nicer UI panel if you have it
+  const wrap = document.getElementById("pay-status");
+  const t = document.getElementById("pay-status-title");
+  const m = document.getElementById("pay-status-msg");
+  if (!wrap || !t || !m) return;
+
+  t.textContent = title;
+  m.textContent = msg;
+  wrap.style.display = "block";
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -1832,13 +1839,9 @@ btnCompute.onclick = () => {
   );
 
   if (validLL.length < 3) {
-    return alert("Need at least 3 valid points. Check that lat is within ±90 and lon within ±180.");
-  }
-
-  // 2) affine needs at least 3 points
-  if (validLL.length < 3) {
     const needed = 3 - validLL.length;
-    return alert(`Affine requires at least 3 GCPs. Add ${needed} more.`);
+    showPayStatus("Not enough GCPs", `Affine requires at least 3 GCPs. Add ${needed} more.`);
+    return;
   }
 
   // 3) convert lon/lat -> Web Mercator meters (for solver)
@@ -1903,7 +1906,7 @@ btnCompute.onclick = () => {
     statusEl.textContent = "Transform computed (Affine).";
 
   } catch (err) {
-    alert("Failed: " + err);
+    showPayStatus("Transform Error", "Failed to compute transform: " + err);
   }
 };
 
