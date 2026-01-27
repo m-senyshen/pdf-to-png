@@ -83,14 +83,14 @@
     flex-wrap:wrap;
   }
   .primary-action {
-    background:#3b82f6;          /* standard blue */
+    background:#60a5fa;          /* lighter blue */
     color: #fff;
-    border: 1px solid #2563eb;    /* slightly darker border */
+    border: 1px solid #3b82f6;    /* slightly darker border */
     font-weight: 600;
   }
 
   .primary-action:hover {
-    background: #2563eb;
+    background: #3b82f6;
   }
 
   .primary-action:active {
@@ -224,6 +224,19 @@
     </div>
   </header>
 
+  <div id="pay-status" class="small" style="
+    display:none;
+    margin-top:12px;
+    padding:12px;
+    border:1px solid #dbeafe;
+    background:#eef4ff;
+    border-radius:8px;
+    color:#06345a;
+  ">
+    <strong id="pay-status-title">Payment status</strong>
+    <div id="pay-status-msg" style="margin-top:4px;"></div>
+  </div>
+
   <main>
     <section id="left">
       <div class="upload-box">
@@ -241,19 +254,6 @@
                 style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; border:none; z-index: 10; background:transparent;"></canvas>
       </div>
     </section>
-    <div id="pay-status" class="small" style="
-      display:none;
-      margin-top:10px;
-      padding:10px;
-      border:1px solid #dbeafe;
-      background:#eef4ff;
-      border-radius:8px;
-      color:#06345a;
-    ">
-      <strong id="pay-status-title">Payment status</strong>
-      <div id="pay-status-msg" style="margin-top:4px;"></div>
-    </div>
-
 
     <aside id="right">
       <div id="instructions-section" style="margin-bottom:20px;">
