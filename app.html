@@ -1402,39 +1402,39 @@ window.addEventListener("DOMContentLoaded", async () => {
 window.addEventListener("DOMContentLoaded", async () => {
   initLeafletIfNeeded();
 
+  const mapSessionId = getMapSessionId(); // ensures URL → localStorage restore
+
+  loadPointsFromSession();
+  refreshPointsTable();
+  restorePointsLayer();
+
   const url = new URL(window.location.href);
+  const paidReturn = url.searchParams.get("paid") === "1";
 
-  // ✅ If Stripe redirected back with a session id, restore it into sessionStorage
-  const sidFromUrl = url.searchParams.get("map_session_id");
-  if (sidFromUrl) {
-    sessionStorage.setItem(MAP_SESSION_ID_KEY, sidFromUrl);
-  }
+  if (paidReturn) {
+    // optional: show “verifying”, poll if you implemented it
+    let entitlement = { paid: false, expires_at: null };
+    try {
+      entitlement = await hasDownloadsUnlockedServer(); // { paid, expires_at }
+    } catch {}
 
-  // If user returned from Stripe success:
-  if (url.searchParams.get("paid") === "1") {
-    showPayStatus("Payment successful!", "Finalizing unlock…");
-
-    // ✅ Confirm with server/D1 (not localStorage) before downloading
-    const unlocked = await hasDownloadsUnlockedServer();
-    if (unlocked) {
-      showPayStatus("Downloads unlocked", "Downloading GeoJSON + CSV…");
-      downloadAllPointFormats();
-      clearUrlQuery();
+    if (entitlement.paid) {
+      showPayStatus("Payment verified ✅", `Exports unlocked — ${formatExpiry(entitlement.expires_at)}`);
     } else {
-      showPayStatus(
-        "Payment received",
-        "Still finalizing unlock (webhook may be delayed). Try export again in a few seconds."
-      );
-      // optional: you can poll here
-      clearUrlQuery();
+      showPayStatus("Payment received", "Finalizing unlock… (please wait a moment)");
     }
+
+    url.searchParams.delete("paid");
+    history.replaceState({}, "", url.toString());
   }
 
-  if (url.searchParams.get("canceled") === "1") {
-    showPayStatus("Checkout canceled", "No charge was made. You can try again anytime.");
-    clearUrlQuery();
-  }
+  // Debug (remove later)
+  console.log("[session]", {
+    mapSessionId,
+    localStorage: localStorage.getItem("map_session_id"),
+  });
 });
+
 
 
 // making sure a user paid and that their points are not lost
