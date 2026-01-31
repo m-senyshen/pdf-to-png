@@ -711,12 +711,8 @@ function isValidLonLat(lon, lat) {
 
 /* ---------- Stripe related functions ---------- */
 function getWorkSessionId() {
-  let id = localStorage.getItem("mx_work_session_id");
-  if (!id) {
-    id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
-    localStorage.setItem("mx_work_session_id", id);
-  }
-  return id;
+  // Use the map session ID for payment status to keep it consistent
+  return getMapSessionId();
 }
 
 function setPaidForThisWorkSession(paid) {
@@ -1605,7 +1601,13 @@ btnExportPoints.onclick = async () => {
   }
 
   try {
-    // 2) Secure gate: ask server/D1, not local state
+    // Check local payment status first as fallback
+    if (isPaidForThisWorkSession()) {
+      downloadAllPointFormats();
+      return;
+    }
+
+    // Secure gate: ask server/D1
     const entitlement = await hasDownloadsUnlockedServer();
 
     if (entitlement.paid) {
