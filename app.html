@@ -665,7 +665,7 @@ function redrawPointsLayer() {
 
 function savePointsToStorage() {
   try {
-    sessionStorage.setItem(POINTS_STORAGE_KEY, JSON.stringify(points));
+    localStorage.setItem(getPointsStorageKey(), JSON.stringify(points));
   } catch (e) {
     console.warn("Could not save points:", e);
   }
@@ -673,7 +673,7 @@ function savePointsToStorage() {
 
 function loadPointsFromStorage() {
   try {
-    const raw = sessionStorage.getItem(POINTS_STORAGE_KEY);
+    const raw = localStorage.getItem(getPointsStorageKey());
     if (!raw) return;
 
     const arr = JSON.parse(raw);
@@ -733,13 +733,13 @@ const POINTS_STORAGE_KEY = "map_extract_points";
 
 function savePointsToSession() {
   try {
-    sessionStorage.setItem(POINTS_STORAGE_KEY, JSON.stringify(points));
+    localStorage.setItem(getPointsStorageKey(), JSON.stringify(points));
   } catch {}
 }
 
 function loadPointsFromSession() {
   try {
-    const raw = sessionStorage.getItem(POINTS_STORAGE_KEY);
+    const raw = localStorage.getItem(getPointsStorageKey());
     if (!raw) return;
     const arr = JSON.parse(raw);
     if (Array.isArray(arr)) {
