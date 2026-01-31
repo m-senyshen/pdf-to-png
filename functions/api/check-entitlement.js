@@ -3,15 +3,30 @@ export async function onRequestGet({ request, env }) {
 
   const url = new URL(request.url);
   const mapSessionId = url.searchParams.get("map_session_id");
-  if (!mapSessionId) return new Response("Missing session_id", { status: 400 });
+  if (!mapSessionId) return new Response("Missing map_session_id", { status: 400 });
 
-  const row = await env.DB.prepare(
-    "SELECT paid FROM entitlements WHERE map_session_id = ?"
-  )
+  const row = await env.DB.prepare(`
+    SELECT
+      paid,
+      expires_at,
+      (paid = 1 AND expires_at > datetime('now')) AS is_paid
+    FROM entitlements
+    WHERE map_session_id = ?
+  `)
     .bind(mapSessionId)
     .first();
 
-  return new Response(JSON.stringify({ paid: !!row, paid_at: row?.paid_at || null }), {
-    headers: { "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({
+      paid: row?.is_paid === 1,
+      expires_at: row?.expires_at ?? null,
+      map_session_id: mapSessionId,
+    }),
+    {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
+    }
+  );
 }

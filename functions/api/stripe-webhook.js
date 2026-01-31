@@ -55,6 +55,7 @@ export async function onRequestPost({ request, env }) {
           stripe_payment_intent_id,
           customer_email,
           paid_at,
+          expires_at,
           updated_at
         )
         VALUES (?, 1, ?, ?, ?, datetime('now'), datetime('now'))
@@ -64,6 +65,7 @@ export async function onRequestPost({ request, env }) {
           stripe_payment_intent_id = excluded.stripe_payment_intent_id,
           customer_email = COALESCE(excluded.customer_email, entitlements.customer_email),
           paid_at = COALESCE(entitlements.paid_at, excluded.paid_at),
+          expires_at = datetime('now', '+24 hours'),
           updated_at = datetime('now')
         `
       )

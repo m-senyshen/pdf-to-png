@@ -434,13 +434,21 @@ const PDF_IMAGE_STORAGE_KEY = "map_extract_pdf_image";
 const CANVAS_DIMS_STORAGE_KEY = "map_extract_canvas_dims";
 
 function getMapSessionId() {
-  let id = sessionStorage.getItem(MAP_SESSION_ID_KEY);
-  if (!id) {
-    id = crypto.randomUUID();
-    sessionStorage.setItem(MAP_SESSION_ID_KEY, id);
+  const url = new URL(window.location.href);
+  const fromUrl = url.searchParams.get("map_session_id");
+  if (fromUrl) {
+    localStorage.setItem("map_session_id", fromUrl);
+    return fromUrl;
   }
-  return id;
+
+  const existing = localStorage.getItem("map_session_id");
+  if (existing) return existing;
+
+  const created = crypto.randomUUID();
+  localStorage.setItem("map_session_id", created);
+  return created;
 }
+
 
 function getPointsStorageKey() {
   // tie the points to this "map session" in this browser tab
@@ -993,11 +1001,36 @@ function setDownloadsUnlocked() {
 
 async function hasDownloadsUnlockedServer() {
   const id = getMapSessionId();
-  const res = await fetch(`/api/check-entitlement?map_session_id=${encodeURIComponent(id)}`);
-  if (!res.ok) return false;
+  const res = await fetch(
+    `/api/check-entitlement?map_session_id=${encodeURIComponent(id)}`,
+    { cache: "no-store" }
+  );
+  if (!res.ok) return { paid: false };
+
   const data = await res.json();
-  return !!data.paid;
+  return {
+    paid: !!data.paid,
+    expires_at: data.expires_at || null,
+  };
 }
+
+function formatExpiry(expiresAt) {
+  if (!expiresAt) return "";
+
+  const expiryMs = new Date(expiresAt.replace(" ", "T") + "Z").getTime();
+  const nowMs = Date.now();
+  const diffMs = expiryMs - nowMs;
+
+  if (diffMs <= 0) return "Expired";
+
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (hours >= 1) return `Expires in ~${hours}h`;
+  return `Expires in ~${minutes}m`;
+}
+
+
 function showPayStatus(title, msg) {
   const wrap = document.getElementById("pay-status");
   const t = document.getElementById("pay-status-title");
@@ -1308,34 +1341,42 @@ window.addEventListener("DOMContentLoaded", () => {
 
 window.addEventListener("DOMContentLoaded", async () => {
   initLeafletIfNeeded();
-  getMapSessionId();       
+
+  // This will also grab map_session_id from the URL (if present) and
+  // persist it into localStorage for 24h-pass behavior.
+  const mapSessionId = getMapSessionId();
+
   loadPointsFromSession();
   refreshPointsTable();
-  restorePointsLayer();  
+  restorePointsLayer();
 
   const url = new URL(window.location.href);
+  const paidReturn = url.searchParams.get("paid") === "1";
 
-  // If Stripe sent them back here, we should refresh entitlement state
-  if (url.searchParams.get("paid") === "1") {
-    // If map_session_id is present in URL, ensure our sessionStorage matches it
-    const urlSessionId = url.searchParams.get("map_session_id");
-    if (urlSessionId) {
-      sessionStorage.setItem(MAP_SESSION_ID_KEY, urlSessionId);
+  if (paidReturn) {
+    // Optional: poll a bit if your webhook can be delayed
+    // (If you don’t have pollEntitlement, skip this and just do one check.)
+    // await pollEntitlement(mapSessionId);
+
+    let entitlement;
+    try {
+      entitlement = await hasDownloadsUnlockedServer(); // { paid, expires_at }
+    } catch {
+      entitlement = { paid: false, expires_at: null };
     }
 
-    // Now check server entitlement
-    const unlocked = await hasDownloadsUnlockedServer().catch(() => false);
-    if (unlocked) {
-      showPayStatus("Payment successful — download unlocked", "You can export without paying again.");
+    if (entitlement.paid) {
+      showPayStatus("Payment verified!", formatExpiry(entitlement.expires_at));
     } else {
-      showPayStatus("Payment received", "Finalizing unlock… (if this persists, your webhook isn’t writing entitlements)");
+      showPayStatus("Payment received", "Finalizing unlock… (please wait a moment)");
     }
 
-    // Optional: remove the paid=1 from URL to keep it clean
+    // Clean the URL (remove only the paid flag; keep map_session_id if you want)
     url.searchParams.delete("paid");
     history.replaceState({}, "", url.toString());
   }
 });
+
 
 window.addEventListener("DOMContentLoaded", async () => {
   initLeafletIfNeeded();
@@ -1540,12 +1581,20 @@ btnExportPoints.onclick = async () => {
 
   try {
     // 2) Secure gate: ask server/D1, not local state
-    const paid = await hasDownloadsUnlockedServer();
-    if (paid) {
-      showPayStatus("Downloads unlocked", "Downloading GeoJSON + CSV…");
+    const entitlement = await hasDownloadsUnlockedServer();
+
+    if (entitlement.paid) {
+      const expiryText = formatExpiry(entitlement.expires_at);
+      showPayStatus(
+        "Downloads unlocked",
+        expiryText
+          ? `Downloading GeoJSON + CSV… (${expiryText})`
+          : "Downloading GeoJSON + CSV…"
+      );
       downloadAllPointFormats();
       return;
     }
+
 
     // 3) Not paid yet → start Stripe Checkout
     showPayStatus("Redirecting to payment…", "Opening Stripe Checkout.");
