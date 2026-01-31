@@ -1419,7 +1419,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     } catch {}
 
     if (entitlement.paid) {
-      showPayStatus("Payment verified ✅", `Exports unlocked — ${formatExpiry(entitlement.expires_at)}`);
+      showPayStatus("Payment verified!", `Exports unlocked — ${formatExpiry(entitlement.expires_at)}`);
     } else {
       showPayStatus("Payment received", "Finalizing unlock… (please wait a moment)");
     }
