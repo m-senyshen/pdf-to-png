@@ -428,10 +428,10 @@ selectPdf.addEventListener("click", (e) => {
 });
 
 // ---- Session id (used for Stripe entitlement per "map session") ----
-const MAP_SESSION_ID_KEY = "map_extract_session_id";
 const POINTS_STORAGE_KEY_PREFIX = "map_extract_points_:";
 const PDF_IMAGE_STORAGE_KEY = "map_extract_pdf_image";
 const CANVAS_DIMS_STORAGE_KEY = "map_extract_canvas_dims";
+const MAP_VIEW_STORAGE_KEY = "map_extract_map_view";
 
 function getMapSessionId() {
   const url = new URL(window.location.href);
@@ -762,7 +762,22 @@ function loadPointsFromSession() {
   } catch {}
 }
 
+function saveMapView() {
+  if (!map) return;
+  const center = map.getCenter();
+  const zoom = map.getZoom();
+  localStorage.setItem(MAP_VIEW_STORAGE_KEY, JSON.stringify({ lat: center.lat, lng: center.lng, zoom }));
+}
 
+function loadMapView() {
+  try {
+    const raw = localStorage.getItem(MAP_VIEW_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 function initLeafletIfNeeded() {
   if (map) return;
@@ -795,6 +810,16 @@ function initLeafletIfNeeded() {
     const { lat, lng } = e.latlng;
     addPoint(lat, lng);
   });
+
+  // Load saved map view
+  const view = loadMapView();
+  if (view) {
+    map.setView([view.lat, view.lng], view.zoom);
+  }
+
+  // Save map view on move or zoom
+  map.on('moveend', saveMapView);
+  map.on('zoomend', saveMapView);
 
 
   // slider wiring
@@ -1623,6 +1648,7 @@ btnExportPoints.onclick = async () => {
       throw new Error(`Missing checkout url. Response was: ${bodyText}`);
     }
 
+    saveMapView();
     window.location.href = data.url;
   } catch (e) {
     showPayStatus(
