@@ -46,8 +46,7 @@ export async function onRequestPost({ request, env }) {
         session.customer_details?.email ?? session.customer_email ?? null;
 
       // UPSERT entitlement
-      await env.DB.prepare(
-        `
+      await env.DB.prepare(`
         INSERT INTO entitlements (
           map_session_id,
           paid,
@@ -56,9 +55,12 @@ export async function onRequestPost({ request, env }) {
           customer_email,
           paid_at,
           expires_at,
-          updated_at
+          updated_at,
+          created_at
         )
-        VALUES (?, 1, ?, ?, ?, datetime('now'), datetime('now'))
+        VALUES (
+          ?, 1, ?, ?, ?, datetime('now'), datetime('now', '+24 hours'), datetime('now'), datetime('now')
+        )
         ON CONFLICT(map_session_id) DO UPDATE SET
           paid = 1,
           stripe_checkout_session_id = excluded.stripe_checkout_session_id,
@@ -67,15 +69,15 @@ export async function onRequestPost({ request, env }) {
           paid_at = COALESCE(entitlements.paid_at, excluded.paid_at),
           expires_at = datetime('now', '+24 hours'),
           updated_at = datetime('now')
-        `
+      `)
+      .bind(
+        map_session_id,
+        stripe_checkout_session_id,
+        stripe_payment_intent_id,
+        customer_email
       )
-        .bind(
-          map_session_id,
-          stripe_checkout_session_id,
-          stripe_payment_intent_id,
-          customer_email
-        )
-        .run();
+      .run();
+
     }
 
     return new Response("ok", { status: 200 });
