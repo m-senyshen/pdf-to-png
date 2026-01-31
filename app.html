@@ -1611,6 +1611,7 @@ btnExportPoints.onclick = async () => {
     const entitlement = await hasDownloadsUnlockedServer();
 
     if (entitlement.paid) {
+      setPaidForThisWorkSession(true);
       const expiryText = formatExpiry(entitlement.expires_at);
       showPayStatus(
         "Downloads unlocked",
