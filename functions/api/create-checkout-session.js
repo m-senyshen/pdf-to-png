@@ -24,7 +24,7 @@ export async function onRequestPost({ request, env }) {
           price_data: {
             currency: "cad",
             product_data: {
-              name: "Map Extract – Point Export",
+              name: "MyMapData – Point Export",
               description: "Export points from a georeferenced map",
             },
             unit_amount: 1200, // $12.00 CAD
