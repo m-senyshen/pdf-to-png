@@ -1107,14 +1107,14 @@ function downloadAllPointFormats() {
   // GeoJSON
   const gj = pointsToGeoJSON();
   downloadTextFile(
-    "map-extract-points.geojson",
+    "mymapdata-points.geojson",
     JSON.stringify(gj, null, 2),
     "application/geo+json"
   );
 
   // CSV
   const csv = pointsToCSV();
-  downloadTextFile("map-extract-points.csv", csv, "text/csv");
+  downloadTextFile("mymapdata-points.csv", csv, "text/csv");
 }
 
 
