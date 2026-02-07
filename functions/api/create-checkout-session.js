@@ -41,7 +41,9 @@ export async function onRequestPost({ request, env }) {
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json",
+                  "Cache-Control": "no-store"
+      },
     });
   } catch (err) {
     return new Response(

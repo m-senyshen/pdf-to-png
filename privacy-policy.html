@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Privacy Policy - MyMapData</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* GIS GRID BACKGROUND */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background-image:
+                linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+        }
+
+        /* HEADER */
+        .header {
+            position: sticky;
+            top: 0;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        .logo {
+            font-size: 26px;
+            font-weight: bold;
+            color: #000000;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+        .logo:hover {
+            color: #0077ff;
+        }
+        .logo img {
+            height: 30px;
+            margin-right: 4px;
+        }
+        .nav a {
+            margin-left: 20px;
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .nav a:hover {
+            color: #0077ff;
+        }
+
+        /* MAIN CONTENT */
+        .content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .content h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .content h2 {
+            font-size: 24px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #0077ff;
+        }
+
+        .content p {
+            margin-bottom: 15px;
+        }
+
+        .content ul {
+            margin-bottom: 15px;
+            padding-left: 20px;
+        }
+
+        .content li {
+            margin-bottom: 10px;
+        }
+
+        /* FOOTER */
+        .footer {
+            background: #f5f5f5;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+            border-top: 1px solid #ddd;
+        }
+
+        .footer p {
+            margin: 5px 0;
+        }
+
+        .footer a {
+            color: #0077ff;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            color: #005fcc;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+    <a href="./landing.html" class="logo">MyMapData</a>
+    <nav class="nav">
+        <a href="./landing.html">Home</a>
+        <a href="./use-cases.html">Use Cases</a>
+        <a href="./pricing.html">Pricing</a>
+    </nav>
+</header>
+
+<!-- MAIN CONTENT -->
+<div class="content">
+    <h1>Privacy Policy – MyMapData</h1>
+
+    <p><strong>Last updated: February 7, 2026</strong></p>
+
+    <p>MyMapData ("we", "our", or "us") provides a web-based tool for georeferencing maps and exporting point data.</p>
+
+    <h2>Information We Collect</h2>
+    <ul>
+        <li><strong>Uploaded maps and point data:</strong> Processed entirely in your browser. We do not store uploaded map files or extracted point data on our servers.</li>
+        <li><strong>Payment information:</strong> Payments are processed securely by Stripe. We do not store or have access to your full credit card details.</li>
+        <li><strong>Email address:</strong> Collected by Stripe during checkout for receipts and customer support.</li>
+        <li><strong>Session identifiers:</strong> A temporary browser-based identifier is used to manage access after payment.</li>
+    </ul>
+
+    <h2>How We Use Information</h2>
+    <ul>
+        <li>To process payments and provide access to paid features</li>
+        <li>To respond to support requests</li>
+        <li>To maintain and improve the service</li>
+    </ul>
+
+    <h2>Third-Party Services</h2>
+    <p>We use the following third-party services:</p>
+    <ul>
+        <li>Stripe for payment processing (<a href="https://stripe.com/privacy">https://stripe.com/privacy</a>)</li>
+        <li>Cloudflare for hosting and security</li>
+    </ul>
+
+    <h2>Data Storage and Security</h2>
+    <ul>
+        <li>Map files and extracted data are processed client-side and are not persisted on our servers.</li>
+        <li>Limited transaction metadata (payment status, session identifier) is stored securely for access control.</li>
+        <li>We use industry-standard security practices provided by Stripe and Cloudflare.</li>
+    </ul>
+
+    <h2>Data Retention</h2>
+    <ul>
+        <li>Payment records are retained as required for accounting and legal purposes.</li>
+        <li>Temporary session identifiers expire automatically.</li>
+    </ul>
+
+    <h2>Your Rights</h2>
+    <p>You may contact us to request information about or deletion of your personal data, where applicable.</p>
+
+    <h2>Contact</h2>
+    <p>For privacy-related questions, contact:</p>
+    <p><a href="mailto:support@mymapdata.com">support@mymapdata.com</a></p>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    © 2025 MyMapData — All rights reserved.
+    <p>For any questions, please reach out to <a href="mailto:support@mymapdata.com">support@mymapdata.com</a>.</p>
+    <p><a href="./privacy-policy.html">Privacy Policy</a></p>
+</div>
+
+</body>
+</html>
