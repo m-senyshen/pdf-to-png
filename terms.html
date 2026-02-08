@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Terms of Service - MyMapData</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* GIS GRID BACKGROUND */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background-image:
+                linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+        }
+
+        /* HEADER */
+        .header {
+            position: sticky;
+            top: 0;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        .logo {
+            font-size: 26px;
+            font-weight: bold;
+            color: #000000;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+        .logo:hover {
+            color: #000000;
+        }
+        .logo img {
+            height: 30px;
+            margin-right: 4px;
+        }
+        .nav a {
+            margin-left: 20px;
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .nav a:hover {
+            color: #0077ff;
+        }
+
+        /* MAIN CONTENT */
+        .content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .content h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .content h2 {
+            font-size: 24px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #000000;
+        }
+
+        .content p {
+            margin-bottom: 15px;
+        }
+
+        .content ul {
+            margin-bottom: 15px;
+            padding-left: 20px;
+        }
+
+        .content li {
+            margin-bottom: 10px;
+        }
+
+        /* FOOTER */
+        .footer {
+            background: #f5f5f5;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+            border-top: 1px solid #ddd;
+        }
+
+        .footer p {
+            margin: 5px 0;
+        }
+
+        .footer a {
+            color: #0077ff;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            color: #005fcc;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+    <a href="./landing.html" class="logo">MyMapData</a>
+    <nav class="nav">
+        <a href="./landing.html">Home</a>
+        <a href="./use-cases.html">Use Cases</a>
+        <a href="./pricing.html">Pricing</a>
+    </nav>
+</header>
+
+<!-- MAIN CONTENT -->
+<div class="content">
+    <h1>Terms of Service – MyMapData</h1>
+
+    <p><strong>Last updated: February 2026</strong></p>
+
+    <p>These Terms of Service ("Terms") govern your use of the MyMapData website and services ("Service"). By accessing or using the Service, you agree to these Terms.</p>
+
+    <p>If you do not agree, do not use the Service.</p>
+
+    <h2>1. Description of the Service</h2>
+    <p>MyMapData provides a browser-based tool for uploading maps, georeferencing them, creating point data, and exporting geospatial data files.</p>
+    <p>The Service is provided on an "as-is" and "as-available" basis.</p>
+
+    <h2>2. Payments and Purchases</h2>
+
+    <h3>When Payment Is Required</h3>
+    <p>Payment is required at the time of exporting geospatial data from the Service.</p>
+
+    <h3>Payment Processing</h3>
+    <p>All payments are processed securely by Stripe. MyMapData does not store or have access to your full credit card information.</p>
+
+    <h3>Failed or Declined Payments</h3>
+    <p>If a payment is declined or fails for any reason:</p>
+    <ul>
+        <li>the transaction will not be completed, and</li>
+        <li>you will not be able to download the requested data.</li>
+    </ul>
+
+    <h3>Refunds</h3>
+    <p>Refund requests must be sent to:</p>
+    <p><a href="mailto:support@mymapdata.com">support@mymapdata.com</a></p>
+    <p>Refunds are handled on a case-by-case basis and are not guaranteed.</p>
+
+    <h2>3. User Accounts and Access</h2>
+    <p>MyMapData does not currently require users to create accounts. Access to paid features is managed through a browser-based session identifier.</p>
+    <p>You are responsible for maintaining the security of your device and browser environment. MyMapData is not responsible for loss of access resulting from cleared browser data or similar actions.</p>
+    <p>We reserve the right to suspend or restrict access to the Service for misuse, abuse, or illegal activity.</p>
+
+    <h2>4. User-Generated Content</h2>
+
+    <h3>Ownership</h3>
+    <p>You retain ownership of any maps, data, or content you upload to the Service.</p>
+
+    <h3>License to Operate the Service</h3>
+    <p>By uploading content, you grant MyMapData a limited, non-exclusive license to process and display that content solely for the purpose of providing the Service.</p>
+
+    <h3>Responsibility</h3>
+    <p>You are solely responsible for:</p>
+    <ul>
+        <li>ensuring you have the legal right to upload and process the content</li>
+        <li>ensuring the content does not violate copyright, privacy, or other laws</li>
+    </ul>
+    <p>MyMapData is not responsible for user-uploaded content.</p>
+
+    <h2>5. Intellectual Property</h2>
+    <p>All software, code, design, branding, logos, and site content provided by MyMapData are the intellectual property of MyMapData or its licensors.</p>
+    <p>You may not:</p>
+    <ul>
+        <li>copy, scrape, reverse engineer, or republish the Service</li>
+        <li>use the MyMapData name or branding without permission</li>
+        <li>use the Service for unauthorized commercial redistribution</li>
+    </ul>
+    <p>Unauthorized use is strictly prohibited.</p>
+
+    <h2>6. Service Availability and Limitations</h2>
+    <p>We do not guarantee that the Service will be uninterrupted, error-free, or available at all times.</p>
+    <p>MyMapData is not liable for:</p>
+    <ul>
+        <li>data loss</li>
+        <li>lost business opportunities</li>
+        <li>inaccuracies in exported data</li>
+        <li>delays or interruptions in service</li>
+    </ul>
+    <p>Use of the Service is at your own risk.</p>
+
+    <h2>7. Limitation of Liability</h2>
+    <p>To the maximum extent permitted by law, MyMapData shall not be liable for any indirect, incidental, consequential, or special damages arising out of or related to your use of the Service.</p>
+    <p>Our total liability shall not exceed the amount paid by you for the specific transaction giving rise to the claim.</p>
+
+    <h2>8. Indemnification</h2>
+    <p>You agree to indemnify and hold harmless MyMapData from any claims, damages, or liabilities arising from:</p>
+    <ul>
+        <li>your use of the Service</li>
+        <li>your uploaded content</li>
+        <li>your violation of these Terms or applicable laws</li>
+    </ul>
+
+    <h2>9. Governing Law and Jurisdiction</h2>
+    <p>These Terms are governed by the laws of Canada, without regard to conflict of law principles.</p>
+    <p>Any legal disputes shall be resolved exclusively in the courts located in Ontario, Canada.</p>
+
+    <h2>10. Changes to These Terms</h2>
+    <p>We may update these Terms from time to time. Continued use of the Service after changes constitutes acceptance of the updated Terms.</p>
+
+    <h2>11. Contact</h2>
+    <p>For questions about these Terms, contact:</p>
+    <p><a href="mailto:support@mymapdata.com">support@mymapdata.com</a></p>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    © 2025 MyMapData — All rights reserved.
+    <p>For any questions, please reach out to <a href="mailto:support@mymapdata.com">support@mymapdata.com</a>.</p>
+    <p><a href="./privacy-policy.html">Privacy Policy</a> | <a href="./terms.html">Terms of Service</a></p>
+</div>
+
+</body>
+</html>
