@@ -8,7 +8,8 @@ export async function onRequestGet({ request, env }) {
   const row = await env.DB.prepare(`
     SELECT
       paid,
-      expires_at
+      expires_at,
+      (paid = 1 AND expires_at > datetime('now')) AS is_paid
     FROM entitlements
     WHERE map_session_id = ?
   `)
@@ -17,7 +18,8 @@ export async function onRequestGet({ request, env }) {
 
   return new Response(
     JSON.stringify({
-      paid: row?.paid === 1 && (!row?.expires_at || new Date(row.expires_at) > new Date()),      expires_at: row?.expires_at ?? null,
+      paid: row?.is_paid === 1,
+      expires_at: row?.expires_at ?? null,
       map_session_id: mapSessionId,
     }),
     {
