@@ -1428,6 +1428,18 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+window.addEventListener("DOMContentLoaded", async () => {
+  // Check if user is already paid and show remaining time
+  const entitlement = await hasDownloadsUnlockedServer();
+  
+  if (entitlement.paid && entitlement.expires_at) {
+    const expiryText = formatExpiry(entitlement.expires_at);
+    showPayStatus(
+      "Downloads unlocked",
+      `You can export until: ${expiryText}`
+    );
+  }
+});
 
 window.addEventListener("DOMContentLoaded", async () => {
   initLeafletIfNeeded();
