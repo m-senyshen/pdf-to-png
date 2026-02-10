@@ -17,8 +17,7 @@ export async function onRequestGet({ request, env }) {
 
   return new Response(
     JSON.stringify({
-      paid: row?.paid === 1,  // Simply check if they ever paid
-      expires_at: row?.expires_at ?? null,
+      paid: row?.paid === 1 && (!row?.expires_at || new Date(row.expires_at) > new Date()),      expires_at: row?.expires_at ?? null,
       map_session_id: mapSessionId,
     }),
     {
