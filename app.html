@@ -281,7 +281,13 @@
 
         <!-- Keep your canvas on top for GCP clicking BEFORE compute -->
         <canvas id="pdf-canvas"
-                style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; border:none; z-index: 10; background:transparent;"></canvas>
+          style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; border:none; z-index: 10; background:transparent;"></canvas>
+
+        <div id="map-disclaimer" class="small" style="margin-top:10px; color:#555; font-size:13px; line-height:1.35;">
+          <div><strong>Projection:</strong> Web Mercator (EPSG:3857). Exported coordinates are WGS84 (EPSG:4326).</div>
+          <div>Positional accuracy depends on source map quality and control point placement.</div>
+          <div>Not intended for legal or survey-grade use.</div>
+        </div>
       </div>
     </section>
 
