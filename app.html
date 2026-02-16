@@ -1101,25 +1101,6 @@ function onLineDoubleClick(e) {
   // Optional: keep line tool active so user can draw another line
 }
 
-  // Finalize
-  const id = `L${lines.length + 1}`;
-  const latlngs = activeLineLatLngs.map(ll => ({ lat: ll.lat, lng: ll.lng }));
-  lines.push({ id, latlngs });
-  saveLinesToSession();
-  updateLinesCount();
-
-  // Move the active line into the finalized layer group
-  activeLine.addTo(linesLayerGroup);
-  activeLine = null;
-
-  // Reset for next line
-  activeLineLatLngs = [];
-
-  // Update UI (you’ll add a lines list later)
-  refreshLinesUI?.();
-
-  // Optional: keep line tool active so user can draw another line
-}
 
 function saveLinesToSession() {
   sessionStorage.setItem("lines", JSON.stringify(lines));
