@@ -209,8 +209,9 @@
   }
 
   .tool-btn.active {
-    border-color: #333;
-    background: #f2f2f2;
+    border-color: #0077ff;
+    background: #e0f0ff;
+    color: #0077ff;
   }
 
 
@@ -922,10 +923,7 @@ function initLeafletIfNeeded() {
       addPoint(lat, lng);
       return;
     }
-    if (activeTool === "lines") {
-      onLineMapClick(e); // we’ll add this below
-      return;
-    }
+    // Lines are handled by onLineClick in startLineDraw
   });
 
   // Load saved map view
@@ -1298,7 +1296,7 @@ function setActiveTool(tool) {
   initLeafletIfNeeded();
 
   // Toggle button active styles
-  const btnP = document.getElementById("btnCreatePoints");
+  const btnP = document.getElementById("btn-points");
   const btnL = document.getElementById("btnCreateLines");
 
   btnP?.classList.toggle("active", tool === "points");
