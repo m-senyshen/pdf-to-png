@@ -187,6 +187,10 @@
   .point-mode * {
     cursor: crosshair !important;
   }
+  .line-mode,
+  .line-mode * {
+    cursor: crosshair !important;
+  }
     .draw-tools {
     display: inline-flex;
     gap: 6px;
@@ -1012,6 +1016,9 @@ function startLineDraw() {
   // Click adds vertices
   map.on("click", onLineClick);
 
+  // Mouse move to show preview line
+  map.on("mousemove", onLineMouseMove);
+
   // Double-click finishes line (prevents zoom)
   map.on("dblclick", onLineDoubleClick);
   map.doubleClickZoom.disable();
@@ -1019,6 +1026,7 @@ function startLineDraw() {
 
 function stopLineDraw() {
   map.off("click", onLineClick);
+  map.off("mousemove", onLineMouseMove);
   map.off("dblclick", onLineDoubleClick);
   map.doubleClickZoom.enable();
 
@@ -1041,8 +1049,29 @@ function onLineClick(e) {
   }
 }
 
+function onLineMouseMove(e) {
+  if (activeTool !== "lines" || activeLineLatLngs.length === 0) return;
+
+  // Show preview line from last point to current mouse position
+  const previewLatlngs = [...activeLineLatLngs, e.latlng];
+  
+  if (!activeLine) {
+    activeLine = L.polyline(previewLatlngs, { 
+      weight: 3, 
+      color: '#3b82f6',
+      opacity: 0.7,
+      dashArray: '5, 5'
+    }).addTo(map);
+  } else {
+    activeLine.setLatLngs(previewLatlngs);
+  }
+}
+
 function onLineDoubleClick(e) {
   if (activeTool !== "lines") return;
+
+  // Prevent the map zoom that comes with double-click
+  L.DomEvent.stop(e);
 
   // Need at least 2 points to make a line
   if (activeLineLatLngs.length < 2) {
@@ -1051,6 +1080,26 @@ function onLineDoubleClick(e) {
     setActiveTool("none");
     return;
   }
+
+  // Finalize
+  const id = `L${lines.length + 1}`;
+  const latlngs = activeLineLatLngs.map(ll => ({ lat: ll.lat, lng: ll.lng }));
+  lines.push({ id, latlngs });
+  saveLinesToSession();
+  updateLinesCount();
+
+  // Move the active line into the finalized layer group
+  activeLine.addTo(linesLayerGroup);
+  activeLine = null;
+
+  // Reset for next line
+  activeLineLatLngs = [];
+
+  // Update UI
+  refreshLinesUI?.();
+
+  // Optional: keep line tool active so user can draw another line
+}
 
   // Finalize
   const id = `L${lines.length + 1}`;
@@ -1301,6 +1350,9 @@ function setActiveTool(tool) {
 
   btnP?.classList.toggle("active", tool === "points");
   btnL?.classList.toggle("active", tool === "lines");
+
+  // Toggle cursor class
+  document.body.classList.toggle("line-mode", tool === "lines");
 
   // Start or stop line drawing based on tool
   if (tool === "lines") {
