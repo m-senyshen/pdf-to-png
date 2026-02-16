@@ -187,6 +187,31 @@
   .point-mode * {
     cursor: crosshair !important;
   }
+    .draw-tools {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .tool-btn {
+    width: 36px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #ccc;
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .tool-btn.active {
+    border-color: #333;
+    background: #f2f2f2;
+  }
+
 
   canvas {
     display:block;
@@ -248,8 +273,8 @@
       <button id="btn-georef" class="muted-btn">Georeference Mode</button>
       <button id="btn-clear-gcps" class="secondary">Clear GCPs</button>
       <button id="btn-compute" class="secondary">Compute Transform</button>
-
-      <button id="btn-points" class="secondary" title="Create Points">⦿</button>
+      <button id="btn-points" type="button" class="tool-btn" title="Points" aria-label="Points">⦿</button>
+      <button id="btnCreateLines" type="button" class="tool-btn" title="Lines" aria-label="Lines">／</button>
       <button id="btn-export-points" class="primary-action">Export Points</button>
     </div>
   </header>
@@ -406,6 +431,14 @@ const btnClear = document.getElementById("btn-clear-gcps");
 const btnCompute = document.getElementById("btn-compute");
 
 const btnPoints = document.getElementById("btn-points");
+const btnCreateLines = document.getElementById("btnCreateLines");
+btnPoints?.addEventListener("click", () => {
+  setActiveTool(activeTool === "points" ? "none" : "points");
+});
+
+btnCreateLines?.addEventListener("click", () => {
+  setActiveTool(activeTool === "lines" ? "none" : "lines");
+});
 const btnExportPoints = document.getElementById("btn-export-points");
 const pointsSection = document.getElementById("points-section");
 const pointsCountEl = document.getElementById("points-count");
@@ -421,6 +454,13 @@ const pointsTableBody = (() => {
   }
   return tbody;
 })();
+
+let activeTool = "none"; // "points" | "lines" | "polygons" | "none"
+const lines = []; // each: { id, latlngs: [{lat, lng}, ...] }
+
+let linesLayerGroup = null;   // holds finalized lines
+let activeLine = null;        // current in-progress line polyline
+let activeLineLatLngs = [];   // latlngs for active line
 
 
 
@@ -598,6 +638,7 @@ function savePointsToSession() {
     console.warn("Failed saving points:", e);
   }
 }
+
 
 function loadPointsFromSession() {
   try {
@@ -834,13 +875,19 @@ function initLeafletIfNeeded() {
 
     // Layer for digitized points
   pointsLayer = L.layerGroup().addTo(map);
+  linesLayer = L.layerGroup().addTo(map);
 
   // Click on map to add point (only when pointMode is on)
   map.on("click", (e) => {
-    if (!pointMode) return;
-
-    const { lat, lng } = e.latlng;
-    addPoint(lat, lng);
+    if (activeTool === "points") {
+      const { lat, lng } = e.latlng;
+      addPoint(lat, lng);
+      return;
+    }
+    if (activeTool === "lines") {
+      onLineMapClick(e); // we’ll add this below
+      return;
+    }
   });
 
   // Load saved map view
@@ -883,8 +930,8 @@ function setPointMode(on) {
   }
 
   // UI feedback
-  btnPoints.textContent = pointMode ? "Exit Points Mode" : "Create Points";
-  btnPoints.className = pointMode ? "danger" : "secondary";
+  btnPoints.textContent = "⦿";
+  btnPoints.classList.add("tool-btn");
   document.body.classList.toggle("point-mode", pointMode);
 
   // When placing points, user should be able to pan/zoom still
@@ -913,6 +960,107 @@ function addPoint(lat, lon) {
   refreshPointsTable();
   savePointsToSession();
 }
+function ensureLinesLayer() {
+  if (!linesLayerGroup) {
+    linesLayerGroup = L.layerGroup().addTo(map);
+  }
+}
+function startLineDraw() {
+  ensureLinesLayer();
+  activeLineLatLngs = [];
+  if (activeLine) {
+    map.removeLayer(activeLine);
+    activeLine = null;
+  }
+
+  // Click adds vertices
+  map.on("click", onLineClick);
+
+  // Double-click finishes line (prevents zoom)
+  map.on("dblclick", onLineDoubleClick);
+  map.doubleClickZoom.disable();
+}
+
+function stopLineDraw() {
+  map.off("click", onLineClick);
+  map.off("dblclick", onLineDoubleClick);
+  map.doubleClickZoom.enable();
+
+  // remove in-progress line if any
+  if (activeLine) {
+    map.removeLayer(activeLine);
+    activeLine = null;
+  }
+  activeLineLatLngs = [];
+}
+function onLineClick(e) {
+  if (activeTool !== "lines") return;
+
+  activeLineLatLngs.push(e.latlng);
+
+  if (!activeLine) {
+    activeLine = L.polyline(activeLineLatLngs, { weight: 3 }).addTo(map);
+  } else {
+    activeLine.setLatLngs(activeLineLatLngs);
+  }
+}
+
+function onLineDoubleClick(e) {
+  if (activeTool !== "lines") return;
+
+  // Need at least 2 points to make a line
+  if (activeLineLatLngs.length < 2) {
+    // cancel
+    stopLineDraw();
+    setActiveTool("none");
+    return;
+  }
+
+  // Finalize
+  const id = `L${lines.length + 1}`;
+  const latlngs = activeLineLatLngs.map(ll => ({ lat: ll.lat, lng: ll.lng }));
+  lines.push({ id, latlngs });
+
+  // Move the active line into the finalized layer group
+  activeLine.addTo(linesLayerGroup);
+  activeLine = null;
+
+  // Reset for next line
+  activeLineLatLngs = [];
+
+  // Update UI (you’ll add a lines list later)
+  refreshLinesUI?.();
+
+  // Optional: keep line tool active so user can draw another line
+}
+
+function saveLinesToSession() {
+  sessionStorage.setItem("lines", JSON.stringify(lines));
+}
+
+function loadLinesFromSession() {
+  try {
+    const raw = sessionStorage.getItem("lines");
+    if (!raw) return;
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return;
+    lines.length = 0;
+    lines.push(...arr);
+  } catch {}
+}
+
+function restoreLinesLayer() {
+  ensureLinesLayer();
+  linesLayerGroup.clearLayers();
+  for (const ln of lines) {
+    const latlngs = ln.latlngs.map(p => L.latLng(p.lat, p.lng));
+    L.polyline(latlngs, { weight: 3 }).addTo(linesLayerGroup);
+  }
+}
+
+
+
+
 
 function deletePoint(pointId) {
   points = points.filter(p => p.id !== pointId);
@@ -1070,6 +1218,24 @@ async function hasDownloadsUnlockedServer() {
     expires_at: data.expires_at || null,
   };
 }
+function setActiveTool(tool) {
+  activeTool = tool;
+
+  // Toggle button active styles
+  const btnP = document.getElementById("btnCreatePoints");
+  const btnL = document.getElementById("btnCreateLines");
+  // const btnG = document.getElementById("btnCreatePolygons");
+
+  btnP?.classList.toggle("active", tool === "points");
+  btnL?.classList.toggle("active", tool === "lines");
+  // btnG?.classList.toggle("active", tool === "polygons");
+
+  // Ensure only one drawing interaction is active at a time
+  if (tool !== "lines") stopLineDraw();
+  // if (tool !== "points") stopPointMode();   // if you have one
+  // if (tool !== "polygons") stopPolygonDraw(); // later
+}
+
 
 function formatExpiry(expiresAt) {
   if (!expiresAt) return "";
@@ -1166,102 +1332,7 @@ function redrawBase() {
   });
 }
 
-/*
-function detectMapBoundaryFromCanvas() {
-  const w = canvas.width, h = canvas.height;
-  if (!w || !h) return;
 
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-
-  // 1) Build ink mask
-  const inkMask = new Uint8Array(w * h);
-  for (let i = 0; i < w * h; i++) {
-    const di = i * 4;
-    const r = d[di], g = d[di + 1], b = d[di + 2];
-    const bright = 0.299 * r + 0.587 * g + 0.114 * b;
-    inkMask[i] = (bright < 245) ? 1 : 0;
-  }
-
-  // 2) Connected components
-  const visited = new Uint8Array(w * h);
-  let bestSize = 0, bestMinX = 0, bestMinY = 0, bestMaxX = 0, bestMaxY = 0;
-  const stack = [];
-  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const idx = y * w + x;
-      if (!inkMask[idx] || visited[idx]) continue;
-
-      let size = 0;
-      let minX = x, maxX = x, minY = y, maxY = y;
-
-      stack.push(idx);
-      visited[idx] = 1;
-
-      while (stack.length) {
-        const i = stack.pop();
-        const py = (i / w) | 0;
-        const px = i % w;
-        size++;
-
-        if (px < minX) minX = px;
-        if (px > maxX) maxX = px;
-        if (py < minY) minY = py;
-        if (py > maxY) maxY = py;
-
-        for (const [dx, dy] of dirs) {
-          const nx = px + dx, ny = py + dy;
-          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-          const ni = ny * w + nx;
-          if (inkMask[ni] && !visited[ni]) {
-            visited[ni] = 1;
-            stack.push(ni);
-          }
-        }
-      }
-
-      if (size > bestSize) {
-        bestSize = size;
-        bestMinX = minX; bestMaxX = maxX;
-        bestMinY = minY; bestMaxY = maxY;
-      }
-    }
-  }
-
-  if (bestSize === 0) {
-    console.warn("No ink regions found; using full image.");
-    mapBoundary = null;
-    return;
-  }
-
-  // 3) Convert to bounding box
-  let left = bestMinX;
-  let right = bestMaxX + 1;
-  let top = bestMinY;
-  let bottom = bestMaxY + 1;
-
-  // 4) Shrink inward slightly
-  const shrinkX = Math.max(3, Math.round((right - left) * 0.005));
-  const shrinkY = Math.max(3, Math.round((bottom - top) * 0.005));
-
-  left = Math.min(Math.max(0, left + shrinkX), w);
-  right = Math.max(Math.min(w, right - shrinkX), 0);
-  top = Math.min(Math.max(0, top + shrinkY), h);
-  bottom = Math.max(Math.min(h, bottom - shrinkY), 0);
-
-  if (left >= right || top >= bottom) {
-    console.warn("Boundary collapsed; using full image.");
-    mapBoundary = null;
-    return;
-  }
-
-  mapBoundary = { left, right, top, bottom };
-  console.log("Final map interior boundary:", mapBoundary);
-}
-
------- */
 function transpose(A){return A[0].map((_,i)=>A.map(r=>r[i]));}
 function matMul(A,B){
   const R=Array.from({length:A.length},()=>Array(B[0].length).fill(0));
