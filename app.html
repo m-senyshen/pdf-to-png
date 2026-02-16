@@ -223,12 +223,12 @@
   }
 
   .tab-btn:hover {
-    color: #0077ff !important;
+    color: #000000 !important;
   }
 
   .tab-btn.active {
-    border-bottom-color: #0077ff !important;
-    color: #0077ff !important;
+    border-bottom-color: #000000 !important;
+    color: #000000 !important;
   }
 
   .data-tab {
@@ -400,15 +400,15 @@
         style="margin-top:8px; color:#7a1220;"
       ></div>
 
-      <div id="data-section" style="display:none;">
+      <div id="data-section" style="margin-top: 20px;">
       <!-- Tab buttons -->
       <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid #dbeafe;">
         <button id="tab-points-btn" class="tab-btn active" style="
           padding: 8px 12px;
           background: none;
           border: none;
-          border-bottom: 3px solid #0077ff;
-          color: #0077ff;
+          border-bottom: 3px solid #000000;
+          color: #000000;
           cursor: pointer;
           font-weight: 600;
           font-size: 14px;
@@ -1113,9 +1113,9 @@ function initLeafletIfNeeded() {
 
 function setPointMode(on) {
   pointMode = on;
-  if (dataSection) {
-    dataSection.style.display = points.length > 0 || lines.length > 0 ? "block" : "none";
-  }
+    if (dataSection) {
+      dataSection.style.display = "block";
+    }
 
   // UI feedback
   btnPoints.textContent = "⦿";
@@ -1156,9 +1156,9 @@ function ensureLinesLayer() {
 }
 
 function refreshLinesTable() {
-  if (dataSection) {
-    dataSection.style.display = lines.length > 0 ? "block" : "none";
-  }
+    if (dataSection) {
+      dataSection.style.display = "block";
+    }
   
   if (!linesTableBody) return;
 
@@ -1173,6 +1173,7 @@ function refreshLinesTable() {
 
     // Label (editable)
     const c2 = document.createElement("td");
+    c2.style.textAlign = "center"; // Center the cell
     const labelInput = document.createElement("input");
     labelInput.type = "text";
     labelInput.placeholder = "e.g., Road segment";
@@ -1180,6 +1181,8 @@ function refreshLinesTable() {
     labelInput.style.width = "90px";
     labelInput.style.padding = "4px 6px";
     labelInput.style.fontSize = "12px";
+    labelInput.style.margin = "0 auto"; // Center the input within the cell
+    labelInput.style.display = "block";
     labelInput.addEventListener("input", () => {
       ln.label = labelInput.value;
     });
