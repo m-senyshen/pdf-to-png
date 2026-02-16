@@ -218,6 +218,41 @@
     color: #0077ff;
   }
 
+  .tab-btn {
+    transition: all 0.2s ease;
+  }
+
+  .tab-btn:hover {
+    color: #0077ff !important;
+  }
+
+  .tab-btn.active {
+    border-bottom-color: #0077ff !important;
+    color: #0077ff !important;
+  }
+
+  .data-tab {
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  #lines-table, #polygons-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+
+  #lines-table td, #lines-table th,
+  #polygons-table td, #polygons-table th {
+    padding: 6px;
+    border-bottom: 1px solid #f0f2f6;
+    font-size: 13px;
+  }
+
 
   canvas {
     display:block;
@@ -365,27 +400,50 @@
         style="margin-top:8px; color:#7a1220;"
       ></div>
 
-      <div style="margin-top:10px">
-        <div class="small"><strong>Transform Model:</strong> Affine</div>
+      <div id="data-section" style="display:none;">
+      <!-- Tab buttons -->
+      <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid #dbeafe;">
+        <button id="tab-points-btn" class="tab-btn active" style="
+          padding: 8px 12px;
+          background: none;
+          border: none;
+          border-bottom: 3px solid #0077ff;
+          color: #0077ff;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 14px;
+        ">Points</button>
+        <button id="tab-lines-btn" class="tab-btn" style="
+          padding: 8px 12px;
+          background: none;
+          border: none;
+          border-bottom: 3px solid transparent;
+          color: #666;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 14px;
+        ">Lines</button>
+        <button id="tab-polygons-btn" class="tab-btn" style="
+          padding: 8px 12px;
+          background: none;
+          border: none;
+          border-bottom: 3px solid transparent;
+          color: #666;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 14px;
+        ">Polygons</button>
       </div>
 
-      <hr style="margin:16px 0"/>
-
-      <div class="small" style="margin-bottom:6px;"><strong>Overlay controls</strong></div>
-
-      <hr style="margin:16px 0"/>
-
-      <div
-        id="points-section"
-        style="display:none;"
-      >
+      <!-- Points Tab -->
+      <div id="tab-points" class="data-tab" style="display: block;">
         <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px;">
-          <h3 style="margin:0;">Points</h3>
+          <h4 style="margin:0; font-size:14px;">Points</h4>
           <div class="small" id="points-count">0</div>
         </div>
 
         <div id="points-hint" class="small" style="margin-top:6px;">
-          Tip: Click “Create Points”, then click on the map to add points.
+          Tip: Click "Create Points", then click on the map to add points.
         </div>
 
         <table id="points-table">
@@ -401,6 +459,53 @@
           <tbody></tbody>
         </table>
       </div>
+
+      <!-- Lines Tab -->
+      <div id="tab-lines" class="data-tab" style="display: none;">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px;">
+          <h4 style="margin:0; font-size:14px;">Lines</h4>
+          <div class="small" id="lines-count">0</div>
+        </div>
+
+        <div id="lines-hint" class="small" style="margin-top:6px;">
+          Tip: Click "Create Lines", then click on the map to add vertices. Double-click to finish.
+        </div>
+
+        <table id="lines-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Label</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- Polygons Tab -->
+      <div id="tab-polygons" class="data-tab" style="display: none;">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px;">
+          <h4 style="margin:0; font-size:14px;">Polygons</h4>
+          <div class="small" id="polygons-count">0</div>
+        </div>
+
+        <div id="polygons-hint" class="small" style="margin-top:6px;">
+          Polygons not yet implemented.
+        </div>
+
+        <table id="polygons-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Label</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
 
 
       <div class="small" style="margin-top:8px;">Basemap opacity</div>
@@ -468,6 +573,49 @@ let linesLayerGroup = null;   // holds finalized lines
 let activeLine = null;        // current in-progress line polyline
 let activeLineLatLngs = [];   // latlngs for active line
 
+
+const dataSection = document.getElementById("data-section");
+const tabPointsBtn = document.getElementById("tab-points-btn");
+const tabLinesBtn = document.getElementById("tab-lines-btn");
+const tabPolygonsBtn = document.getElementById("tab-polygons-btn");
+
+const linesTableBody = (() => {
+  const table = document.getElementById("lines-table");
+  if (!table) return null;
+  let tbody = table.querySelector("tbody");
+  if (!tbody) {
+    tbody = document.createElement("tbody");
+    table.appendChild(tbody);
+  }
+  return tbody;
+})();
+
+const polygonsTableBody = (() => {
+  const table = document.getElementById("polygons-table");
+  if (!table) return null;
+  let tbody = table.querySelector("tbody");
+  if (!tbody) {
+    tbody = document.createElement("tbody");
+    table.appendChild(tbody);
+  }
+  return tbody;
+})();
+
+// Tab switching logic
+function showTab(tabName) {
+  const tabs = document.querySelectorAll(".data-tab");
+  tabs.forEach(tab => tab.style.display = "none");
+  
+  const buttons = document.querySelectorAll(".tab-btn");
+  buttons.forEach(btn => btn.classList.remove("active"));
+  
+  document.getElementById(`tab-${tabName}`).style.display = "block";
+  document.getElementById(`tab-${tabName}-btn`).classList.add("active");
+}
+
+tabPointsBtn?.addEventListener("click", () => showTab("points"));
+tabLinesBtn?.addEventListener("click", () => showTab("lines"));
+tabPolygonsBtn?.addEventListener("click", () => showTab("polygons"));
 
 
 const pointsHint = document.getElementById("points-hint");
@@ -965,8 +1113,8 @@ function initLeafletIfNeeded() {
 
 function setPointMode(on) {
   pointMode = on;
-  if (pointsSection) {
-    pointsSection.style.display = pointMode ? "block" : "none";
+  if (dataSection) {
+    dataSection.style.display = points.length > 0 || lines.length > 0 ? "block" : "none";
   }
 
   // UI feedback
@@ -1004,10 +1152,72 @@ function ensureLinesLayer() {
   if (!linesLayerGroup) {
     linesLayerGroup = L.layerGroup().addTo(map);
   }
+  return linesLayerGroup;
 }
+
+function refreshLinesTable() {
+  if (dataSection) {
+    dataSection.style.display = lines.length > 0 ? "block" : "none";
+  }
+  
+  if (!linesTableBody) return;
+
+  linesTableBody.innerHTML = "";
+
+  lines.forEach((ln) => {
+    const tr = document.createElement("tr");
+
+    // ID
+    const c1 = document.createElement("td");
+    c1.textContent = ln.id;
+
+    // Label (editable)
+    const c2 = document.createElement("td");
+    const labelInput = document.createElement("input");
+    labelInput.type = "text";
+    labelInput.placeholder = "e.g., Road segment";
+    labelInput.value = ln.label ?? "";
+    labelInput.style.width = "90px";
+    labelInput.style.padding = "4px 6px";
+    labelInput.style.fontSize = "12px";
+    labelInput.addEventListener("input", () => {
+      ln.label = labelInput.value;
+    });
+    c2.appendChild(labelInput);
+
+    // Delete
+    const c3 = document.createElement("td");
+    const del = document.createElement("button");
+    del.textContent = "X";
+    del.className = "secondary";
+    del.onclick = () => deleteLine(ln.id);
+    c3.appendChild(del);
+
+    tr.appendChild(c1);
+    tr.appendChild(c2);
+    tr.appendChild(c3);
+
+    linesTableBody.appendChild(tr);
+  });
+
+  if (document.getElementById("lines-count")) {
+    document.getElementById("lines-count").textContent = String(lines.length);
+  }
+}
+
+function deleteLine(lineId) {
+  lines = lines.filter(ln => ln.id !== lineId);
+  saveLinesToSession();
+  restoreLinesLayer();
+  refreshLinesTable();
+}
+
 function startLineDraw() {
+  initLeafletIfNeeded(); // Make sure map exists first
   ensureLinesLayer();
   activeLineLatLngs = [];
+  lineVertexMarkers = []; // Reset vertex markers
+  
   if (activeLine) {
     map.removeLayer(activeLine);
     activeLine = null;
@@ -1024,6 +1234,15 @@ function startLineDraw() {
   map.doubleClickZoom.disable();
 }
 
+function updateLinesCount() {
+  // This will be used when we add the lines table
+  console.log("Lines count:", lines.length);
+}
+
+function updateLinesCount() {
+  refreshLinesTable();
+}
+
 function stopLineDraw() {
   map.off("click", onLineClick);
   map.off("mousemove", onLineMouseMove);
@@ -1035,12 +1254,32 @@ function stopLineDraw() {
     map.removeLayer(activeLine);
     activeLine = null;
   }
+  
+  // Clear vertex markers
+  lineVertexMarkers.forEach(marker => map.removeLayer(marker));
+  lineVertexMarkers = [];
+  
   activeLineLatLngs = [];
 }
+
+let lineVertexMarkers = []; // Track vertex circle markers
+
 function onLineClick(e) {
   if (activeTool !== "lines") return;
 
   activeLineLatLngs.push(e.latlng);
+  
+  // Add a transparent white circle at this vertex
+  const vertexMarker = L.circleMarker(e.latlng, {
+    radius: 5,
+    weight: 1,
+    color: '#ffffff',
+    fillColor: '#ffffff',
+    fillOpacity: 0.4,
+    interactive: false
+  }).addTo(map);
+  
+  lineVertexMarkers.push(vertexMarker);
 
   if (!activeLine) {
     activeLine = L.polyline(activeLineLatLngs, { weight: 3 }).addTo(map);
@@ -1092,11 +1331,15 @@ function onLineDoubleClick(e) {
   activeLine.addTo(linesLayerGroup);
   activeLine = null;
 
+  // Clear vertex markers when line is finalized
+  lineVertexMarkers.forEach(marker => map.removeLayer(marker));
+  lineVertexMarkers = [];
+
   // Reset for next line
   activeLineLatLngs = [];
 
   // Update UI
-  refreshLinesUI?.();
+  refreshLinesTable?.();
 
   // Optional: keep line tool active so user can draw another line
 }
