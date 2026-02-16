@@ -199,8 +199,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #ccc;
-    background: #fff;
+    border: 1px solid #dbeafe;
+    background: #f2f6fb;
+    color: #06345a;
     border-radius: 8px;
     cursor: pointer;
     font-size: 18px;
@@ -457,7 +458,7 @@ const pointsTableBody = (() => {
 
 let activeTool = "none"; // "points" | "lines" | "polygons" | "none"
 const lines = []; // each: { id, latlngs: [{lat, lng}, ...] }
-
+const LINES_SESSION_KEY = "digitized_lines_v1";
 let linesLayerGroup = null;   // holds finalized lines
 let activeLine = null;        // current in-progress line polyline
 let activeLineLatLngs = [];   // latlngs for active line
@@ -661,6 +662,31 @@ function loadPointsFromSession() {
   }
 }
 
+function saveLinesToSession() {
+  try {
+    sessionStorage.setItem(LINES_SESSION_KEY, JSON.stringify({ nextLineId, lines }));
+  } catch (e) {
+    console.warn("Failed to save lines to sessionStorage:", e);
+  }
+}
+
+function loadLinesFromSession() {
+  try {
+    const raw = sessionStorage.getItem(LINES_SESSION_KEY);
+    if (!raw) return;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.lines)) return;
+
+    lines.length = 0;
+    lines.push(...parsed.lines);
+
+    if (typeof parsed.nextLineId === "number") nextLineId = parsed.nextLineId;
+  } catch (e) {
+    console.warn("Failed to load lines from sessionStorage:", e);
+  }
+}
+
 function saveRenderedImageToSession() {
   try {
     if (!renderedImage || !renderedImage.src) return;
@@ -674,6 +700,18 @@ function saveRenderedImageToSession() {
     console.log("Saved rendered image to session");
   } catch (e) {
     console.warn("Failed saving rendered image:", e);
+  }
+}
+
+function restoreLinesLayer() {
+  initLeafletIfNeeded();
+  if (!linesLayer) return;
+
+  linesLayer.clearLayers();
+
+  for (const ln of lines) {
+    const latlngs = ln.latlngs.map(p => L.latLng(p.lat, p.lng));
+    L.polyline(latlngs, { weight: 3 }).addTo(linesLayer);
   }
 }
 
@@ -1020,6 +1058,8 @@ function onLineDoubleClick(e) {
   const id = `L${lines.length + 1}`;
   const latlngs = activeLineLatLngs.map(ll => ({ lat: ll.lat, lng: ll.lng }));
   lines.push({ id, latlngs });
+  saveLinesToSession();
+  updateLinesCount();
 
   // Move the active line into the finalized layer group
   activeLine.addTo(linesLayerGroup);
@@ -1477,6 +1517,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   loadPointsFromSession();
   refreshPointsTable();
   restorePointsLayer();
+
+  loadLinesFromSession();
+  restoreLinesLayer();
+  updateLinesCount();
 
   const url = new URL(window.location.href);
   const paidReturn = url.searchParams.get("paid") === "1";
