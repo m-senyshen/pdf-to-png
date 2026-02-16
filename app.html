@@ -276,7 +276,7 @@
       <button id="btn-compute" class="secondary">Compute Transform</button>
       <button id="btn-points" type="button" class="tool-btn" title="Points" aria-label="Points">⦿</button>
       <button id="btnCreateLines" type="button" class="tool-btn" title="Lines" aria-label="Lines">／</button>
-      <button id="btn-export-points" class="primary-action">Export Points</button>
+      <button id="btn-export-points" class="primary-action">Export Data</button>
     </div>
   </header>
 
@@ -1206,8 +1206,41 @@ function pointsToGeoJSON() {
   };
 }
 
+function allDataToGeoJSON() {
+  const features = [];
+
+  // Add points as Point features
+  points.forEach(p => {
+    features.push({
+      type: "Feature",
+      properties: { id: p.id, label: p.label || "" },
+      geometry: {
+        type: "Point",
+        coordinates: [p.lon, p.lat]
+      }
+    });
+  });
+
+  // Add lines as LineString features
+  lines.forEach(ln => {
+    features.push({
+      type: "Feature",
+      properties: { id: ln.id },
+      geometry: {
+        type: "LineString",
+        coordinates: ln.latlngs.map(latlng => [latlng.lng, latlng.lat])
+      }
+    });
+  });
+
+  return {
+    type: "FeatureCollection",
+    features: features
+  };
+}
 
 
+// probably dont need anymore but keeping for now in case we want CSV export of points only as a simple format
 function pointsToCSV() {
   const header = "id,lat,lon\n";
   const rows = points.map(p => `${p.id},${p.lat},${p.lon}`).join("\n");
@@ -1334,23 +1367,19 @@ function clearUrlQuery() {
   window.history.replaceState({}, "", url.toString());
 }
 
-function downloadAllPointFormats() {
-  if (!points || points.length === 0) {
-    showPayStatus("Payment successful!", "Downloads unlocked, but you have no points to export yet.");
+function downloadAllData() {
+  if ((!points || points.length === 0) && (!lines || lines.length === 0)) {
+    showPayStatus("No data to export", "You have no points or lines to download yet.");
     return;
   }
 
-  // GeoJSON
-  const gj = pointsToGeoJSON();
+  // GeoJSON with points + lines
+  const gj = allDataToGeoJSON();
   downloadTextFile(
-    "mymapdata-points.geojson",
+    "mymapdata-data.geojson",
     JSON.stringify(gj, null, 2),
     "application/geo+json"
   );
-
-  // CSV
-  const csv = pointsToCSV();
-  downloadTextFile("mymapdata-points.csv", csv, "text/csv");
 }
 
 
@@ -1633,7 +1662,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
             clearUrlQuery();
 
-            downloadAllPointFormats();
+            downloadAllData();
             return;
           }
         } catch (e) {
@@ -1769,7 +1798,7 @@ btnExportPoints.onclick = async () => {
   try {
     // Check local payment status first as fallback
     if (isPaidForThisWorkSession()) {
-      downloadAllPointFormats();
+      downloadAllData();
       return;
     }
 
@@ -1785,7 +1814,7 @@ btnExportPoints.onclick = async () => {
           ? `Downloading GeoJSON + CSV… (${expiryText})`
           : "Downloading GeoJSON + CSV…"
       );
-      downloadAllPointFormats();
+      downloadAllData();
       return;
     }
 
