@@ -1261,19 +1261,22 @@ async function hasDownloadsUnlockedServer() {
 function setActiveTool(tool) {
   activeTool = tool;
 
+  // Initialize map first
+  initLeafletIfNeeded();
+
   // Toggle button active styles
   const btnP = document.getElementById("btnCreatePoints");
   const btnL = document.getElementById("btnCreateLines");
-  // const btnG = document.getElementById("btnCreatePolygons");
 
   btnP?.classList.toggle("active", tool === "points");
   btnL?.classList.toggle("active", tool === "lines");
-  // btnG?.classList.toggle("active", tool === "polygons");
 
-  // Ensure only one drawing interaction is active at a time
-  if (tool !== "lines") stopLineDraw();
-  // if (tool !== "points") stopPointMode();   // if you have one
-  // if (tool !== "polygons") stopPolygonDraw(); // later
+  // Start or stop line drawing based on tool
+  if (tool === "lines") {
+    startLineDraw();
+  } else {
+    stopLineDraw();
+  }
 }
 
 
