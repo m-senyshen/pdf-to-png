@@ -1094,6 +1094,10 @@ function initLeafletIfNeeded() {
   pointsLayer = L.layerGroup().addTo(map);
   linesLayer = L.layerGroup().addTo(map);
 
+  // Ensure Leaflet recalculates the map size once the container is visible
+  setTimeout(() => map.invalidateSize(), 200);
+  map.whenReady(() => map.invalidateSize());
+
   // Click on map to add point (only when pointMode is on)
   map.on("click", (e) => {
     if (activeTool === "points") {
