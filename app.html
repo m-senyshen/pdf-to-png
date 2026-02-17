@@ -191,6 +191,10 @@
   .line-mode * {
     cursor: crosshair !important;
   }
+  .polygon-mode,
+  .polygon-mode * {
+    cursor: crosshair !important;
+  }
     .draw-tools {
     display: inline-flex;
     gap: 6px;
@@ -316,6 +320,7 @@
       <button id="btn-compute" class="secondary">Compute Transform</button>
       <button id="btn-points" type="button" class="tool-btn" title="Points" aria-label="Points">⦿</button>
       <button id="btnCreateLines" type="button" class="tool-btn" title="Lines" aria-label="Lines">／</button>
+      <button id="btnCreatePolygons" type="button" class="tool-btn" title="Polygons" aria-label="Polygons">▱</button>
       <button id="btn-export-points" class="primary-action">Export Data</button>
     </div>
   </header>
@@ -573,6 +578,19 @@ let linesLayerGroup = null;   // holds finalized lines
 let activeLine = null;        // current in-progress line polyline
 let activeLineLatLngs = [];   // latlngs for active line
 
+// Polygons state
+const polygons = []; // each: { id, latlngs: [{lat,lng}, ...], label? }
+const POLYGONS_SESSION_KEY = "digitized_polygons_v1";
+let polygonsLayerGroup = null;
+let activePolygon = null;
+let activePolygonLatLngs = [];
+let polygonVertexMarkers = [];
+let nextPolygonId = 1;
+
+const btnCreatePolygons = document.getElementById("btnCreatePolygons");
+btnCreatePolygons?.addEventListener("click", () => {
+setActiveTool(activeTool === "polygons" ? "none" : "polygons");
+});
 
 const dataSection = document.getElementById("data-section");
 const tabPointsBtn = document.getElementById("tab-points-btn");
@@ -639,6 +657,14 @@ const rmsEl = document.getElementById("rms");
 let map = null;
 let basemapLayer = null;
 let pdfOverlay = null;
+
+let polygons = []; // { id, latlngs, label? }
+const POLYGONS_SESSION_KEY = "digitized_polygons_v1";
+let polygonsLayerGroup = null;
+let activePolygon = null;
+let activePolygonLatLngs = [];
+let polygonVertexMarkers = [];
+let nextPolygonId = 1;
 
 const basemapOpacityEl = document.getElementById("basemap-opacity");
 const pdfOpacityEl = document.getElementById("pdf-opacity");
@@ -1372,6 +1398,206 @@ function restoreLinesLayer() {
   }
 }
 
+// ---------- Polygon helpers, drawing, persistence, and UI ----------
+
+function projectPointToSegmentLatLng(p, a, b) {
+  // Project point p to segment a-b in layer (pixel) space for accurate snapping
+  const pa = map.latLngToLayerPoint(a);
+  const pb = map.latLngToLayerPoint(b);
+  const pp = map.latLngToLayerPoint(p);
+
+  const vx = pb.x - pa.x;
+  const vy = pb.y - pa.y;
+  const wx = pp.x - pa.x;
+  const wy = pp.y - pa.y;
+
+  const vlen2 = vx * vx + vy * vy;
+  const t = vlen2 === 0 ? 0 : Math.max(0, Math.min(1, (wx * vx + wy * vy) / vlen2));
+  const projPoint = L.point(pa.x + t * vx, pa.y + t * vy);
+  return map.layerPointToLatLng(projPoint);
+}
+
+function findClosestPointOnLines(targetLatLng, maxDistanceMeters = 10) {
+  if (!linesLayerGroup || !map) return null;
+  let best = null;
+
+  linesLayerGroup.eachLayer(layer => {
+    if (!layer.getLatLngs) return;
+    let latlngs = layer.getLatLngs();
+    // flatten if nested
+    if (Array.isArray(latlngs[0]) && Array.isArray(latlngs[0][0])) latlngs = latlngs[0];
+
+    for (let i = 0; i < latlngs.length - 1; i++) {
+      const a = latlngs[i];
+      const b = latlngs[i + 1];
+      const proj = projectPointToSegmentLatLng(targetLatLng, a, b);
+      const d = map.distance(proj, targetLatLng);
+      if (!best || d < best.dist) best = { latlng: proj, dist: d, layer, segIndex: i };
+    }
+  });
+
+  if (!best || best.dist > maxDistanceMeters) return null;
+  return best;
+}
+
+function ensurePolygonsLayer() {
+  if (!polygonsLayerGroup) polygonsLayerGroup = L.layerGroup().addTo(map);
+  return polygonsLayerGroup;
+}
+
+function startPolygonDraw() {
+  initLeafletIfNeeded();
+  ensurePolygonsLayer();
+  activePolygonLatLngs = [];
+  polygonVertexMarkers = [];
+  if (activePolygon) {
+    map.removeLayer(activePolygon);
+    activePolygon = null;
+  }
+  map.on("click", onPolygonClick);
+  map.on("mousemove", onPolygonMouseMove);
+  map.on("dblclick", onPolygonDoubleClick);
+  map.doubleClickZoom.disable();
+}
+
+function stopPolygonDraw() {
+  map.off("click", onPolygonClick);
+  map.off("mousemove", onPolygonMouseMove);
+  map.off("dblclick", onPolygonDoubleClick);
+  map.doubleClickZoom.enable();
+
+  if (activePolygon) {
+    map.removeLayer(activePolygon);
+    activePolygon = null;
+  }
+
+  polygonVertexMarkers.forEach(m => map.removeLayer(m));
+  polygonVertexMarkers = [];
+  activePolygonLatLngs = [];
+}
+
+function onPolygonClick(e) {
+  if (activeTool !== "polygons") return;
+
+  // Try snapping to an existing line within threshold (meters)
+  const snap = findClosestPointOnLines(e.latlng, 10);
+  const chosen = snap ? snap.latlng : e.latlng;
+
+  activePolygonLatLngs.push(chosen);
+
+  const marker = L.circleMarker(chosen, {
+    radius: 5,
+    weight: 1,
+    color: '#ffffff',
+    fillColor: '#ffffff',
+    fillOpacity: 0.4,
+    interactive: false
+  }).addTo(map);
+  polygonVertexMarkers.push(marker);
+
+  if (!activePolygon) {
+    activePolygon = L.polygon(activePolygonLatLngs, {
+      color: '#3b82f6',
+      weight: 2,
+      fillOpacity: 0.15
+    }).addTo(map);
+  } else {
+    activePolygon.setLatLngs(activePolygonLatLngs);
+  }
+}
+
+function onPolygonMouseMove(e) {
+  if (activeTool !== "polygons" || activePolygonLatLngs.length === 0) return;
+  const preview = [...activePolygonLatLngs, e.latlng];
+  if (!activePolygon) {
+    activePolygon = L.polygon(preview, { color: '#3b82f6', weight: 2, fillOpacity: 0.15, dashArray: '5,5' }).addTo(map);
+  } else {
+    activePolygon.setLatLngs(preview);
+  }
+}
+
+function onPolygonDoubleClick(e) {
+  if (activeTool !== "polygons") return;
+  L.DomEvent.stop(e);
+
+  if (activePolygonLatLngs.length < 3) {
+    stopPolygonDraw();
+    setActiveTool("none");
+    return;
+  }
+
+  const id = `P${nextPolygonId++}`;
+  const latlngs = activePolygonLatLngs.map(ll => ({ lat: ll.lat, lng: ll.lng }));
+  polygons.push({ id, latlngs });
+  try { sessionStorage.setItem(POLYGONS_SESSION_KEY, JSON.stringify(polygons)); } catch (e) {}
+
+  ensurePolygonsLayer();
+  if (activePolygon) activePolygon.addTo(polygonsLayerGroup);
+  activePolygon = null;
+
+  polygonVertexMarkers.forEach(m => map.removeLayer(m));
+  polygonVertexMarkers = [];
+  activePolygonLatLngs = [];
+
+  refreshPolygonsTable();
+}
+
+function savePolygonsToSession() {
+  try { sessionStorage.setItem(POLYGONS_SESSION_KEY, JSON.stringify(polygons)); } catch {}
+}
+
+function loadPolygonsFromSession() {
+  try {
+    const raw = sessionStorage.getItem(POLYGONS_SESSION_KEY);
+    if (!raw) return;
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return;
+    polygons.length = 0;
+    polygons.push(...arr);
+  } catch {}
+}
+
+function restorePolygonsLayer() {
+  ensurePolygonsLayer();
+  polygonsLayerGroup.clearLayers();
+  for (const pg of polygons) {
+    const latlngs = pg.latlngs.map(p => L.latLng(p.lat, p.lng));
+    L.polygon(latlngs, { color: '#3b82f6', weight: 2, fillOpacity: 0.15 }).addTo(polygonsLayerGroup);
+  }
+}
+
+function refreshPolygonsTable() {
+  if (dataSection) dataSection.style.display = 'block';
+  if (!polygonsTableBody) return;
+  polygonsTableBody.innerHTML = '';
+
+  polygons.forEach(pg => {
+    const tr = document.createElement('tr');
+    const c1 = document.createElement('td'); c1.textContent = pg.id;
+    const c2 = document.createElement('td'); c2.style.textAlign = 'center';
+    const inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = 'e.g., Area'; inp.value = pg.label ?? '';
+    inp.style.width = '90px'; inp.style.padding = '4px 6px'; inp.style.fontSize = '12px'; inp.style.margin = '0 auto'; inp.style.display = 'block';
+    inp.addEventListener('input', () => { pg.label = inp.value; savePolygonsToSession(); });
+    c2.appendChild(inp);
+    const c3 = document.createElement('td'); const del = document.createElement('button'); del.textContent = 'X'; del.className = 'secondary';
+    del.onclick = () => { deletePolygon(pg.id); };
+    c3.appendChild(del);
+    tr.appendChild(c1); tr.appendChild(c2); tr.appendChild(c3);
+    polygonsTableBody.appendChild(tr);
+  });
+
+  const el = document.getElementById('polygons-count'); if (el) el.textContent = String(polygons.length);
+}
+
+function deletePolygon(id) {
+  const idx = polygons.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  polygons.splice(idx, 1);
+  savePolygonsToSession();
+  restorePolygonsLayer();
+  refreshPolygonsTable();
+}
+
 
 
 
@@ -1574,6 +1800,10 @@ function setActiveTool(tool) {
   // Toggle button active styles
   const btnP = document.getElementById("btn-points");
   const btnL = document.getElementById("btnCreateLines");
+  const btnPoly = document.getElementById("btnCreatePolygons");
+    btnPoly?.classList.toggle("active", tool === "polygons");
+    document.body.classList.toggle("polygon-mode", tool === "polygons");
+    if (tool === "polygons") startPolygonDraw(); else stopPolygonDraw();
 
   btnP?.classList.toggle("active", tool === "points");
   btnL?.classList.toggle("active", tool === "lines");
@@ -1829,6 +2059,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   loadLinesFromSession();
   restoreLinesLayer();
+  loadPolygonsFromSession();
+  restorePolygonsLayer();
+  refreshPolygonsTable();
   updateLinesCount();
 
   const url = new URL(window.location.href);
