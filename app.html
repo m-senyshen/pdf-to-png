@@ -578,14 +578,7 @@ let linesLayerGroup = null;   // holds finalized lines
 let activeLine = null;        // current in-progress line polyline
 let activeLineLatLngs = [];   // latlngs for active line
 
-// Polygons state
-const polygons = []; // each: { id, latlngs: [{lat,lng}, ...], label? }
-const POLYGONS_SESSION_KEY = "digitized_polygons_v1";
-let polygonsLayerGroup = null;
-let activePolygon = null;
-let activePolygonLatLngs = [];
-let polygonVertexMarkers = [];
-let nextPolygonId = 1;
+
 
 const btnCreatePolygons = document.getElementById("btnCreatePolygons");
 btnCreatePolygons?.addEventListener("click", () => {
