@@ -17,173 +17,99 @@
   <meta property="og:type" content="article" />
   <meta property="og:url" content="https://mymapdata.com/how-to-use.html" />
 
-  <!-- Basic styling (keep lightweight for an MVP) -->
   <style>
-    :root {
-      --text: #111;
-      --muted: #555;
-      --border: #e5e5e5;
-      --bg: #fff;
-      --card: #fafafa;
-      --link: #0a58ca;
-    }
+    /* Base layout and typography from landing/use-cases pages */
     body {
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      color: var(--text);
-      background: var(--bg);
-      line-height: 1.5;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        color: #333;
+        line-height: 1.6;
+        background: #fff;
     }
-    header, main, footer {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 20px;
+
+    /* GIS GRID BACKGROUND (site-wide) */
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background-image:
+            linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+        background-size: 40px 40px;
+        z-index: -1;
     }
-    header {
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
+
+    /* HEADER */
+    .header {
+        position: sticky;
+        top: 0;
+        background: white;
+        border-bottom: 1px solid #ddd;
+        padding: 12px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10;
     }
-    .brand {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-      color: var(--text);
-      font-weight: 700;
+    .logo {
+        font-size: 26px;
+        font-weight: bold;
+        color: #000000;
+        display: flex;
+        align-items: center;
+        text-decoration: none;
     }
-    .brand small { color: var(--muted); font-weight: 600; }
-    nav a {
-      margin-right: 14px;
-      color: var(--muted);
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 14px;
-    }
-    nav a:hover { color: var(--text); }
-    h1 {
-      font-size: 34px;
-      line-height: 1.15;
-      margin: 18px 0 10px;
-      letter-spacing: -0.02em;
-    }
-    .lede {
-      color: var(--muted);
-      font-size: 16px;
-      margin: 0 0 18px;
-      max-width: 70ch;
-    }
-    .callouts {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      margin: 18px 0 8px;
-    }
-    .callout {
-      border: 1px solid var(--border);
-      background: var(--card);
-      border-radius: 12px;
-      padding: 12px 14px;
-      font-size: 14px;
-      color: var(--muted);
-    }
-    .callout strong { color: var(--text); }
-    .toc {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px 14px;
-      background: #fff;
-      margin: 18px 0 28px;
-    }
-    .toc h2 {
-      font-size: 16px;
-      margin: 0 0 8px;
-    }
-    .toc ol {
-      margin: 0;
-      padding-left: 18px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-    .toc a { color: var(--link); text-decoration: none; }
+    .logo:hover { color: #0077ff; }
+    .logo img { height: 30px; margin-right: 6px; }
+    .nav a { margin-left: 20px; text-decoration: none; color: #333; font-weight: bold; font-size: 16px; }
+    .nav a:hover { color: #0077ff; }
+
+    /* HERO / PAGE TITLE block */
+    .hero { text-align: center; padding: 40px 20px 30px; }
+    .hero h1 { font-size: 38px; margin-bottom: 8px; }
+    .hero p { font-size: 18px; max-width: 800px; margin: 0 auto; color: #555; }
+
+    /* Main container for article content */
+    main, header, footer { max-width: 980px; margin: 0 auto; padding: 20px; }
+
+    /* Article-specific typography (from original how-to page) */
+    h1 { font-size: 34px; line-height: 1.15; margin: 18px 0 10px; }
+    .lede { color: #555; font-size: 16px; margin: 0 0 18px; max-width: 70ch; }
+
+    .callouts { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 18px 0 8px; }
+    .callout { border: 1px solid #e5e5e5; background: #fafafa; border-radius: 12px; padding: 12px 14px; font-size: 14px; color: #555; }
+    .callout strong { color: #333; }
+
+    .toc { border: 1px solid #e5e5e5; border-radius: 12px; padding: 12px 14px; background: #fff; margin: 18px 0 28px; }
+    .toc h2 { font-size: 16px; margin: 0 0 8px; }
+    .toc ol { margin: 0; padding-left: 18px; color: #555; font-size: 14px; }
+    .toc a { color: #0077ff; text-decoration: none; }
     .toc a:hover { text-decoration: underline; }
 
-    section {
-      margin: 0 0 28px;
-      padding: 18px 0 0;
-      border-top: 1px solid var(--border);
-    }
+    section { margin: 0 0 28px; padding: 18px 0 0; border-top: 1px solid #e5e5e5; }
     section:first-of-type { border-top: none; padding-top: 0; }
-    h2 {
-      font-size: 22px;
-      margin: 0 0 8px;
-      letter-spacing: -0.01em;
-    }
-    h3 {
-      font-size: 16px;
-      margin: 14px 0 6px;
-    }
+    h2 { font-size: 22px; margin: 0 0 8px; }
+    h3 { font-size: 16px; margin: 14px 0 6px; }
     p { margin: 0 0 10px; }
-    ul, ol {
-      margin: 0 0 10px;
-      padding-left: 20px;
-      color: var(--muted);
-    }
+    ul, ol { margin: 0 0 10px; padding-left: 20px; color: #555; }
     li { margin: 6px 0; }
-    a { color: var(--link); }
-    .tip, .note, .warn {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px 14px;
-      margin: 12px 0;
-      background: var(--card);
-      color: var(--muted);
-      font-size: 14px;
-    }
-    .warn { border-color: #f1c1c1; background: #fff6f6; }
-    .tip strong, .note strong, .warn strong { color: var(--text); }
+    a { color: #0077ff; }
 
-    figure {
-      margin: 12px 0 0;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      background: #fff;
-    }
-    figure img {
-      display: block;
-      width: 100%;
-      height: auto;
-    }
-    figcaption {
-      padding: 10px 12px;
-      font-size: 13px;
-      color: var(--muted);
-      border-top: 1px solid var(--border);
-      background: #fcfcfc;
-    }
-    code, kbd {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size: 0.95em;
-    }
-    kbd {
-      border: 1px solid var(--border);
-      border-bottom-width: 2px;
-      border-radius: 6px;
-      padding: 2px 6px;
-      background: #fff;
-    }
-    footer {
-      border-top: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 13px;
-      padding-bottom: 40px;
-    }
-    .footer-links a { color: var(--muted); text-decoration: none; margin-right: 12px; }
-    .footer-links a:hover { color: var(--text); }
+    .tip, .note, .warn { border: 1px solid #e5e5e5; border-radius: 12px; padding: 12px 14px; margin: 12px 0; background: #fafafa; color: #555; font-size: 14px; }
+    .warn { border-color: #f1c1c1; background: #fff6f6; }
+
+    figure { margin: 12px 0 0; border: 1px solid #e5e5e5; border-radius: 12px; overflow: hidden; background: #fff; }
+    figure img { display: block; width: 100%; height: auto; }
+    figcaption { padding: 10px 12px; font-size: 13px; color: #555; border-top: 1px solid #e5e5e5; background: #fcfcfc; }
+
+    code, kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 0.95em; }
+    kbd { border: 1px solid #e5e5e5; border-bottom-width: 2px; border-radius: 6px; padding: 2px 6px; background: #fff; }
+
+    /* Footer styling consistent with other pages */
+    .footer { text-align: center; padding: 25px; margin-top: 40px; color: #777; font-size: 14px; }
+    .footer a { color: #000; text-decoration: none; }
+    .footer a:hover { color: #0077ff; }
   </style>
 
   <!-- Structured data (SEO) -->
