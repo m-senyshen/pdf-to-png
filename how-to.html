@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <title>How to Georeference a Map Online & Export GeoJSON | MyMapData</title>
+  <meta name="description" content="Step-by-step guide to using MyMapData: upload a scanned map/PDF, add ground control points, compute an affine transform, digitize points/lines/polygons, and export your data as GeoJSON (and CSV for points)." />
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://mymapdata.com/how-to-use.html" />
+
+  <!-- Open Graph / Social -->
+  <meta property="og:site_name" content="MyMapData" />
+  <meta property="og:title" content="How to Georeference a Map Online & Export GeoJSON | MyMapData" />
+  <meta property="og:description" content="Upload a PDF/scanned map, georeference with control points, digitize features, and export GeoJSON. Clear steps + screenshots." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://mymapdata.com/how-to-use.html" />
+
+  <!-- Basic styling (keep lightweight for an MVP) -->
+  <style>
+    :root {
+      --text: #111;
+      --muted: #555;
+      --border: #e5e5e5;
+      --bg: #fff;
+      --card: #fafafa;
+      --link: #0a58ca;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.5;
+    }
+    header, main, footer {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+    }
+    .brand small { color: var(--muted); font-weight: 600; }
+    nav a {
+      margin-right: 14px;
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    nav a:hover { color: var(--text); }
+    h1 {
+      font-size: 34px;
+      line-height: 1.15;
+      margin: 18px 0 10px;
+      letter-spacing: -0.02em;
+    }
+    .lede {
+      color: var(--muted);
+      font-size: 16px;
+      margin: 0 0 18px;
+      max-width: 70ch;
+    }
+    .callouts {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin: 18px 0 8px;
+    }
+    .callout {
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .callout strong { color: var(--text); }
+    .toc {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: #fff;
+      margin: 18px 0 28px;
+    }
+    .toc h2 {
+      font-size: 16px;
+      margin: 0 0 8px;
+    }
+    .toc ol {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .toc a { color: var(--link); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    section {
+      margin: 0 0 28px;
+      padding: 18px 0 0;
+      border-top: 1px solid var(--border);
+    }
+    section:first-of-type { border-top: none; padding-top: 0; }
+    h2 {
+      font-size: 22px;
+      margin: 0 0 8px;
+      letter-spacing: -0.01em;
+    }
+    h3 {
+      font-size: 16px;
+      margin: 14px 0 6px;
+    }
+    p { margin: 0 0 10px; }
+    ul, ol {
+      margin: 0 0 10px;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+    li { margin: 6px 0; }
+    a { color: var(--link); }
+    .tip, .note, .warn {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 12px 0;
+      background: var(--card);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .warn { border-color: #f1c1c1; background: #fff6f6; }
+    .tip strong, .note strong, .warn strong { color: var(--text); }
+
+    figure {
+      margin: 12px 0 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    figcaption {
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      background: #fcfcfc;
+    }
+    code, kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.95em;
+    }
+    kbd {
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      padding: 2px 6px;
+      background: #fff;
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+      padding-bottom: 40px;
+    }
+    .footer-links a { color: var(--muted); text-decoration: none; margin-right: 12px; }
+    .footer-links a:hover { color: var(--text); }
+  </style>
+
+  <!-- Structured data (SEO) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to Georeference a Map Online and Export GeoJSON",
+    "description": "Use MyMapData to upload a scanned map/PDF, add control points, compute an affine transform, digitize features, and export GeoJSON.",
+    "provider": {
+      "@type": "Organization",
+      "name": "MyMapData",
+      "url": "https://mymapdata.com"
+    },
+    "step": [
+      { "@type": "HowToStep", "name": "Upload your map", "text": "Upload a PDF or scanned map image to MyMapData." },
+      { "@type": "HowToStep", "name": "Add ground control points (GCPs)", "text": "Place control points and enter known latitude/longitude." },
+      { "@type": "HowToStep", "name": "Compute the transform", "text": "Compute an affine transform and overlay the map on the basemap." },
+      { "@type": "HowToStep", "name": "Digitize features", "text": "Create points, lines, and polygons on the georeferenced map." },
+      { "@type": "HowToStep", "name": "Export data", "text": "Export your features as GeoJSON (and CSV for points, if enabled)." }
+    ]
+  }
+  </script>
+</head>
+
+<body>
+  <header>
+    <a class="brand" href="https://mymapdata.com/">
+      <span>MyMapData</span>
+      <small>Map Georeferencing + Data Export</small>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="https://mymapdata.com/app.html">Open App</a>
+      <a href="https://mymapdata.com/how-to-use.html" aria-current="page">How To</a>
+      <a href="https://mymapdata.com/terms.html">Terms</a>
+      <a href="https://mymapdata.com/privacy.html">Privacy</a>
+    </nav>
+  </header>
+
+  <main>
+    <article>
+      <h1>How to Georeference a Map Online and Export GeoJSON</h1>
+      <p class="lede">
+        This guide shows how to use <strong>MyMapData</strong> to upload a scanned map or PDF, align it to a basemap using ground control points (GCPs),
+        digitize features (points, lines, polygons), and export your data for use in QGIS, ArcGIS Pro, or Python.
+      </p>
+
+      <div class="callouts" role="note" aria-label="Quick facts">
+        <div class="callout">
+          <strong>Works best for:</strong> historical maps, field sketches, PDFs, and scanned atlases where you need quick GIS-ready data.
+        </div>
+        <div class="callout">
+          <strong>Projection:</strong> basemap uses Web Mercator (EPSG:3857). Exported coordinates are WGS84 latitude/longitude (EPSG:4326).
+        </div>
+        <div class="callout">
+          <strong>Accuracy:</strong> depends on map quality and your control points. Verify results for critical use cases.
+        </div>
+      </div>
+
+      <div class="toc">
+        <h2>Contents</h2>
+        <ol>
+          <li><a href="#requirements">Before you start</a></li>
+          <li><a href="#step1">Step 1 — Upload your map</a></li>
+          <li><a href="#step2">Step 2 — Add ground control points (GCPs)</a></li>
+          <li><a href="#step3">Step 3 — Compute the transform and check alignment</a></li>
+          <li><a href="#step4">Step 4 — Digitize points, lines, and polygons</a></li>
+          <li><a href="#step5">Step 5 — Export your data (GeoJSON)</a></li>
+          <li><a href="#tips">Tips for better accuracy</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ol>
+      </div>
+
+      <section id="requirements">
+        <h2>Before you start</h2>
+        <p>
+          You’ll get the best results if your map has a few clearly identifiable locations you can match to the real world
+          (intersections, bridges, sharp coastline corners, building corners, survey monuments, etc.).
+        </p>
+        <ul>
+          <li><strong>Input:</strong> PDF or scanned map image.</li>
+          <li><strong>Basemap:</strong> OpenStreetMap tiles for reference.</li>
+          <li><strong>Georeferencing method:</strong> Affine transform (recommended for MVP speed and reliability).</li>
+        </ul>
+
+        <div class="note">
+          <strong>Privacy note:</strong> MyMapData is designed to process your map and edits in your browser. Payment entitlements are tracked server-side to allow exporting.
+        </div>
+      </section>
+
+      <section id="step1">
+        <h2>Step 1 — Upload your map</h2>
+        <p>
+          Open the app and upload your PDF or scanned map. After upload, you’ll see the map render on the canvas and the basemap beneath it.
+        </p>
+        <ol>
+          <li>Go to <a href="https://mymapdata.com/app.html">mymapdata.com/app.html</a>.</li>
+          <li>Click the upload button and select your map file.</li>
+          <li>If your map is large, give it a moment to render.</li>
+        </ol>
+
+        <figure>
+          <img src="C:\screenshots\step1_screenshot.png" alt="MyMapData upload map interface showing a PDF loaded and the basemap visible underneath." />
+          <figcaption>Upload a map (PDF or scan). The basemap loads automatically so you can align your map.</figcaption>
+        </figure>
+
+        <div class="tip">
+          <strong>Tip:</strong> If your map is hard to see over the basemap, adjust opacity sliders so you can compare features clearly.
+        </div>
+      </section>
+
+      <section id="step2">
+        <h2>Step 2 — Add ground control points (GCPs)</h2>
+        <p>
+          Ground control points connect locations on your scanned map to real-world coordinates. You’ll add a GCP on the map image and enter the
+          corresponding latitude/longitude (for example from Google Maps).
+        </p>
+
+        <h3>Minimum points</h3>
+        <ul>
+          <li><strong>Affine transform:</strong> minimum 3 GCPs (more is usually better).</li>
+        </ul>
+
+        <h3>How to choose good points</h3>
+        <ul>
+          <li>Use crisp, unambiguous features (intersection corners, bridge endpoints, sharp corners).</li>
+          <li>Spread points across the entire map (avoid clustering them in one corner).</li>
+          <li>Avoid points on vague features (trees, fuzzy shorelines, soft curves).</li>
+        </ul>
+
+        <figure>
+          <img src="C:\screenshots\step2_screenshot.png" alt="GCP placement view showing control points on the scanned map with latitude and longitude input fields." />
+          <figcaption>Add GCPs by selecting a location on the map, then entering latitude/longitude.</figcaption>
+        </figure>
+
+        <div class="note">
+          <strong>Input format:</strong> You can paste coordinates as <code>lat, lon</code>. MyMapData accepts latitude first, longitude second (Google Maps-friendly).
+        </div>
+      </section>
+
+      <section id="step3">
+        <h2>Step 3 — Compute the transform and check alignment</h2>
+        <p>
+          After adding enough GCPs, compute the transform. Your scanned map will be warped into place and overlaid on the basemap.
+          Use opacity controls to check that roads, shorelines, or boundaries line up.
+        </p>
+        <ol>
+          <li>Click <strong>Compute Transform</strong>.</li>
+          <li>Adjust the map overlay opacity to compare against the basemap.</li>
+          <li>If alignment is off, add more GCPs or replace the worst ones.</li>
+        </ol>
+
+        <figure>
+          <img src="C:\screenshots\step3_screenshot.png" alt="Georeferenced map overlay aligned on top of an OpenStreetMap basemap with opacity adjusted." />
+          <figcaption>After computing the transform, check alignment by toggling opacity and comparing to the basemap.</figcaption>
+        </figure>
+
+        <div class="warn">
+          <strong>Accuracy disclaimer:</strong> Reported error metrics and alignment are approximations and depend on your source map quality, distortion, and GCP placement.
+          Verify exported data for any critical or legal use cases.
+        </div>
+      </section>
+
+      <section id="step4">
+        <h2>Step 4 — Digitize points, lines, and polygons</h2>
+        <p>
+          Once your map is aligned, you can digitize features directly on the georeferenced overlay.
+          Use the drawing tools in the top bar. Only one tool is active at a time.
+        </p>
+
+        <h3>Points (⦿)</h3>
+        <ul>
+          <li>Select the <strong>⦿</strong> tool.</li>
+          <li>Click anywhere on the map to add a point.</li>
+          <li>Points remain visible even after you exit drawing mode.</li>
+        </ul>
+
+        <h3>Lines (／)</h3>
+        <ul>
+          <li>Select the <strong>／</strong> tool.</li>
+          <li>Click to add vertices along the feature you’re tracing.</li>
+          <li>Double-click to finish the line.</li>
+        </ul>
+
+        <h3>Polygons (▱)</h3>
+        <p>
+          Polygons follow the same idea as lines, but close into an area boundary. (If polygons are enabled in your version,
+          select the <strong>▱</strong> tool, click to add vertices, then finish to close the shape.)
+        </p>
+
+        <figure>
+          <img src="C:\screenshots\step4_screenshot.png" alt="Digitizing mode with point and line tools visible in the top bar and a traced feature on the map." />
+          <figcaption>Digitize features directly on the georeferenced map. Use points for locations, lines for paths, and polygons for boundaries.</figcaption>
+        </figure>
+
+        <div class="tip">
+          <strong>Tip:</strong> Use more vertices for curved features. Use fewer vertices for straight segments to keep your data clean.
+        </div>
+      </section>
+
+      <section id="step5">
+        <h2>Step 5 — Export your data (GeoJSON)</h2>
+        <p>
+          When you’re ready, export your digitized features for use in GIS tools.
+          GeoJSON works well with QGIS, ArcGIS Pro, PostGIS workflows, and Python (GeoPandas).
+        </p>
+
+        <ol>
+          <li>Click <strong>Export Data</strong>.</li>
+          <li>If export access is locked, you’ll be prompted to pay to unlock downloads for your session.</li>
+          <li>Download the exported file(s) and import them into your GIS workflow.</li>
+        </ol>
+
+        <figure>
+          <img src="C:\screenshots\step5_screenshot.png" alt="Export button and confirmation message indicating export is unlocked and files are downloading." />
+          <figcaption>Export your digitized features as GeoJSON. (Optional: points can also be exported as CSV if enabled.)</figcaption>
+        </figure>
+
+        <div class="note">
+          <strong>Coordinate systems:</strong> The basemap uses Web Mercator (EPSG:3857). Exported coordinates are provided as WGS84 latitude/longitude (EPSG:4326),
+          which is the standard for GeoJSON.
+        </div>
+      </section>
+
+      <section id="tips">
+        <h2>Tips for better accuracy</h2>
+        <ul>
+          <li><strong>Spread GCPs out:</strong> place points near corners and across the map, not clustered in one area.</li>
+          <li><strong>Use sharp features:</strong> intersections and corners are better than vague shapes.</li>
+          <li><strong>Replace outliers:</strong> if one control point has high error, remove it and choose a better match nearby.</li>
+          <li><strong>Check multiple areas:</strong> verify alignment in several locations, not just where you placed points.</li>
+          <li><strong>Expect distortion:</strong> old scans and folded maps often have local warping that any simple transform can’t fully remove.</li>
+        </ul>
+      </section>
+
+      <section id="faq">
+        <h2>FAQ</h2>
+
+        <h3>Why does the map use Web Mercator but exports latitude/longitude?</h3>
+        <p>
+          Web maps (like OpenStreetMap) are rendered in Web Mercator (EPSG:3857) for fast tiled display. GeoJSON exports typically use WGS84
+          latitude/longitude (EPSG:4326) for compatibility with GIS tools and standard data pipelines.
+        </p>
+
+        <h3>Can I use MyMapData for property boundaries or legal surveys?</h3>
+        <p>
+          No. MyMapData is not intended for legal, cadastral, or survey-grade work. Exported results should be independently verified for any critical use.
+        </p>
+
+        <h3>My export downloaded only one file. Is that normal?</h3>
+        <p>
+          Your browser may block multiple downloads by default. If MyMapData exports multiple files (for example GeoJSON + CSV), your browser may ask you to allow
+          additional downloads for this site.
+        </p>
+
+        <h3>Where can I get help?</h3>
+        <p>
+          Email support at <a href="mailto:support@mymapdata.com">support@mymapdata.com</a>.
+        </p>
+      </section>
+    </article>
+  </main>
+
+  <footer>
+    <div class="footer-links">
+      <a href="https://mymapdata.com/">Home</a>
+      <a href="https://mymapdata.com/app.html">App</a>
+      <a href="https://mymapdata.com/privacy.html">Privacy</a>
+      <a href="https://mymapdata.com/terms.html">Terms</a>
+      <a href="mailto:support@mymapdata.com">Support</a>
+    </div>
+    <p style="margin-top:10px;">
+      © <span id="year"></span> MyMapData. Basemap data © OpenStreetMap contributors.
+    </p>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+  </footer>
+</body>
+</html>
